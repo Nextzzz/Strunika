@@ -40,7 +40,12 @@ def main(limit):
         if os.path.exists(out_path):
             skipped += 1
             continue
-        status = download(row["yt_id"], out_path)
+        try:
+            status = download(row["yt_id"], out_path)
+        except Exception as ex:  # a stalled yt-dlp must not kill a multi-day run
+            status = f"fail: {type(ex).__name__}"
+            if os.path.exists(out_path):
+                os.remove(out_path)  # partial file
         if status.startswith("ok"):
             ok += 1
             bot_streak = 0
