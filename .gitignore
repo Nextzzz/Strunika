@@ -24,3 +24,4 @@ ml/.cache_torch/
 ml/bundle_hook/
 ml/bundle_pseudo/
 ml/collect_*.log
+ml/bundle_hook_train/

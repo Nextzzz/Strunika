@@ -41,7 +41,18 @@ MIN_FAMILY = {0, 4, 6, 7}
 
 def load_pack(name):
     pack = np.load(os.path.join(DATA, name))
-    return pack["x"], pack["y"], pack["m"]
+    return pack["x"].astype(np.float32), pack["y"].astype(np.int64), pack["m"].astype(np.float32)
+
+
+def optional_packs(names):
+    """Mix-in packs present in data/: real clean labels (GuitarSet,
+    Billboard) against forgetting, synthetic N windows against silence
+    hallucination. Missing files are simply skipped."""
+    found = {}
+    for name in names:
+        if os.path.exists(os.path.join(DATA, name + ".npz")):
+            found[name] = load_pack(name + ".npz")
+    return found
 
 
 def pitch_shift(features, labels, k):
@@ -97,7 +108,11 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device: {device}", flush=True)
 
-    train_x, train_y, train_m = load_pack("hook_train.npz")
+    parts = {"hook_train": load_pack("hook_train.npz")}
+    parts.update(optional_packs(["guitar_train", "billboard_train", "n_train"]))
+    train_x = np.concatenate([p[0] for p in parts.values()])
+    train_y = np.concatenate([p[1] for p in parts.values()])
+    train_m = np.concatenate([p[2] for p in parts.values()])
     tests = {name: load_pack(name + ".npz")
              for name in ("hook_val", "guitar_test_clean", "billboard_test")}
 
@@ -106,7 +121,8 @@ def main():
         keep = np.random.default_rng(0).choice(len(train_x), 32, replace=False)
         train_x, train_y, train_m = train_x[keep], train_y[keep], train_m[keep]
         tests = {k: (x[:16], y[:16], m[:16]) for k, (x, y, m) in tests.items()}
-    print(f"train windows: {len(train_x)}", flush=True)
+    print("train windows: " + ", ".join(f"{k} {len(v[0])}" for k, v in parts.items())
+          + f" = {len(train_x)}", flush=True)
 
     config = HParams.load(os.path.join(REPO, "run_config.yaml"))
     config.feature["large_voca"] = True
