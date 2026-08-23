@@ -25,7 +25,7 @@ ROOT = os.path.normpath(os.path.join(
     HERE, "..", "datasets", "hooktheory", os.environ.get("HOOK_SUBSET", "")))
 AUDIO_DIR = os.path.join(ROOT, "audio")
 MAX_NEW = int(os.environ.get("MAX_NEW", "0")) or 10 ** 9
-BOT_MARKERS = ("cookies", "not a bot", "Sign in to confirm")
+BOT_MARKERS = ("cookies", "not a bot", "Sign in to confirm", "VPN or a proxy")
 
 
 def main(limit):
