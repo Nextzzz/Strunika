@@ -33,11 +33,24 @@ def main(limit):
     with open(os.path.join(ROOT, "sample.csv"), encoding="utf-8") as f:
         rows = list(csv.DictReader(f))[:limit]
 
+    # Dead videos fail identically every round; after 3 strikes stop
+    # retrying them (the log keeps one line per attempt for the record).
+    fails_path = os.path.join(ROOT, "failed_ids.txt")
+    fail_counts = {}
+    if os.path.exists(fails_path):
+        with open(fails_path, encoding="utf-8") as f:
+            for line in f:
+                fail_counts[line.strip()] = fail_counts.get(line.strip(), 0) + 1
+    fails_log = open(fails_path, "a", encoding="utf-8")
+
     ok = fail = skipped = 0
     bot_streak = 0
     for n, row in enumerate(rows):
         out_path = os.path.join(AUDIO_DIR, row["id"] + ".m4a")
         if os.path.exists(out_path):
+            skipped += 1
+            continue
+        if fail_counts.get(row["id"], 0) >= 3:
             skipped += 1
             continue
         try:
@@ -51,7 +64,11 @@ def main(limit):
             bot_streak = 0
         else:
             fail += 1
-            bot_streak = bot_streak + 1 if any(m in status for m in BOT_MARKERS) else 0
+            is_bot = any(m in status for m in BOT_MARKERS)
+            bot_streak = bot_streak + 1 if is_bot else 0
+            if not is_bot:  # bot-check bounces are transient, don't strike them
+                fails_log.write(row["id"] + "\n")
+                fails_log.flush()
             print(f"  {row['artist']}/{row['song']}: {status}", flush=True)
             if bot_streak >= 5:
                 print(f"BOT-CHECK after {ok} new downloads — stopping early", flush=True)
