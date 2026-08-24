@@ -4,6 +4,7 @@
     <Project Path="src/Strunika.Cli/Strunika.Cli.csproj" />
     <Project Path="src/Strunika.Core/Strunika.Core.csproj" />
     <Project Path="src/Strunika.Media/Strunika.Media.csproj" />
+    <Project Path="src/Strunika.Mobile/Strunika.Mobile.csproj" />
     <Project Path="src/Strunika.Neural/Strunika.Neural.csproj" />
   </Folder>
   <Folder Name="/tests/">

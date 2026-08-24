@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
+             x:Class="Strunika.Mobile.MainPage"
+             x:DataType="vm:TunerViewModel"
+             BackgroundColor="#1E1E24"
+             Title="Тюнер">
+
+    <VerticalStackLayout Spacing="18" Padding="30" VerticalOptions="Center">
+
+        <Label Text="{Binding NoteName}"
+               FontSize="110" FontAttributes="Bold"
+               HorizontalOptions="Center">
+            <Label.Triggers>
+                <DataTrigger TargetType="Label" Binding="{Binding InTune}" Value="True">
+                    <Setter Property="TextColor" Value="#5BD98A"/>
+                </DataTrigger>
+                <DataTrigger TargetType="Label" Binding="{Binding InTune}" Value="False">
+                    <Setter Property="TextColor" Value="#6FB7FF"/>
+                </DataTrigger>
+            </Label.Triggers>
+        </Label>
+
+        <!-- Needle: -50..+50 cents on the slider track (display-only). -->
+        <Slider Minimum="-50" Maximum="50" Value="{Binding Cents, Mode=OneWay}"
+                InputTransparent="True" MinimumTrackColor="#3A5C80"
+                MaximumTrackColor="#3A5C80" ThumbColor="#EAEAEA"/>
+        <Grid ColumnDefinitions="*,*,*">
+            <Label Grid.Column="0" Text="♭ нижче" TextColor="#77808A" HorizontalOptions="Start"/>
+            <Label Grid.Column="1" Text="0" TextColor="#77808A" HorizontalOptions="Center"/>
+            <Label Grid.Column="2" Text="вище ♯" TextColor="#77808A" HorizontalOptions="End"/>
+        </Grid>
+
+        <Label Text="{Binding Details}" TextColor="#AAB2BC"
+               FontSize="16" HorizontalOptions="Center"/>
+
+        <Button Command="{Binding ToggleCommand}"
+                BackgroundColor="#3A5C80" TextColor="#FFFFFF"
+                FontSize="18" Padding="24,12" HorizontalOptions="Center">
+            <Button.Triggers>
+                <DataTrigger TargetType="Button" Binding="{Binding Listening}" Value="True">
+                    <Setter Property="Text" Value="■ Стоп"/>
+                </DataTrigger>
+                <DataTrigger TargetType="Button" Binding="{Binding Listening}" Value="False">
+                    <Setter Property="Text" Value="▶ Слухати"/>
+                </DataTrigger>
+            </Button.Triggers>
+        </Button>
+    </VerticalStackLayout>
+</ContentPage>
