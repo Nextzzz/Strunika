@@ -143,13 +143,30 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
     }
 
     private string? _lastHistoryLabel;
+    private DateTime _lastHistoryAt;
 
+    /// <summary>History keeps final verdicts, not the model's process of
+    /// changing its mind (Chord AI-style). A different label arriving
+    /// right after the previous one (&lt;1.2 s — a correction) or shortly
+    /// after within the same triad (&lt;2.5 s, E↔E7) REWRITES the last
+    /// entry in place instead of appending; the slot keeps its original
+    /// timestamp — it is the same musical event, better understood.</summary>
     private void PushHistory(string label)
     {
         if (label == _lastHistoryLabel)
             return; // the same chord re-confirmed is not a new event
+        double age = (DateTime.Now - _lastHistoryAt).TotalSeconds;
+        bool revision = History.Count > 0 &&
+            (age < 1.2 || (age < 2.5 && _lastHistoryLabel != null &&
+                           ChordLabels.Simplify(label) == ChordLabels.Simplify(_lastHistoryLabel)));
         _lastHistoryLabel = label;
-        History.Insert(0, $"{DateTime.Now:HH:mm:ss}   {label}");
+        if (revision)
+        {
+            History[0] = $"{_lastHistoryAt:HH:mm:ss}   {label}";
+            return;
+        }
+        _lastHistoryAt = DateTime.Now;
+        History.Insert(0, $"{_lastHistoryAt:HH:mm:ss}   {label}");
         while (History.Count > 50)
             History.RemoveAt(History.Count - 1);
     }
