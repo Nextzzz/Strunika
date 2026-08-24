@@ -45,7 +45,7 @@ def main(limit):
     fails_log = open(fails_path, "a", encoding="utf-8")
 
     ok = fail = skipped = 0
-    bot_streak = 0
+    recent = []  # last attempts: True = bot-check bounce
     for n, row in enumerate(rows):
         out_path = os.path.join(AUDIO_DIR, row["id"] + ".m4a")
         if os.path.exists(out_path):
@@ -62,16 +62,16 @@ def main(limit):
                 os.remove(out_path)  # partial file
         if status.startswith("ok"):
             ok += 1
-            bot_streak = 0
+            recent = (recent + [False])[-8:]
         else:
             fail += 1
             is_bot = any(m in status for m in BOT_MARKERS)
-            bot_streak = bot_streak + 1 if is_bot else 0
+            recent = (recent + [is_bot])[-8:]  # dead videos interleave with bounces: judge a window
             if not is_bot:  # bot-check bounces are transient, don't strike them
                 fails_log.write(row["id"] + "\n")
                 fails_log.flush()
             print(f"  {row['artist']}/{row['song']}: {status}", flush=True)
-            if bot_streak >= 5:
+            if sum(recent) >= 5:
                 print(f"BOT-CHECK after {ok} new downloads — stopping early", flush=True)
                 break
         if ok >= MAX_NEW:
