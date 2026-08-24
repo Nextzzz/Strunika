@@ -63,6 +63,17 @@ def fetch():
 
 
 def analyze(audio, model, ensemble=None):
+    """Product-pipeline analysis, cached per (song, model[, ensemble]) so
+    old models never need re-running when a new one arrives."""
+    cache_dir = os.path.join(SONGS, "analyses")
+    os.makedirs(cache_dir, exist_ok=True)
+    tag = model + (f"+{ensemble}" if ensemble else "")
+    cache = os.path.join(cache_dir, f"{os.path.splitext(os.path.basename(audio))[0]}.{tag}.json")
+    if os.path.exists(cache):
+        with open(cache, encoding="utf-8") as f:
+            data = json.load(f)
+        return data["key"], [tuple(s) for s in data["segments"]]
+
     cmd = ["dotnet", "run", "--project", "src/Strunika.Cli", "--no-build", "--",
            "analyze", audio, f"--neural=ml/models/{model}.onnx", "--ovl"]
     if ensemble:
@@ -78,6 +89,10 @@ def analyze(audio, model, ensemble=None):
             start = int(m[1]) * 60 + float(m[2].replace(",", "."))
             end = int(m[3]) * 60 + float(m[4].replace(",", "."))
             segments.append((start, end, m[5]))
+    if segments:
+        with open(cache, "w", encoding="utf-8") as f:
+            json.dump({"model": tag, "key": key, "segments": segments,
+                       "analyzed": time.strftime("%Y-%m-%d %H:%M")}, f, ensure_ascii=False)
     return key, segments
 
 
@@ -136,7 +151,7 @@ def compare(model_a, model_b, ens_a=None, ens_b=None):
     if totals:
         lines.insert(2, f"Mean agreement: **{sum(totals) / len(totals):.1%}** over {len(totals)} songs")
         lines.insert(3, "")
-    report = os.path.join(REPORTS, f"song_diff_{name_a}_vs_{name_b}.md")
+    report = os.path.join(REPORTS, f"song_diff_{name_a}_vs_{name_b}_{time.strftime('%Y-%m-%d')}.md")
     with open(report, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     print(f"report -> {report}")
