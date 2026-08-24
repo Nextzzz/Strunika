@@ -19,6 +19,11 @@
         </VerticalStackLayout>
 
         <VerticalStackLayout Grid.Row="1" Spacing="8">
+            <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
+                <Label Text="Модель:" TextColor="#AAB2BC" VerticalOptions="Center"/>
+                <Picker ItemsSource="{Binding LiveModels}" SelectedItem="{Binding SelectedLiveModel}"
+                        TextColor="#EAEAEA" BackgroundColor="#2A2A33" WidthRequest="140"/>
+            </HorizontalStackLayout>
             <HorizontalStackLayout Spacing="18" HorizontalOptions="Center">
                 <HorizontalStackLayout Spacing="6">
                     <CheckBox IsChecked="{Binding SimpleChords}" Color="#6FB7FF"/>

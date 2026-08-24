@@ -39,6 +39,44 @@ public partial class LiveViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool reviseHistory = true;
 
+    /// <summary>Which bundled model confirms chords; switchable live.</summary>
+    public ObservableCollection<string> LiveModels { get; } = new() { "Гітарна", "Базова" };
+
+    [ObservableProperty]
+    private string selectedLiveModel = "Гітарна";
+
+    private static readonly Dictionary<string, string> ModelFiles = new()
+    {
+        ["Гітарна"] = "btc_guitar2",
+        ["Базова"] = "btc_large_voca",
+    };
+
+    partial void OnSelectedLiveModelChanged(string value)
+    {
+        if (Listening || _neural != null)
+            _ = SwitchModelAsync(value);
+    }
+
+    private async Task SwitchModelAsync(string name)
+    {
+        if (!ModelFiles.TryGetValue(name, out var file))
+            return;
+        var old = _neural;
+        _neural = null;
+        if (old != null)
+        {
+            old.ConfirmedChanged -= OnConfirmed;
+            old.Dispose();
+        }
+        Status = "Розпаковую модель…";
+        var next = await ModelStore.CreateDetectorAsync(file);
+        if (next != null)
+            next.ConfirmedChanged += OnConfirmed;
+        _neural = next;
+        ConfirmedChord = "—";
+        Status = next == null ? "Модель не знайдена" : (Listening ? "Слухаю…" : "Готово");
+    }
+
     public ObservableCollection<string> History { get; } = new();
 
     public LiveViewModel(IMicrophoneSource microphone)
@@ -66,13 +104,7 @@ public partial class LiveViewModel : ObservableObject, IDisposable
         }
 
         if (_neural == null)
-        {
-            Status = "Розпаковую модель…";
-            _neural = await ModelStore.CreateDetectorAsync("btc_guitar2")
-                      ?? await ModelStore.CreateDetectorAsync("btc_large_voca");
-            if (_neural != null)
-                _neural.ConfirmedChanged += OnConfirmed;
-        }
+            await SwitchModelAsync(SelectedLiveModel);
 
         if (!await _microphone.StartAsync())
         {
