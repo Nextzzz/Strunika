@@ -23,7 +23,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMicrophoneSource, Platforms.Windows.WindowsMicrophoneSource>();
 #endif
         builder.Services.AddSingleton<TunerViewModel>();
+        builder.Services.AddSingleton<LiveViewModel>();
         builder.Services.AddSingleton<MainPage>();
+        builder.Services.AddSingleton<LivePage>();
 
 #if DEBUG
         builder.Logging.AddDebug();

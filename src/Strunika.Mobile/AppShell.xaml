@@ -4,11 +4,18 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:Strunika.Mobile"
-    Title="Strunika.Mobile">
+    Title="Strunika"
+    Shell.BackgroundColor="#2A2A33"
+    Shell.ForegroundColor="#EAEAEA"
+    Shell.TitleColor="#EAEAEA">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <TabBar>
+        <ShellContent Title="Тюнер"
+                      ContentTemplate="{DataTemplate local:MainPage}"
+                      Route="Tuner" />
+        <ShellContent Title="Наживо"
+                      ContentTemplate="{DataTemplate local:LivePage}"
+                      Route="Live" />
+    </TabBar>
 
 </Shell>

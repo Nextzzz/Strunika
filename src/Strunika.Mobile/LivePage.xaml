@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
+             x:Class="Strunika.Mobile.LivePage"
+             x:DataType="vm:LiveViewModel"
+             BackgroundColor="#1E1E24"
+             Title="Наживо">
+
+    <Grid RowDefinitions="*,Auto,220" Padding="24">
+
+        <VerticalStackLayout Grid.Row="0" Spacing="6" VerticalOptions="Center">
+            <Label Text="{Binding ProvisionalChord}" FontSize="34"
+                   TextColor="#77808A" HorizontalOptions="Center" MinimumHeightRequest="44"/>
+            <Label Text="{Binding ConfirmedChord}" FontSize="96" FontAttributes="Bold"
+                   TextColor="#6FB7FF" HorizontalOptions="Center"/>
+            <Label Text="{Binding Status}" FontSize="14" TextColor="#AAB2BC"
+                   HorizontalOptions="Center"/>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="8">
+            <HorizontalStackLayout Spacing="18" HorizontalOptions="Center">
+                <HorizontalStackLayout Spacing="6">
+                    <CheckBox IsChecked="{Binding SimpleChords}" Color="#6FB7FF"/>
+                    <Label Text="Прості акорди" TextColor="#EAEAEA" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+                <HorizontalStackLayout Spacing="6">
+                    <CheckBox IsChecked="{Binding ReviseHistory}" Color="#6FB7FF"/>
+                    <Label Text="Уточнювати" TextColor="#EAEAEA" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+            </HorizontalStackLayout>
+            <Button Command="{Binding ToggleCommand}"
+                    BackgroundColor="#3A5C80" TextColor="#FFFFFF"
+                    FontSize="18" Padding="24,12" HorizontalOptions="Center">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding Listening}" Value="True">
+                        <Setter Property="Text" Value="■ Стоп"/>
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding Listening}" Value="False">
+                        <Setter Property="Text" Value="▶ Слухати"/>
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+        </VerticalStackLayout>
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding History}" Margin="0,12,0,0">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                    <Label Text="{Binding .}" TextColor="#EAEAEA" FontSize="16" Padding="4,2"/>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
