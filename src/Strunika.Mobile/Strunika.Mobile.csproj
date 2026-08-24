@@ -3,8 +3,8 @@
 	<PropertyGroup>
 		<!-- iOS is the product target; the Windows head exists so UI and
 		     view-models iterate on the PC without a phone attached. -->
-		<TargetFrameworks>net10.0-ios</TargetFrameworks>
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+		<TargetFrameworks>net9.0-ios</TargetFrameworks>
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 
 		<OutputType>Exe</OutputType>
 		<RootNamespace>Strunika.Mobile</RootNamespace>
