@@ -25,13 +25,14 @@ ROOT = os.path.normpath(os.path.join(
     HERE, "..", "datasets", "hooktheory", os.environ.get("HOOK_SUBSET", "")))
 AUDIO_DIR = os.path.join(ROOT, "audio")
 MAX_NEW = int(os.environ.get("MAX_NEW", "0")) or 10 ** 9
+START_ROW = int(os.environ.get("START_ROW", "0"))  # skip the processed prefix
 BOT_MARKERS = ("cookies", "not a bot", "Sign in to confirm", "VPN or a proxy")
 
 
 def main(limit):
     os.makedirs(AUDIO_DIR, exist_ok=True)
     with open(os.path.join(ROOT, "sample.csv"), encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))[:limit]
+        rows = list(csv.DictReader(f))[START_ROW:limit]
 
     # Dead videos fail identically every round; after 3 strikes stop
     # retrying them (the log keeps one line per attempt for the record).
