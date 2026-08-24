@@ -45,6 +45,11 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool simpleChords = true;
 
+    /// <summary>Refine-in-place for the history (same-root corrections
+    /// rewrite the last entry). Off = every confirmation appends.</summary>
+    [ObservableProperty]
+    private bool reviseHistory = true;
+
     /// <summary>Model choice for the confirming tier; switchable live.</summary>
     public ObservableCollection<string> LiveModels { get; } = new();
 
@@ -70,6 +75,8 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
                 LiveModels.Add(name);
             }
 
+        Strunika.Core.Diagnostics.FileLog.Info(
+            $"Live models: [{string.Join(", ", LiveModels)}]");
         if (_modelPaths.Count > 0)
         {
             NeuralAvailable = true;
@@ -108,6 +115,8 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
         next.ConfirmedChanged += OnConfirmed;
         _neural = next;
         ConfirmedChord = "—"; // fresh ring buffer, wait for the next confirmation
+        Strunika.Core.Diagnostics.FileLog.Info(
+            $"Live model switched to '{name}' ({System.IO.Path.GetFileName(path)})");
     }
 
     private void OnProvisional(Chord chord)
@@ -145,20 +154,19 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
     private string? _lastHistoryLabel;
     private DateTime _lastHistoryAt;
 
-    /// <summary>History keeps final verdicts, not the model's process of
-    /// changing its mind (Chord AI-style). A different label arriving
-    /// right after the previous one (&lt;1.2 s — a correction) or shortly
-    /// after within the same triad (&lt;2.5 s, E↔E7) REWRITES the last
-    /// entry in place instead of appending; the slot keeps its original
-    /// timestamp — it is the same musical event, better understood.</summary>
+    /// <summary>Chord AI-style: when the model refines its opinion about
+    /// the SAME chord (same root — E↔E7, D↔Dm) within a short window,
+    /// the last history entry is rewritten in place, keeping its
+    /// timestamp. A different root is always a new event — people really
+    /// do change chords within a second. Optional (ReviseHistory).</summary>
     private void PushHistory(string label)
     {
         if (label == _lastHistoryLabel)
             return; // the same chord re-confirmed is not a new event
-        double age = (DateTime.Now - _lastHistoryAt).TotalSeconds;
-        bool revision = History.Count > 0 &&
-            (age < 1.2 || (age < 2.5 && _lastHistoryLabel != null &&
-                           ChordLabels.Simplify(label) == ChordLabels.Simplify(_lastHistoryLabel)));
+        bool sameRoot = ReviseHistory && History.Count > 0
+            && _lastHistoryLabel is { } prev && prev != "—" && label != "—"
+            && RootOf(label) == RootOf(prev);
+        bool revision = sameRoot && (DateTime.Now - _lastHistoryAt).TotalSeconds < 2.5;
         _lastHistoryLabel = label;
         if (revision)
         {
@@ -170,6 +178,9 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
         while (History.Count > 50)
             History.RemoveAt(History.Count - 1);
     }
+
+    private static string RootOf(string pretty) =>
+        pretty.Length > 1 && pretty[1] == '#' ? pretty[..2] : pretty[..1];
 
     public void Dispose()
     {
