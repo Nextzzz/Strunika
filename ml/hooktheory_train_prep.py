@@ -97,7 +97,21 @@ def segment_windows(features, spf, seg_events):
     return out
 
 
-def main():
+def song_task(task):
+    """Worker: one song -> (pack_name, windows). Payload carries only the
+    song's own segments, so the 300MB dataset JSON never crosses processes."""
+    pack_name, audio_path, segments = task
+    wav = load_mono(audio_path)
+    if len(wav) < SAMPLE_RATE * 10:
+        return pack_name, []
+    features, spf = features_from_wav(wav)
+    out = []
+    for events in segments:
+        out.extend(segment_windows(features, spf, events))
+    return pack_name, out
+
+
+def build_tasks():
     with gzip.open(DATA_JSON, "rt", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -107,7 +121,7 @@ def main():
 
     # All usable segments per training song (the audio is per-song).
     by_song = {}
-    for entry_id, entry in data.items():
+    for entry in data.values():
         tags = set(entry.get("tags", []))
         annotations = entry.get("annotations") or {}
         if not {"AUDIO_AVAILABLE", "REFINED_ALIGNMENT", "HARMONY"} <= tags:
@@ -117,22 +131,13 @@ def main():
         key = (entry["hooktheory"]["artist"], entry["hooktheory"]["song"])
         by_song.setdefault(key, []).append(entry)
 
-    packs = {"train": ([], [], []), "val": ([], [], [])}
-    used_songs = used_segments = 0
+    tasks = []
     for n_row, row in enumerate(train_rows):
-        # Every 10th training song goes to the early-stop validation slice.
-        xs, ys, ms = packs["val" if n_row % 10 == 0 else "train"]
         audio_path = os.path.join(ROOT, "audio", row["id"] + ".m4a")
         if not os.path.exists(audio_path):
             continue
         entries = by_song.get((row["artist"], row["song"]), [])
-        if not entries:
-            continue
-        wav = load_mono(audio_path)
-        if len(wav) < SAMPLE_RATE * 10:
-            continue
-        features, spf = features_from_wav(wav)
-        song_added = False
+        segments = []
         for entry in entries:
             refined = entry["alignment"]["refined"]
             beats = np.array(refined["beats"], dtype=float)
@@ -144,24 +149,41 @@ def main():
                 events.append((float(np.interp(ev["onset"], beats, times)),
                                float(np.interp(ev["offset"], beats, times)),
                                label_idx(ev)))
-            if not events:
-                continue
-            for f, l, m in segment_windows(features, spf, events):
+            if events:
+                segments.append(events)
+        if segments:
+            # Every 10th training song goes to the validation slice.
+            tasks.append(("val" if n_row % 10 == 0 else "train", audio_path, segments))
+    return tasks
+
+
+def main():
+    from concurrent.futures import ProcessPoolExecutor
+
+    tasks = build_tasks()
+    workers = int(os.environ.get("WORKERS", "4"))
+    print(f"{len(tasks)} songs to process, {workers} workers", flush=True)
+
+    packs = {"train": ([], [], []), "val": ([], [], [])}
+    done = 0
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        for pack_name, windows in pool.map(song_task, tasks, chunksize=8):
+            xs, ys, ms = packs[pack_name]
+            for f, l, m in windows:
                 xs.append(f)
                 ys.append(l)
                 ms.append(m)
-            used_segments += 1
-            song_added = True
-        used_songs += song_added
-        if used_songs % 50 == 0 and song_added:
-            print(f"{used_songs} songs, {used_segments} segments", flush=True)
+            done += 1
+            if done % 200 == 0:
+                print(f"{done}/{len(tasks)} songs, "
+                      f"{len(packs['train'][0])}+{len(packs['val'][0])} windows", flush=True)
 
     os.makedirs(OUT, exist_ok=True)
     for name, (xs, ys, ms) in packs.items():
         np.savez_compressed(os.path.join(OUT, f"hook_{name}.npz"),
                             x=np.stack(xs).astype(STORE_DTYPE), y=np.stack(ys), m=np.stack(ms))
         print(f"hook_{name}.npz: {len(xs)} windows", flush=True)
-    print(f"DONE: {used_songs} songs, {used_segments} segments", flush=True)
+    print(f"DONE: {done} songs", flush=True)
 
 
 if __name__ == "__main__":
