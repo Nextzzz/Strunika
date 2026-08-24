@@ -103,6 +103,9 @@
                         </StackPanel>
                         <TextBlock Text="менше — чутливіший · більше — суворіший до шуму"
                                    FontSize="11" Opacity="0.45" HorizontalAlignment="Center"/>
+                        <CheckBox Content="Прості акорди" IsChecked="{Binding Live.SimpleChords}"
+                                  Foreground="#EAEAEA" HorizontalAlignment="Center" Margin="0,14,0,0"
+                                  ToolTip="Тризвуки замість септакордів (E7 → E). Вимкни, якщо граєш справжні септими."/>
                     </StackPanel>
                     <DockPanel Grid.Column="1">
                         <TextBlock DockPanel.Dock="Top" Text="Історія" FontSize="16" Margin="0,0,0,6" Opacity="0.8"/>

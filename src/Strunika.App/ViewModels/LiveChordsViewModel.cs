@@ -37,6 +37,13 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
 
     partial void OnGateMarginDbChanged(double value) => _dsp.GateMarginDb = value;
 
+    /// <summary>Show triads instead of extensions (E7 → E). Default ON:
+    /// live playing is about the chord family, and the model likes to
+    /// "hear" sevenths that pop context suggests but the player never
+    /// strummed. Display-only.</summary>
+    [ObservableProperty]
+    private bool simpleChords = true;
+
     public ObservableCollection<string> History { get; } = new();
 
     public LiveChordsViewModel(MicrophoneCapture capture, string? neuralModelPath)
@@ -91,6 +98,8 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             string pretty = ChordLabels.Pretty(rawLabel);
+            if (SimpleChords)
+                pretty = ChordLabels.Simplify(pretty);
             ConfirmedChord = pretty;
             if (pretty != "—")
                 PushHistory(pretty);
