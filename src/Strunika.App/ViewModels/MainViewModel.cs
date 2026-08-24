@@ -42,10 +42,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         string? guitarModel = FindModel("btc_guitar2.onnx")
                               ?? FindModel("btc_guitar.onnx") ?? baseModel;
 
+        string? selfModel = FindModel("btc_self.onnx");
         Tuner = new TunerViewModel(Capture);
-        Live = new LiveChordsViewModel(Capture, guitarModel);
-        Song = new SongViewModel(this, baseModel, guitarModel,
-                                 FindModel("btc_self.onnx"));
+        Live = new LiveChordsViewModel(Capture, guitarModel, baseModel, selfModel);
+        Song = new SongViewModel(this, baseModel, guitarModel, selfModel);
         // Jam mode is shelved: the engine lives on in Services/JamEngine
         // until the scheduling bug is beaten on a simulation bench.
     }

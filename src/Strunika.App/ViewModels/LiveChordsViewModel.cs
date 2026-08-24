@@ -19,8 +19,9 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
 {
     private readonly MicrophoneCapture _capture;
     private readonly StreamingChordDetector _dsp;
-    private readonly SlidingNeuralChordDetector? _neural;
+    private SlidingNeuralChordDetector? _neural;
     private readonly System.Timers.Timer? _tickTimer;
+    private readonly Dictionary<string, string> _modelPaths = new();
 
     [ObservableProperty]
     private string provisionalChord = "";
@@ -44,25 +45,43 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool simpleChords = true;
 
+    /// <summary>Model choice for the confirming tier; switchable live.</summary>
+    public ObservableCollection<string> LiveModels { get; } = new();
+
+    [ObservableProperty]
+    private string selectedLiveModel = "";
+
+    partial void OnSelectedLiveModelChanged(string value) => SwitchModel(value);
+
     public ObservableCollection<string> History { get; } = new();
 
-    public LiveChordsViewModel(MicrophoneCapture capture, string? neuralModelPath)
+    public LiveChordsViewModel(MicrophoneCapture capture, string? guitarModelPath,
+                               string? baseModelPath = null, string? selfModelPath = null)
     {
         _capture = capture;
         _dsp = new StreamingChordDetector(MicrophoneCapture.SampleRate);
         _dsp.ChordChanged += OnProvisional;
 
-        if (neuralModelPath != null && File.Exists(neuralModelPath))
+        foreach (var (name, path) in new[]
+                 { ("Гітарна", guitarModelPath), ("Базова", baseModelPath), ("Self", selfModelPath) })
+            if (path != null && File.Exists(path) && !_modelPaths.ContainsValue(path))
+            {
+                _modelPaths[name] = path;
+                LiveModels.Add(name);
+            }
+
+        if (_modelPaths.Count > 0)
         {
-            _neural = new SlidingNeuralChordDetector(neuralModelPath);
-            _neural.ConfirmedChanged += OnConfirmed;
             NeuralAvailable = true;
+            SelectedLiveModel = LiveModels[0]; // triggers SwitchModel
 
             _tickTimer = new System.Timers.Timer(250);
             _tickTimer.Elapsed += (_, _) =>
             {
-                if (_capture.IsRunning)
-                    _neural.Tick();
+                var neural = _neural;
+                if (_capture.IsRunning && neural != null)
+                    try { neural.Tick(); }
+                    catch (ObjectDisposedException) { /* mid-switch */ }
             };
             _tickTimer.Start();
         }
@@ -72,6 +91,23 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
             _dsp.AddSamples(chunk);
             _neural?.AddSamples(chunk);
         };
+    }
+
+    private void SwitchModel(string name)
+    {
+        if (!_modelPaths.TryGetValue(name, out var path))
+            return;
+        var old = _neural;
+        _neural = null;
+        if (old != null)
+        {
+            old.ConfirmedChanged -= OnConfirmed;
+            old.Dispose();
+        }
+        var next = new SlidingNeuralChordDetector(path);
+        next.ConfirmedChanged += OnConfirmed;
+        _neural = next;
+        ConfirmedChord = "—"; // fresh ring buffer, wait for the next confirmation
     }
 
     private void OnProvisional(Chord chord)
