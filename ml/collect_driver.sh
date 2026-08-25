@@ -11,7 +11,7 @@ LOG="collect_${HOOK_SUBSET}.log"
 idle_runs=0
 for round in $(seq 1 200); do
   echo "=== round $round $(date '+%F %T') ===" | tee -a "$LOG"
-  out=$(./.venv/Scripts/python hooktheory_collect.py 2>&1 | tee -a "$LOG" | tail -3)
+  out=$(timeout 150m ./.venv/Scripts/python hooktheory_collect.py 2>&1 | tee -a "$LOG" | tail -3)
   echo "$out"
   if echo "$out" | grep -q "BOT-CHECK"; then
     echo "bot-check: resting 45 min" | tee -a "$LOG"; sleep 2700; continue
