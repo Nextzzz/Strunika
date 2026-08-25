@@ -111,13 +111,29 @@ def song_task(task):
     return pack_name, out
 
 
+def pool_rows():
+    """(audio_dir, row) pairs from this subset plus any EXTRA_POOLS.
+    EXTRA_POOLS is a comma list of sibling subset names (e.g. 'test' to
+    add the TEST pool's trainable rows 251+, which are legitimately
+    trainable — only the first 250 TEST rows are the reserved benchmark;
+    VALID is never added, it is the held-out evaluation pool)."""
+    pools = [("", ROOT, BENCH_ROWS)]
+    for name in filter(None, os.environ.get("EXTRA_POOLS", "").split(",")):
+        base = os.path.normpath(os.path.join(HERE, "..", "datasets", "hooktheory",
+                                             "" if name == "test" else name))
+        reserved = 250 if name == "test" else 0  # TEST keeps its benchmark rows
+        pools.append((name, base, reserved))
+    for label, base, reserved in pools:
+        audio_dir = os.path.join(base, "audio")
+        with open(os.path.join(base, "sample.csv"), encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        for n, row in enumerate(rows[reserved:]):
+            yield audio_dir, n, row
+
+
 def build_tasks():
     with gzip.open(DATA_JSON, "rt", encoding="utf-8") as f:
         data = json.load(f)
-
-    with open(os.path.join(ROOT, "sample.csv"), encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    train_rows = rows[BENCH_ROWS:]
 
     # All usable segments per training song (the audio is per-song).
     by_song = {}
@@ -132,8 +148,12 @@ def build_tasks():
         by_song.setdefault(key, []).append(entry)
 
     tasks = []
-    for n_row, row in enumerate(train_rows):
-        audio_path = os.path.join(ROOT, "audio", row["id"] + ".m4a")
+    seen = set()
+    for audio_dir, n_row, row in pool_rows():
+        if row["id"] in seen:
+            continue
+        seen.add(row["id"])
+        audio_path = os.path.join(audio_dir, row["id"] + ".m4a")
         if not os.path.exists(audio_path):
             continue
         entries = by_song.get((row["artist"], row["song"]), [])
