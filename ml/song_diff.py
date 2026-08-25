@@ -23,7 +23,7 @@ SONGS = os.path.normpath(os.path.join(HERE, "..", "datasets", "user_songs"))
 ANALYSES = os.path.join(os.environ["USERPROFILE"], "OneDrive", "Документы", "Strunika", "analyses")
 REPORTS = os.path.join(os.environ["USERPROFILE"], "OneDrive", "Документы", "Strunika", "reports")
 ALIASES = {"base": "btc_large_voca", "self": "btc_self", "guitar2": "btc_guitar2",
-           "guitar": "btc_guitar", "hook": "btc_hook", "mix": "btc_mix"}
+           "guitar": "btc_guitar", "hook": "btc_hook", "mix": "btc_mix", "full": "btc_full"}
 LINE = re.compile(r"\s+(\d+):(\d+[,.]\d)\s+-\s+(\d+):(\d+[,.]\d)\s+(\S+)")
 STEP = 0.1
 
