@@ -24,7 +24,7 @@ import onnxruntime as ort
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ALIASES = {"base": "btc_large_voca", "guitar": "btc_guitar", "guitar2": "btc_guitar2",
-           "mix": "btc_mix", "hook": "btc_hook", "self": "btc_self"}
+           "mix": "btc_mix", "hook": "btc_hook", "self": "btc_self", "full": "btc_full"}
 
 
 def main():
