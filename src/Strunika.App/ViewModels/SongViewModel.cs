@@ -36,6 +36,7 @@ public partial class SongViewModel : ObservableObject, IDisposable
     private readonly string? _baseModelPath;   // original generalist (kept for A/B)
     private readonly string? _guitarModelPath; // guitar2: mic-robust fine-tune (mic/solo)
     private readonly string? _selfModelPath;   // btc_self: self-trained on our pseudo-labels (A/B candidate)
+    private readonly string? _fullModelPath;   // btc_full: HookTheory full-base fine-tune — NC prototype, ear-test only
     private readonly Dictionary<string, NeuralChordRecognizer> _recognizers = new();
     private bool _recording;
 
@@ -60,7 +61,7 @@ public partial class SongViewModel : ObservableObject, IDisposable
 
     /// <summary>Which model analyzes. Авто routes by domain; the explicit
     /// options exist for A/B comparison of the same song across models.</summary>
-    public string[] EngineModes { get; } = { "Авто", "Гітара", "Базова", "Self" };
+    public string[] EngineModes { get; } = { "Авто", "Гітара", "Базова", "Self", "Full" };
 
     [ObservableProperty]
     private string engineMode = "Авто";
@@ -198,12 +199,13 @@ public partial class SongViewModel : ObservableObject, IDisposable
 
     public SongViewModel(
         MainViewModel main, string? baseModelPath, string? guitarModelPath,
-        string? selfModelPath = null)
+        string? selfModelPath = null, string? fullModelPath = null)
     {
         _main = main;
         _baseModelPath = baseModelPath;
         _guitarModelPath = guitarModelPath;
         _selfModelPath = selfModelPath;
+        _fullModelPath = fullModelPath;
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         timer.Tick += (_, _) => SyncPlayback();
@@ -435,6 +437,9 @@ public partial class SongViewModel : ObservableObject, IDisposable
         {
             "Гітара" => (_guitarModelPath, "нейро · гітарна"),
             "Базова" => (_baseModelPath, "нейро · базова"),
+            "Full" => _fullModelPath != null
+                ? (_fullModelPath, "нейро · full (HookTheory-повна)")
+                : (_baseModelPath, "нейро · базова (full не знайдено)"),
             "Self" => _selfModelPath != null
                 ? (_selfModelPath, "нейро · self (самонавчена)")
                 : (_baseModelPath, "нейро · базова (self не знайдено)"),

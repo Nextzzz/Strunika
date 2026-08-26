@@ -61,14 +61,16 @@ public partial class LiveChordsViewModel : ObservableObject, IDisposable
     public ObservableCollection<string> History { get; } = new();
 
     public LiveChordsViewModel(MicrophoneCapture capture, string? guitarModelPath,
-                               string? baseModelPath = null, string? selfModelPath = null)
+                               string? baseModelPath = null, string? selfModelPath = null,
+                               string? fullModelPath = null)
     {
         _capture = capture;
         _dsp = new StreamingChordDetector(MicrophoneCapture.SampleRate);
         _dsp.ChordChanged += OnProvisional;
 
         foreach (var (name, path) in new[]
-                 { ("Гітарна", guitarModelPath), ("Базова", baseModelPath), ("Self", selfModelPath) })
+                 { ("Гітарна", guitarModelPath), ("Базова", baseModelPath),
+                   ("Self", selfModelPath), ("Full", fullModelPath) })
             if (path != null && File.Exists(path) && !_modelPaths.ContainsValue(path))
             {
                 _modelPaths[name] = path;

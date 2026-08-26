@@ -43,9 +43,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
                               ?? FindModel("btc_guitar.onnx") ?? baseModel;
 
         string? selfModel = FindModel("btc_self.onnx");
+        // btc_full: HookTheory full-base fine-tune. NC research prototype —
+        // present only when the file is on disk (never bundled/committed).
+        string? fullModel = FindModel("btc_full.onnx");
         Tuner = new TunerViewModel(Capture);
-        Live = new LiveChordsViewModel(Capture, guitarModel, baseModel, selfModel);
-        Song = new SongViewModel(this, baseModel, guitarModel, selfModel);
+        Live = new LiveChordsViewModel(Capture, guitarModel, baseModel, selfModel, fullModel);
+        Song = new SongViewModel(this, baseModel, guitarModel, selfModel, fullModel);
         // Jam mode is shelved: the engine lives on in Services/JamEngine
         // until the scheduling bug is beaten on a simulation bench.
     }

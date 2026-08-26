@@ -28,6 +28,9 @@
     <!-- Self-trained candidate (clean pseudo-labels): wildcard so the build works before it exists. -->
     <Content Include="..\..\ml\models\btc_self.onn*" Link="models\btc_self.onnx" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\ml\models\btc_self.jso*" Link="models\btc_self.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- btc_full: HookTheory NC prototype for local ear-testing; wildcard = optional, never in a release build. -->
+    <Content Include="..\..\ml\models\btc_full.onn*" Link="models\btc_full.onnx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\ml\models\btc_full.jso*" Link="models\btc_full.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
