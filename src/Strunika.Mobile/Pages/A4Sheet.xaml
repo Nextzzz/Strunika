@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.A4Sheet"
+             ios:Page.UseSafeArea="True"
+             ios:Page.ModalPresentationStyle="FormSheet"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="24,16,24,28" RowDefinitions="Auto,*,Auto">
+        <Grid Grid.Row="0" ColumnDefinitions="*,44">
+            <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Tuner_A4Title}" VerticalOptions="Center" />
+            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
+                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" Spacing="18">
+            <Label x:Name="Value" Style="{StaticResource ChordHero}" FontSize="72" />
+            <Grid ColumnDefinitions="44,*,44" ColumnSpacing="12">
+                <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 22" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                    <Label Text="−" FontSize="24" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnMinus" /></Border.GestureRecognizers>
+                </Border>
+                <Slider x:Name="A4Slider" Grid.Column="1" Minimum="430" Maximum="450" ValueChanged="OnSliderChanged" VerticalOptions="Center" />
+                <Border Grid.Column="2" WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 22" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                    <Label Text="+" FontSize="24" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnPlus" /></Border.GestureRecognizers>
+                </Border>
+            </Grid>
+            <Label Style="{StaticResource Footnote}" Text="{loc:Str Tuner_A4Hint}" HorizontalTextAlignment="Center" />
+            <Label Text="{loc:Str Tuner_Reset}" Style="{StaticResource Footnote}" TextColor="{t:Theme AccentText}" FontAttributes="Bold" HorizontalTextAlignment="Center">
+                <Label.GestureRecognizers><TapGestureRecognizer Tapped="OnReset" /></Label.GestureRecognizers>
+            </Label>
+        </VerticalStackLayout>
+
+        <Button Grid.Row="2" Text="{loc:Str Common_Done}" Clicked="OnCloseTapped" />
+    </Grid>
+</ContentPage>

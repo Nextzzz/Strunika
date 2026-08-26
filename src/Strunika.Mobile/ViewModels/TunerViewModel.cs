@@ -1,93 +1,218 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Strunika.Core.Analysis;
 using Strunika.Mobile.Localization;
+using Strunika.Mobile.Models;
+using Strunika.Mobile.Pro;
 using Strunika.Mobile.Services;
 
 namespace Strunika.Mobile.ViewModels;
 
+public partial class PegItem : ObservableObject
+{
+    public int Index { get; }
+    public string Label { get; }
+    public string Sub { get; }
+
+    [ObservableProperty] private bool isActive;
+    [ObservableProperty] private bool isLocked;
+    [ObservableProperty] private bool isTuned;
+
+    public PegItem(int index, string label, string sub) { Index = index; Label = label; Sub = sub; }
+}
+
 /// <summary>
-/// Tuner with a Guitar-Tuna feel: YIN on a rolling window, smoothed
-/// needle (EMA), a ±8-cent green zone, and a hold — when the string
-/// decays and detection drops out, the last stable reading stays on
-/// screen for a moment instead of flashing away.
+/// Tuner: YIN on a rolling window → pitch → the string of the selected
+/// tuning → deviation in "points" (10 points = one fret = 100 cents).
+///
+/// The reading is calmed in stages — attack gate (a pluck is sharp and noisy
+/// for ~160 ms), YIN clarity gate, median, EMA, slew limit — and the string
+/// is chosen once per pluck, never while a note merely decays. A string that
+/// stays in tune for 1.5 s is marked tuned; when the last one is, the tuner
+/// celebrates and stops listening.
 /// </summary>
 public partial class TunerViewModel : ObservableObject
 {
     private const int WindowSize = 4096;
-    private const double InTuneCents = 8.0;
-    private const double NeedlePixelsPerCent = 3.0;   // track spans ±50 cents = ±150 px
-    private static readonly TimeSpan Hold = TimeSpan.FromMilliseconds(1200);
+    private const double InTuneCents = 6.0;
+    private const double MaxCentsPerTick = 9.0;       // 80 ms ticks → ~110 cents/s
+    private const int MedianTaps = 5;
+    private const int PickFrames = 3;                 // frames voted on before choosing a string
+    private const double MinClarity = 0.8;             // YIN confidence gate
+    private static readonly TimeSpan Hold = TimeSpan.FromMilliseconds(1500);
+    private static readonly TimeSpan AttackSettle = TimeSpan.FromMilliseconds(160);
+    private static readonly TimeSpan TunedAfter = TimeSpan.FromMilliseconds(1200);
+    /// <summary>Short dips out of tune (a wobble, a missed frame) do not restart the clock.</summary>
+    private static readonly TimeSpan TunedGrace = TimeSpan.FromMilliseconds(600);
 
     private readonly IMicrophoneSource _microphone;
-    private readonly PitchDetector _detector = new();
+    private readonly IProGate _pro;
+    private readonly TunerEngine _engine = new(IMicrophoneSource.SampleRate);
     private readonly float[] _buffer = new float[WindowSize * 2];
     private readonly object _lock = new();
     private int _filled;
     private IDispatcherTimer? _timer;
-    private double _smoothedCents;
-    private string _lastNote = "";
+
+    private readonly Queue<double> _recent = new();
+    private double _ema;
+    private double _shown;
+    private bool _hasReading;
+    private int _lastTarget = -1;
+    private int _stableTicks;
+    private bool _wasInTune;
     private DateTime _lastGoodAt = DateTime.MinValue;
+    private DateTime _inTuneSince = DateTime.MinValue;
+    private DateTime _lastInTuneAt = DateTime.MinValue;
+    private double _envelope;
+    private double _noiseFloor = 0.002;
+    private double _refPeak;
+    private int _dropChunks;
+    private DateTime _onsetAt = DateTime.MinValue;
+    private bool _reseedAfterAttack;
+    private bool _retargetOnNextReading;
+    private int _farTicks;
+    private readonly List<double> _pendingMidi = new();
 
-    /// <summary>Empty while nothing is detected — the hero label keeps its
-    /// height, so the layout does not jump when the first note lands.</summary>
-    [ObservableProperty]
-    private string noteName = "";
+    [ObservableProperty] private Tuning tuning = Tuning.Standard;
+    [ObservableProperty] private string tuningName = Tuning.Standard.Name;
+    [ObservableProperty] private string noteName = "";
+    /// <summary>"+3" / "−2" / "0": deviation in points, 10 per fret.</summary>
+    [ObservableProperty] private string pointsText = "";
+    [ObservableProperty] private double cents;
+    [ObservableProperty] private bool hasSignal;
+    [ObservableProperty] private bool inTune;
+    [ObservableProperty] private bool listening;
+    [ObservableProperty] private int lockedIndex = -1;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowStartAgainChip))] private bool anyTuned;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowStartAgainChip))] private bool allTuned;
+    [ObservableProperty] private string idleMessage = Loc.Get("Tuner_LetsTune");
 
-    /// <summary>"−6 ¢ · трохи нижче ♭" under the note.</summary>
-    [ObservableProperty]
-    private string centsText = "";
+    /// <summary>"Start again" chip in the top row: once something is tuned,
+    /// except when idle with everything tuned — then the main button does it.</summary>
+    public bool ShowStartAgainChip => AnyTuned && !(AllTuned && !Listening);
 
-    [ObservableProperty]
-    private string hint = Loc.Get("Tuner_Hint_Idle");
+    partial void OnListeningChanged(bool value) => OnPropertyChanged(nameof(ShowStartAgainChip));
 
-    /// <summary>Needle offset in device units (bound to TranslationX).</summary>
-    [ObservableProperty]
-    private double needleOffset;
+    public ObservableCollection<PegItem> Pegs { get; } = new();
 
-    [ObservableProperty]
-    private bool inTune;
+    public bool A4Locked => !_pro.Has(Feature.A4Reference);
+    public bool AltTuningsLocked => !_pro.Has(Feature.AltTunings);
+    public string A4Text => $"A4 · {AppSettings.A4Reference:0} {Loc.Get("Unit_Hz")}";
 
-    [ObservableProperty]
-    private bool listening;
+    public event EventHandler<Feature>? ProRequired;
 
-    private readonly Pro.IProGate _pro;
+    /// <summary>A string just got tuned (index) — the view bounces its peg.</summary>
+    public event EventHandler<int>? StringTuned;
 
-    /// <summary>A4 reference is a Pro feature; the chip shows a lock until unlocked.</summary>
-    public bool A4Locked => !_pro.Has(Pro.Feature.A4Reference);
+    /// <summary>The last string just got tuned — the view runs the celebration.</summary>
+    public event EventHandler? AllTunedReached;
 
-    public string A4Text => $"A4 · {AppSettings.A4Reference:0} Hz";
-
-    public TunerViewModel(IMicrophoneSource microphone, Pro.IProGate pro)
+    public TunerViewModel(IMicrophoneSource microphone, IProGate pro)
     {
         _microphone = microphone;
         _pro = pro;
-        _pro.Changed += (_, _) => OnPropertyChanged(nameof(A4Locked));
-        AppSettings.Changed += (_, key) => { if (key == nameof(AppSettings.A4Reference)) OnPropertyChanged(nameof(A4Text)); };
+        _pro.Changed += (_, _) =>
+        {
+            OnPropertyChanged(nameof(A4Locked));
+            OnPropertyChanged(nameof(AltTuningsLocked));
+            if (Tuning.IsPro && AltTuningsLocked)
+                ApplyTuning(Tuning.Standard);
+        };
+        AppSettings.Changed += (_, key) =>
+        {
+            if (key == nameof(AppSettings.A4Reference)) OnPropertyChanged(nameof(A4Text));
+        };
+        Loc.Instance.PropertyChanged += (_, _) =>
+        {
+            TuningName = Tuning.Name;
+            OnPropertyChanged(nameof(A4Text));
+            UpdateIdleMessage();
+        };
         _microphone.ChunkAvailable += OnChunk;
-        Loc.Instance.PropertyChanged += (_, _) => { if (!Listening) Hint = Loc.Get("Tuner_Hint_Idle"); };
+
+        var initial = Tuning.ById(AppSettings.DefaultTuning);
+        ApplyTuning(initial.IsPro && AltTuningsLocked ? Tuning.Standard : initial);
     }
 
+    // ---- tuning & pegs -------------------------------------------------
+
+    public bool TrySelectTuning(Tuning next)
+    {
+        if (next.IsPro && AltTuningsLocked)
+        {
+            ProRequired?.Invoke(this, Feature.AltTunings);
+            return false;
+        }
+        ApplyTuning(next);
+        return true;
+    }
+
+    private void ApplyTuning(Tuning next)
+    {
+        Tuning = next;
+        TuningName = next.Name;
+        LockedIndex = -1;
+        Pegs.Clear();
+        for (int i = 0; i < next.Midi.Length; i++)
+            Pegs.Add(new PegItem(i, next.NoteName(i), next.Subscript(i)));
+        AnyTuned = AllTuned = false;
+        UpdateIdleMessage();
+        ResetReading();
+    }
+
+    /// <summary>Tap a peg to lock that string; tap the locked peg to go back to auto.</summary>
+    [RelayCommand]
+    private void TapPeg(PegItem? peg)
+    {
+        if (peg == null) return;
+        LockedIndex = LockedIndex == peg.Index ? -1 : peg.Index;
+        foreach (var p in Pegs)
+        {
+            p.IsLocked = p.Index == LockedIndex;
+            p.IsActive = LockedIndex >= 0 ? p.Index == LockedIndex : p.IsActive;
+        }
+        Haptics.Default.Selection();
+        _lastTarget = -1;   // re-seed the filters for the new target
+        _inTuneSince = DateTime.MinValue;
+        if (LockedIndex >= 0)
+            NoteName = Pegs[LockedIndex].Label;
+    }
+
+    /// <summary>Forget which strings are tuned (keeps listening state).</summary>
+    [RelayCommand]
+    private void StartAgain()
+    {
+        foreach (var p in Pegs) p.IsTuned = false;
+        AnyTuned = AllTuned = false;
+        _inTuneSince = DateTime.MinValue;
+        UpdateIdleMessage();
+        Haptics.Default.Selection();
+    }
+
+    private void UpdateIdleMessage() =>
+        IdleMessage = AllTuned ? Loc.Get("Tuner_AllSet") : Loc.Get("Tuner_LetsTune");
+
+    // ---- microphone ---------------------------------------------------
+
+    /// <summary>Main button: Listen / Stop, or "Start again" once everything is tuned.</summary>
     [RelayCommand]
     private async Task ToggleAsync()
     {
         if (Listening)
         {
-            _microphone.Stop();
-            _timer?.Stop();
-            Listening = false;
-            Reset();
-            Hint = Loc.Get("Tuner_Hint_Idle");
+            StopListening();
             return;
         }
+        if (AllTuned)
+            StartAgain();
 
         if (!await _microphone.StartAsync())
         {
-            Hint = Loc.Get("Tuner_NoMic");
+            IdleMessage = Loc.Get("Tuner_NoMic");
             return;
         }
         Listening = true;
-        Hint = Loc.Get("Tuner_Hint_Play");
         _timer ??= Application.Current!.Dispatcher.CreateTimer();
         _timer.Interval = TimeSpan.FromMilliseconds(80);
         _timer.Tick -= OnTick;
@@ -95,18 +220,59 @@ public partial class TunerViewModel : ObservableObject
         _timer.Start();
     }
 
-    private void Reset()
+    /// <summary>Stops the microphone; the locked string is released, tuned
+    /// marks stay. Also called when the user leaves the tab.</summary>
+    public void StopListening()
     {
-        NoteName = "";
-        CentsText = "";
-        NeedleOffset = 0;
-        InTune = false;
-        _lastNote = "";
-        _smoothedCents = 0;
+        if (!Listening) return;
+        _microphone.Stop();
+        _timer?.Stop();
+        Listening = false;
+        LockedIndex = -1;
+        foreach (var p in Pegs) p.IsLocked = false;
+        ResetReading();
+        UpdateIdleMessage();
     }
 
     private void OnChunk(float[] chunk)
     {
+        // Attack detector. A ringing string only ever gets quieter, so any
+        // sharp rise of the short-term level (10 ms blocks) against the
+        // previous chunk is a new pluck — even while the old note still sounds.
+        const int block = 441;
+        double fast = 0;
+        for (int start = 0; start < chunk.Length; start += block)
+        {
+            int end = Math.Min(chunk.Length, start + block);
+            double sum = 0;
+            for (int i = start; i < end; i++) sum += chunk[i] * chunk[i];
+            fast = Math.Max(fast, Math.Sqrt(sum / Math.Max(1, end - start)));
+        }
+        var now = DateTime.Now;
+        if (fast > 0.008 && fast > 1.6 * _envelope && now - _onsetAt > TimeSpan.FromMilliseconds(120))
+        {
+            _onsetAt = now;
+            _reseedAfterAttack = true;
+        }
+        _envelope = fast;
+        // Adaptive noise floor: drops at once, creeps up slowly.
+        _noiseFloor = fast < _noiseFloor ? fast : Math.Min(_noiseFloor * 1.002 + 2e-6, fast);
+        // Mute detector: a damped string loses more than 18 dB almost at once;
+        // a freely decaying one never does (once past the attack), even with
+        // beating. `_refPeak` is the level just before the drop; three
+        // consecutive low chunks confirm it (≈140 ms) — we would rather keep a
+        // ringing string on screen a little longer than drop a live one.
+        bool settled = now - _onsetAt > TimeSpan.FromMilliseconds(300);
+        if (settled && _refPeak > Math.Max(0.002, 3.0 * _noiseFloor) && fast < 0.12 * _refPeak)
+        {
+            _dropChunks++;
+        }
+        else
+        {
+            _dropChunks = 0;
+            _refPeak = fast;
+        }
+
         lock (_lock)
         {
             if (chunk.Length >= _buffer.Length)
@@ -123,6 +289,27 @@ public partial class TunerViewModel : ObservableObject
         }
     }
 
+    private void ResetReading()
+    {
+        NoteName = LockedIndex >= 0 && LockedIndex < Pegs.Count ? Pegs[LockedIndex].Label : "";
+        PointsText = "";
+        Cents = 0;
+        HasSignal = false;
+        InTune = false;
+        _wasInTune = false;
+        _hasReading = false;
+        _recent.Clear();
+        _lastTarget = -1;
+        _stableTicks = 0;
+        _retargetOnNextReading = true;
+        _farTicks = 0;
+        _pendingMidi.Clear();
+        _inTuneSince = DateTime.MinValue;
+        _lastInTuneAt = DateTime.MinValue;
+        foreach (var p in Pegs)
+            p.IsActive = p.Index == LockedIndex;
+    }
+
     private void OnTick(object? sender, EventArgs e)
     {
         float[] window;
@@ -133,30 +320,155 @@ public partial class TunerViewModel : ObservableObject
             window = _buffer[^WindowSize..];
         }
 
-        var pitch = _detector.Detect(window, IMicrophoneSource.SampleRate);
-        if (pitch == null)
+        // Muted string (sudden drop) or real silence: clear at once, long
+        // before YIN stops finding a pitch in the residual.
+        bool silent = _dropChunks >= 3 || _envelope < Math.Max(0.001, 1.5 * _noiseFloor);
+        double clarity = 0;
+        double? fundamental = silent ? null : _engine.DetectFundamental(window, out clarity);
+        // Hysteresis: a note needs clarity 0.8 to appear, only 0.6 to stay —
+        // a decaying string's clarity wavers while it is still clearly sounding.
+        double minClarity = _hasReading ? MinClarity - 0.2 : MinClarity;
+        if (fundamental == null || clarity < minClarity)
         {
-            // Hold the last reading through the decay; then clear.
-            if (_lastNote != "" && DateTime.Now - _lastGoodAt > Hold)
-                Reset();
+            if (silent && _hasReading)
+                ResetReading();          // muted: clear right away, no hold
+            // The note may simply have decayed while sitting in tune: still count it.
+            CheckTuned();
+            if (_hasReading && DateTime.Now - _lastGoodAt > Hold)
+                ResetReading();
             return;
         }
-
-        var (name, octave, cents) = Notes.Describe(pitch.Value.Frequency);
-        string note = $"{name}{octave}";
-        // A new note starts the needle fresh; the same note is smoothed.
-        _smoothedCents = note == _lastNote ? 0.65 * _smoothedCents + 0.35 * cents : cents;
-        _lastNote = note;
         _lastGoodAt = DateTime.Now;
 
-        NoteName = name;
-        NeedleOffset = Math.Clamp(_smoothedCents, -50, 50) * NeedlePixelsPerCent;
-        InTune = Math.Abs(_smoothedCents) <= InTuneCents;
-        int rounded = (int)Math.Round(_smoothedCents);
-        string sign = rounded < 0 ? "−" : rounded > 0 ? "+" : "";
-        string verdict = InTune ? Loc.Get("Tuner_InTune")
-            : rounded < 0 ? Loc.Get("Tuner_Flat") + " ♭"
-            : Loc.Get("Tuner_Sharp") + " ♯";
-        CentsText = $"{sign}{Math.Abs(rounded)} ¢ · {verdict}";
+        // Let the pluck settle before judging it.
+        if (DateTime.Now - _onsetAt < AttackSettle)
+            return;
+        if (_reseedAfterAttack)
+        {
+            _reseedAfterAttack = false;
+            _retargetOnNextReading = true;   // a new pluck may be a different string
+            _pendingMidi.Clear();
+            _recent.Clear();
+            _ema = double.NaN;               // re-seed the EMA below
+            // A re-pluck of the same string keeps the in-tune clock running
+            // (the grace period below covers the attack gap).
+        }
+
+        // Pitch → MIDI against the user's A4, then the target string.
+        // Distances are measured modulo octaves so a decaying note's 2nd
+        // harmonic (G3 → G4) stays on its string.
+        double midi = TunerEngine.MidiOf(fundamental.Value, AppSettings.A4Reference);
+        int target;
+        if (LockedIndex >= 0)
+        {
+            target = LockedIndex;
+        }
+        else if (_lastTarget < 0 || _retargetOnNextReading)
+        {
+            // Choosing the string from a single frame is fragile (the first
+            // frames after a pluck often carry a harmonic): collect a few and
+            // decide on their median.
+            _pendingMidi.Add(midi);
+            if (_pendingMidi.Count < PickFrames)
+                return;
+            double picked = _pendingMidi.OrderBy(v => v).ElementAt(_pendingMidi.Count / 2);
+            _pendingMidi.Clear();
+            target = TunerEngine.NearestString(picked, Tuning.Midi);
+        }
+        else
+        {
+            // Fallback for a pluck the level detector missed (soft attack on a
+            // muted string): a clearly different note, held for ~4 ticks.
+            target = _lastTarget;
+            int best = TunerEngine.NearestString(midi, Tuning.Midi);
+            bool far = Math.Abs(midi - Tuning.Midi[_lastTarget]) > 1.5
+                && Math.Abs(TunerEngine.FoldedSemitones(midi, Tuning.Midi[_lastTarget])) > 1.5;
+            _farTicks = best != _lastTarget && far ? _farTicks + 1 : 0;
+            if (_farTicks >= 4)
+            {
+                target = best;
+                _farTicks = 0;
+            }
+        }
+        _retargetOnNextReading = false;
+        double raw = TunerEngine.FoldedSemitones(midi, Tuning.Midi[target]) * 100.0;
+
+        if (target != _lastTarget)
+        {
+            _recent.Clear();
+            _ema = raw;
+            _shown = Math.Clamp(raw, -50, 50);
+            _lastTarget = target;
+            _stableTicks = 0;
+            _inTuneSince = DateTime.MinValue;
+            foreach (var p in Pegs)
+                p.IsActive = p.Index == target;
+            NoteName = Pegs[target].Label;
+        }
+        else if (double.IsNaN(_ema))
+        {
+            _ema = raw;   // same string, fresh pluck
+        }
+
+        // 1. median kills single-frame outliers · 2. EMA smooths · 3. slew limits speed
+        _recent.Enqueue(raw);
+        while (_recent.Count > MedianTaps) _recent.Dequeue();
+        double median = _recent.OrderBy(v => v).ElementAt(_recent.Count / 2);
+        _ema = 0.6 * _ema + 0.4 * median;
+        double goal = Math.Clamp(_ema, -50, 50);
+        _shown += Math.Clamp(goal - _shown, -MaxCentsPerTick, MaxCentsPerTick);
+
+        _hasReading = true;
+        HasSignal = true;
+        Cents = _shown;
+
+        bool nowInTune = Math.Abs(_ema) <= InTuneCents;
+        _stableTicks = nowInTune ? _stableTicks + 1 : 0;
+        InTune = nowInTune && _stableTicks >= 2;
+        if (InTune && !_wasInTune)
+            Haptics.Default.Success();
+        _wasInTune = InTune;
+
+        int points = (int)Math.Round(_ema / 10.0);
+        PointsText = points == 0 ? "0" : points > 0 ? $"+{points}" : $"−{-points}";
+
+        // Held in tune long enough → this string is done. Brief wobbles are forgiven.
+        var now2 = DateTime.Now;
+        if (nowInTune)
+        {
+            if (_inTuneSince == DateTime.MinValue)
+                _inTuneSince = now2;
+            _lastInTuneAt = now2;
+        }
+        else if (_inTuneSince != DateTime.MinValue && now2 - _lastInTuneAt > TunedGrace)
+        {
+            _inTuneSince = DateTime.MinValue;
+        }
+        CheckTuned();
     }
+
+    private void CheckTuned()
+    {
+        if (_inTuneSince == DateTime.MinValue || _lastTarget < 0 || _lastTarget >= Pegs.Count) return;
+        var now = DateTime.Now;
+        if (now - _lastInTuneAt > TunedGrace) return;          // not in tune right now
+        if (now - _inTuneSince < TunedAfter) return;
+        if (!Pegs[_lastTarget].IsTuned)
+            MarkTuned(_lastTarget);
+    }
+
+    private void MarkTuned(int index)
+    {
+        Pegs[index].IsTuned = true;
+        AnyTuned = true;
+        Haptics.Default.Success();
+        StringTuned?.Invoke(this, index);
+        if (Pegs.All(p => p.IsTuned))
+        {
+            AllTuned = true;
+            UpdateIdleMessage();
+            AllTunedReached?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
 }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.TuningSheet"
+             ios:Page.UseSafeArea="True"
+             ios:Page.ModalPresentationStyle="FormSheet"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,28" RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="*,44">
+            <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Tuner_Tuning}" VerticalOptions="Center" />
+            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
+                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+        <ScrollView Grid.Row="1" Margin="0,14,0,0">
+            <VerticalStackLayout x:Name="List" Spacing="8" />
+        </ScrollView>
+    </Grid>
+</ContentPage>

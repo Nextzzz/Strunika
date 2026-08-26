@@ -137,15 +137,22 @@ public partial class LiveViewModel : ObservableObject, IDisposable
             : Listening ? Loc.Get("Live_Listening") : Loc.Get("Live_Ready");
     }
 
+    /// <summary>Stops the microphone; also called when the user leaves the tab.</summary>
+    public void StopListening()
+    {
+        if (!Listening) return;
+        _microphone.Stop();
+        _tickTimer?.Stop();
+        Listening = false;
+        Status = Loc.Get("Live_Stopped");
+    }
+
     [RelayCommand]
     private async Task ToggleAsync()
     {
         if (Listening)
         {
-            _microphone.Stop();
-            _tickTimer?.Stop();
-            Listening = false;
-            Status = Loc.Get("Live_Stopped");
+            StopListening();
             return;
         }
 

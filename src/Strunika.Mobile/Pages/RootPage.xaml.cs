@@ -76,6 +76,9 @@ public partial class RootPage : ContentPage
         if (index == _current || index < 0 || index >= _tabs.Length) return;
         var from = _tabs[_current];
         var to = _tabs[index];
+        // Leaving a tab that listens releases the microphone.
+        if (_current == 0) (Tuner.BindingContext as TunerViewModel)?.StopListening();
+        if (_current == 1) (Live.BindingContext as LiveViewModel)?.StopListening();
         _current = index;
 
         to.Opacity = 0;

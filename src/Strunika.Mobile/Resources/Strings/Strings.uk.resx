@@ -104,4 +104,22 @@
   <data name="Feature_Folders" xml:space="preserve"><value>Папки й сетлісти</value></data>
   <data name="Feature_FullChordVocabulary" xml:space="preserve"><value>Повний словник акордів</value></data>
   <data name="Feature_UnlimitedSongs" xml:space="preserve"><value>Пісні без ліміту</value></data>
+
+  <data name="Tuning_DropD" xml:space="preserve"><value>Drop D</value></data>
+  <data name="Tuning_HalfDown" xml:space="preserve"><value>На півтону нижче</value></data>
+  <data name="Tuning_FullDown" xml:space="preserve"><value>На тон нижче</value></data>
+  <data name="Tuning_DADGAD" xml:space="preserve"><value>DADGAD</value></data>
+  <data name="Tuning_OpenG" xml:space="preserve"><value>Open G</value></data>
+  <data name="Tuning_OpenD" xml:space="preserve"><value>Open D</value></data>
+  <data name="Tuning_Ukulele" xml:space="preserve"><value>Укулеле</value></data>
+  <data name="Tuning_Bass" xml:space="preserve"><value>Бас</value></data>
+  <data name="Tuner_A4Title" xml:space="preserve"><value>Опорна A4</value></data>
+  <data name="Tuner_A4Hint" xml:space="preserve"><value>Концертна висота — 440 Гц; знизьте для старих записів або піаніно, що «попливло».</value></data>
+  <data name="Tuner_Reset" xml:space="preserve"><value>Скинути до 440 Гц</value></data>
+  <data name="Tuner_Hint_Locked" xml:space="preserve"><value>Струну зафіксовано · торкніться кілочка ще раз для авто</value></data>
+  <data name="Unit_Hz" xml:space="preserve"><value>Гц</value></data>
+
+  <data name="Tuner_LetsTune" xml:space="preserve"><value>Давай затюнемо!</value></data>
+  <data name="Tuner_AllSet" xml:space="preserve"><value>Все в строї — поїхали!</value></data>
+  <data name="Tuner_StartAgain" xml:space="preserve"><value>Почати знову</value></data>
 </root>

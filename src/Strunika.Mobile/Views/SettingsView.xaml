@@ -83,6 +83,7 @@
                             <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_DefaultTuning}" />
                             <Label Grid.Column="1" Style="{StaticResource RowValue}" Text="{Binding DefaultTuningName}" />
                             <controls:IconView Grid.Column="2" Name="chevR" Size="16" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnDefaultTuningTapped" /></Grid.GestureRecognizers>
                         </Grid>
                     </VerticalStackLayout>
                 </Border>

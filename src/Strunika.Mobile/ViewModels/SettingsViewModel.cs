@@ -16,7 +16,8 @@ public partial class SettingsViewModel : ObservableObject
         _devPro = devPro;
         _pro = pro;
         Loc.Instance.PropertyChanged += (_, _) => RefreshNames();
-        _pro.Changed += (_, _) => OnPropertyChanged(nameof(A4Locked));
+        _pro.Changed += (_, _) => { OnPropertyChanged(nameof(A4Locked)); OnPropertyChanged(nameof(AltTuningsLocked)); };
+        AppSettings.Changed += (_, key) => { if (key == nameof(AppSettings.A4Reference)) OnPropertyChanged(nameof(A4Text)); };
         RefreshNames();
     }
 
@@ -55,11 +56,19 @@ public partial class SettingsViewModel : ObservableObject
 
     // ---- tuner -------------------------------------------------------
 
-    public string A4Text => $"{AppSettings.A4Reference:0} Hz";
+    public string A4Text => $"{AppSettings.A4Reference:0} {Loc.Get("Unit_Hz")}";
 
     public bool A4Locked => !_pro.Has(Feature.A4Reference);
 
-    public string DefaultTuningName => Loc.Get("Tuner_Standard");
+    public bool AltTuningsLocked => !_pro.Has(Feature.AltTunings);
+
+    public string DefaultTuningName => Models.Tuning.ById(AppSettings.DefaultTuning).Name;
+
+    public void SetDefaultTuning(string id)
+    {
+        AppSettings.DefaultTuning = id;
+        OnPropertyChanged(nameof(DefaultTuningName));
+    }
 
     // ---- recognition -------------------------------------------------
 

@@ -38,9 +38,26 @@ public partial class SettingsView : ContentView
 
     private void OnA4Tapped(object? sender, TappedEventArgs e)
     {
-        if (Vm?.A4Locked == true)
+        if (Vm == null) return;
+        if (Vm.A4Locked)
             _ = PaywallSheet.ShowAsync(Feature.A4Reference);
-        // M1: A4 picker for Pro users.
+        else
+            _ = A4Sheet.ShowAsync();
+    }
+
+    private void OnDefaultTuningTapped(object? sender, TappedEventArgs e)
+    {
+        if (Vm == null) return;
+        _ = TuningSheet.ShowAsync(AppSettings.DefaultTuning, Vm.AltTuningsLocked, picked =>
+        {
+            if (picked.IsPro && Vm.AltTuningsLocked)
+            {
+                _ = PaywallSheet.ShowAsync(Feature.AltTunings);
+                return false;
+            }
+            Vm.SetDefaultTuning(picked.Id);
+            return true;
+        });
     }
 
     private void OnProTapped(object? sender, EventArgs e)

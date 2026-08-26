@@ -104,4 +104,22 @@
   <data name="Feature_Folders" xml:space="preserve"><value>Folders &amp; setlists</value></data>
   <data name="Feature_FullChordVocabulary" xml:space="preserve"><value>Full chord vocabulary</value></data>
   <data name="Feature_UnlimitedSongs" xml:space="preserve"><value>Unlimited songs</value></data>
+
+  <data name="Tuning_DropD" xml:space="preserve"><value>Drop D</value></data>
+  <data name="Tuning_HalfDown" xml:space="preserve"><value>Half-step down</value></data>
+  <data name="Tuning_FullDown" xml:space="preserve"><value>Full-step down</value></data>
+  <data name="Tuning_DADGAD" xml:space="preserve"><value>DADGAD</value></data>
+  <data name="Tuning_OpenG" xml:space="preserve"><value>Open G</value></data>
+  <data name="Tuning_OpenD" xml:space="preserve"><value>Open D</value></data>
+  <data name="Tuning_Ukulele" xml:space="preserve"><value>Ukulele</value></data>
+  <data name="Tuning_Bass" xml:space="preserve"><value>Bass</value></data>
+  <data name="Tuner_A4Title" xml:space="preserve"><value>A4 reference</value></data>
+  <data name="Tuner_A4Hint" xml:space="preserve"><value>Concert pitch is 440 Hz; lower it for old recordings or a piano that has drifted.</value></data>
+  <data name="Tuner_Reset" xml:space="preserve"><value>Reset to 440 Hz</value></data>
+  <data name="Tuner_Hint_Locked" xml:space="preserve"><value>String locked · tap the peg again for auto</value></data>
+  <data name="Unit_Hz" xml:space="preserve"><value>Hz</value></data>
+
+  <data name="Tuner_LetsTune" xml:space="preserve"><value>Let’s tune!</value></data>
+  <data name="Tuner_AllSet" xml:space="preserve"><value>All set — let’s play!</value></data>
+  <data name="Tuner_StartAgain" xml:space="preserve"><value>Start again</value></data>
 </root>
