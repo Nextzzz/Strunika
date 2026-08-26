@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "maui-skills@maui-skills": true,
+    "dotnet-maui@dotnet-agent-skills": true
+  }
+}

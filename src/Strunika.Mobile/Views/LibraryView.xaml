@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Views.LibraryView">
+
+    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,*" RowSpacing="0">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Songs}" VerticalOptions="End" />
+            <Border Grid.Column="1" x:Name="AddButton" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18"
+                    BackgroundColor="{t:Theme Fill}" VerticalOptions="End" Padding="0">
+                <Border.Shadow>
+                    <Shadow Brush="{t:Theme Glow, Brush=True}" Radius="14" Opacity="0.6" Offset="0,4" />
+                </Border.Shadow>
+                <controls:IconView Name="plus" Size="20" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnAddTapped" />
+                </Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="1" Margin="0,14,0,0" StrokeShape="RoundRectangle 12" Padding="12,0" HeightRequest="40">
+            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                <controls:IconView Name="search" Size="18" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                <Label Text="{loc:Str Library_Search}" TextColor="{t:Theme TextSec}" FontSize="16" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </Border>
+
+        <VerticalStackLayout Grid.Row="2" VerticalOptions="Center" Spacing="10" Padding="16,0">
+            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="64" />
+            <Label Style="{StaticResource Title2}" Text="{loc:Str Library_Empty_Title}" HorizontalTextAlignment="Center" Margin="0,8,0,0" />
+            <Label Style="{StaticResource Subhead}" Text="{loc:Str Library_Empty_Body}" HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentView>

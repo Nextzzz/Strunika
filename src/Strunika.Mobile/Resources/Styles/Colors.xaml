@@ -1,44 +1,51 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary 
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
+    <!--
+    Strunika brand tokens. Source of truth: .claude/skills/strunika-ui/SKILL.md §1.
+    Pages never use raw hex: they use {AppThemeBinding Light={StaticResource LightX}, Dark={StaticResource DarkX}}
+    or, better, one of the named styles in Styles.xaml.
+    -->
 
-    <Color x:Key="Primary">#512BD4</Color>
-    <Color x:Key="PrimaryDark">#ac99ea</Color>
-    <Color x:Key="PrimaryDarkText">#242424</Color>
-    <Color x:Key="Secondary">#DFD8F7</Color>
-    <Color x:Key="SecondaryDarkText">#9880e5</Color>
-    <Color x:Key="Tertiary">#2B0B98</Color>
+    <!-- Brand -->
+    <Color x:Key="Gold">#D9AC4C</Color>
+    <Color x:Key="Copper">#AE6F32</Color>
+    <Color x:Key="Cream">#E9D3A2</Color>
+    <Color x:Key="DarkBase">#16110B</Color>
+    <Color x:Key="LightBase">#FBF3E3</Color>
 
-    <Color x:Key="White">White</Color>
-    <Color x:Key="Black">Black</Color>
-    <Color x:Key="Magenta">#D600AA</Color>
-    <Color x:Key="MidnightBlue">#190649</Color>
-    <Color x:Key="OffBlack">#1f1f1f</Color>
+    <!-- Dark theme -->
+    <Color x:Key="DarkBg">#16110B</Color>
+    <Color x:Key="DarkSurface1">#211A10</Color>
+    <Color x:Key="DarkSurface2">#2C2316</Color>
+    <Color x:Key="DarkSeparator">#3A2E1C</Color>
+    <Color x:Key="DarkTextPri">#E9D3A2</Color>
+    <Color x:Key="DarkTextSec">#A48F66</Color>
+    <Color x:Key="DarkDim">#7A6543</Color>
+    <Color x:Key="DarkAccent">#D9AC4C</Color>
+    <Color x:Key="DarkAccentText">#D9AC4C</Color>
+    <Color x:Key="DarkAccent2">#AE6F32</Color>
+    <Color x:Key="DarkFill">#D9AC4C</Color>
+    <Color x:Key="DarkOnFill">#16110B</Color>
+    <Color x:Key="DarkGlow">#73D9AC4C</Color>
+    <Color x:Key="DarkError">#C4533A</Color>
 
-    <Color x:Key="Gray100">#E1E1E1</Color>
-    <Color x:Key="Gray200">#C8C8C8</Color>
-    <Color x:Key="Gray300">#ACACAC</Color>
-    <Color x:Key="Gray400">#919191</Color>
-    <Color x:Key="Gray500">#6E6E6E</Color>
-    <Color x:Key="Gray600">#404040</Color>
-    <Color x:Key="Gray900">#212121</Color>
-    <Color x:Key="Gray950">#141414</Color>
+    <!-- Light theme -->
+    <Color x:Key="LightBg">#FBF3E3</Color>
+    <Color x:Key="LightSurface1">#F3E8CF</Color>
+    <Color x:Key="LightSurface2">#E9D3A2</Color>
+    <Color x:Key="LightSeparator">#D9C6A0</Color>
+    <Color x:Key="LightTextPri">#16110B</Color>
+    <Color x:Key="LightTextSec">#66522F</Color>
+    <Color x:Key="LightDim">#A08A5C</Color>
+    <Color x:Key="LightAccent">#AE6F32</Color>
+    <Color x:Key="LightAccentText">#8A5424</Color>
+    <Color x:Key="LightAccent2">#D9AC4C</Color>
+    <Color x:Key="LightFill">#D9AC4C</Color>
+    <Color x:Key="LightOnFill">#16110B</Color>
+    <Color x:Key="LightGlow">#4DAE6F32</Color>
+    <Color x:Key="LightError">#A8402C</Color>
 
-    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>
-    <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource Secondary}"/>
-    <SolidColorBrush x:Key="TertiaryBrush" Color="{StaticResource Tertiary}"/>
-    <SolidColorBrush x:Key="WhiteBrush" Color="{StaticResource White}"/>
-    <SolidColorBrush x:Key="BlackBrush" Color="{StaticResource Black}"/>
-
-    <SolidColorBrush x:Key="Gray100Brush" Color="{StaticResource Gray100}"/>
-    <SolidColorBrush x:Key="Gray200Brush" Color="{StaticResource Gray200}"/>
-    <SolidColorBrush x:Key="Gray300Brush" Color="{StaticResource Gray300}"/>
-    <SolidColorBrush x:Key="Gray400Brush" Color="{StaticResource Gray400}"/>
-    <SolidColorBrush x:Key="Gray500Brush" Color="{StaticResource Gray500}"/>
-    <SolidColorBrush x:Key="Gray600Brush" Color="{StaticResource Gray600}"/>
-    <SolidColorBrush x:Key="Gray900Brush" Color="{StaticResource Gray900}"/>
-    <SolidColorBrush x:Key="Gray950Brush" Color="{StaticResource Gray950}"/>
 </ResourceDictionary>

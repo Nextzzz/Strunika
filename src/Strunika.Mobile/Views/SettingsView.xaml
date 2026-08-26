@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <ContentView.Resources>
+        <Style x:Key="Row" TargetType="Grid">
+            <Setter Property="HeightRequest" Value="44" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="ColumnSpacing" Value="8" />
+        </Style>
+        <Style x:Key="RowLabel" TargetType="Label">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+        <Style x:Key="RowValue" TargetType="Label">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="TextColor" Value="{t:Theme TextSec}" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+        <Style x:Key="Group" TargetType="Border">
+            <Setter Property="StrokeShape" Value="RoundRectangle 14" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="BackgroundColor" Value="{t:Theme Surface1}" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+    </ContentView.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20,8,20,104" Spacing="12">
+
+            <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Settings}" HeightRequest="44" VerticalTextAlignment="End" />
+
+            <!-- Appearance -->
+            <VerticalStackLayout Spacing="6">
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Settings_Appearance}" Margin="14,0,0,0" />
+                <Border Style="{StaticResource Group}">
+                    <VerticalStackLayout>
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto,Auto,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_Theme}" />
+                            <controls:IconView Grid.Column="1" Name="{Binding ThemeIcon}" Size="16" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                            <Label Grid.Column="2" Style="{StaticResource RowValue}" Text="{Binding ThemeName}" />
+                            <controls:IconView Grid.Column="3" Name="chevR" Size="16" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnThemeTapped" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" />
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto,Auto,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_Language}" />
+                            <controls:IconView Grid.Column="1" Name="{Binding LanguageFlag}" Size="20" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                            <Label Grid.Column="2" Style="{StaticResource RowValue}" Text="{Binding LanguageName}" />
+                            <controls:IconView Grid.Column="3" Name="chevR" Size="16" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnLanguageTapped" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" />
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_LeftHanded}" />
+                            <Switch Grid.Column="1" IsToggled="{Binding LeftHanded}" VerticalOptions="Center" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Tuner -->
+            <VerticalStackLayout Spacing="6">
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Settings_Tuner}" Margin="14,0,0,0" />
+                <Border Style="{StaticResource Group}">
+                    <VerticalStackLayout>
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="Auto,*,Auto,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_A4}" />
+                            <controls:LockBadge Grid.Column="0" IsLocked="{Binding A4Locked}" Margin="0,8,-16,0"
+                                                BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
+                            <Label Grid.Column="2" Style="{StaticResource RowValue}" Text="{Binding A4Text}" />
+                            <controls:IconView Grid.Column="3" Name="chevR" Size="16" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnA4Tapped" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" />
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_DefaultTuning}" />
+                            <Label Grid.Column="1" Style="{StaticResource RowValue}" Text="{Binding DefaultTuningName}" />
+                            <controls:IconView Grid.Column="2" Name="chevR" Size="16" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Recognition -->
+            <VerticalStackLayout Spacing="6">
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Settings_Recognition}" Margin="14,0,0,0" />
+                <Border Style="{StaticResource Group}">
+                    <VerticalStackLayout>
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_BeatSnap}" />
+                            <Switch Grid.Column="1" IsToggled="{Binding BeatSnap}" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" />
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_Expert}" />
+                            <Switch Grid.Column="1" IsToggled="{Binding Expert}" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" IsVisible="{Binding DevProAvailable}" />
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto" IsVisible="{Binding DevProAvailable}">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_DevPro}" />
+                            <Switch Grid.Column="1" IsToggled="{Binding DevPro}" VerticalOptions="Center" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Pro -->
+            <Border StrokeShape="RoundRectangle 16" StrokeThickness="1" Stroke="{t:Theme Separator}" BackgroundColor="{t:Theme Surface2}" Padding="14,14,14,12">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Style="{StaticResource Title2}" VerticalOptions="Center">
+                            <Label.FormattedText>
+                                <FormattedString>
+                                    <Span Text="Strunika " FontFamily="Display" />
+                                    <Span Text="Pro" FontFamily="Display" TextColor="{t:Theme AccentText}" />
+                                </FormattedString>
+                            </Label.FormattedText>
+                        </Label>
+                        <Button Grid.Column="1" Text="{loc:Str Pro_LearnMore}" FontSize="13" HeightRequest="32" CornerRadius="16" Padding="14,0" Clicked="OnProTapped" />
+                    </Grid>
+                    <Label Style="{StaticResource Footnote}" Text="{loc:Str Pro_Features}" LineBreakMode="WordWrap" />
+                    <HorizontalStackLayout Spacing="16" Margin="0,2,0,0">
+                        <Label Text="{loc:Str Pro_Restore}" FontSize="13" FontAttributes="Bold" TextColor="{t:Theme AccentText}" />
+                        <Label Text="{loc:Str Pro_Redeem}" FontSize="13" FontAttributes="Bold" TextColor="{t:Theme AccentText}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- About -->
+            <VerticalStackLayout Spacing="6">
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Settings_About}" Margin="14,0,0,0" />
+                <Border Style="{StaticResource Group}">
+                    <VerticalStackLayout>
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_Version}" />
+                            <Label Grid.Column="1" Style="{StaticResource RowValue}" Text="{Binding Version}" />
+                        </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" />
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_Privacy}" />
+                            <controls:IconView Grid.Column="1" Name="chevR" Size="16" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentView>

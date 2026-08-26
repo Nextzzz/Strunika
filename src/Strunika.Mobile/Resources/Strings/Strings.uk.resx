@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="App_Name" xml:space="preserve"><value>Strunika</value></data>
+  <data name="Common_Start" xml:space="preserve"><value>Почати</value></data>
+  <data name="Common_Done" xml:space="preserve"><value>Готово</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Скасувати</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Закрити</value></data>
+  <data name="Common_Stop" xml:space="preserve"><value>Стоп</value></data>
+  <data name="Common_Listen" xml:space="preserve"><value>Слухати</value></data>
+  <data name="Common_Soon" xml:space="preserve"><value>Незабаром</value></data>
+
+  <data name="Tab_Tuner" xml:space="preserve"><value>Тюнер</value></data>
+  <data name="Tab_Live" xml:space="preserve"><value>Наживо</value></data>
+  <data name="Tab_Songs" xml:space="preserve"><value>Пісні</value></data>
+  <data name="Tab_Settings" xml:space="preserve"><value>Налаштування</value></data>
+
+  <data name="Welcome_Tagline" xml:space="preserve"><value>Тюнер · Акорди наживо · Акорди з пісень</value></data>
+  <data name="Welcome_Language" xml:space="preserve"><value>Мова</value></data>
+  <data name="Welcome_Theme" xml:space="preserve"><value>Тема</value></data>
+  <data name="Welcome_ChangeLater" xml:space="preserve"><value>Це можна змінити будь-коли в Налаштуваннях</value></data>
+  <data name="Welcome_MicNote" xml:space="preserve"><value>Доступ до мікрофона попросимо, коли натиснете «Слухати»</value></data>
+  <data name="Lang_Uk" xml:space="preserve"><value>Українська</value></data>
+  <data name="Lang_En" xml:space="preserve"><value>English</value></data>
+  <data name="Theme_System" xml:space="preserve"><value>Системна</value></data>
+  <data name="Theme_Dark" xml:space="preserve"><value>Темна</value></data>
+  <data name="Theme_Light" xml:space="preserve"><value>Світла</value></data>
+
+  <data name="Tuner_Listening" xml:space="preserve"><value>Слухаю</value></data>
+  <data name="Tuner_Hint_Idle" xml:space="preserve"><value>Натисніть «Слухати» і зіграйте ноту</value></data>
+  <data name="Tuner_Hint_Play" xml:space="preserve"><value>Зіграйте будь-яку струну</value></data>
+  <data name="Tuner_NoMic" xml:space="preserve"><value>Нема доступу до мікрофона — дозвольте в Налаштуваннях.</value></data>
+  <data name="Tuner_Flat" xml:space="preserve"><value>трохи нижче</value></data>
+  <data name="Tuner_Sharp" xml:space="preserve"><value>трохи вище</value></data>
+  <data name="Tuner_InTune" xml:space="preserve"><value>в строї</value></data>
+  <data name="Tuner_Tuning" xml:space="preserve"><value>Стрій</value></data>
+  <data name="Tuner_Standard" xml:space="preserve"><value>Стандарт</value></data>
+  <data name="Tuner_AutoHint" xml:space="preserve"><value>Авто · торкніться кілочка, щоб зафіксувати струну</value></data>
+
+  <data name="Live_Idle" xml:space="preserve"><value>Натисніть «Слухати» і грайте</value></data>
+  <data name="Live_Listening" xml:space="preserve"><value>Слухаю…</value></data>
+  <data name="Live_Stopped" xml:space="preserve"><value>Зупинено</value></data>
+  <data name="Live_Unpacking" xml:space="preserve"><value>Розпаковую модель…</value></data>
+  <data name="Live_ModelMissing" xml:space="preserve"><value>Модель не знайдена</value></data>
+  <data name="Live_NoNeural" xml:space="preserve"><value>Слухаю (без нейромережі)</value></data>
+  <data name="Live_Ready" xml:space="preserve"><value>Готово</value></data>
+  <data name="Live_Guess" xml:space="preserve"><value>здогадка</value></data>
+  <data name="Live_Mode" xml:space="preserve"><value>Режим</value></data>
+  <data name="Live_SimpleChords" xml:space="preserve"><value>Прості акорди</value></data>
+  <data name="Live_Revise" xml:space="preserve"><value>Уточнювати</value></data>
+  <data name="Live_Metronome" xml:space="preserve"><value>Метроном</value></data>
+  <data name="Live_History" xml:space="preserve"><value>Історія</value></data>
+  <data name="Model_Base" xml:space="preserve"><value>Базова</value></data>
+  <data name="Model_Guitar" xml:space="preserve"><value>Гітарна</value></data>
+
+  <data name="Library_Search" xml:space="preserve"><value>Пошук</value></data>
+  <data name="Library_All" xml:space="preserve"><value>Усі</value></data>
+  <data name="Library_Favourites" xml:space="preserve"><value>Обрані</value></data>
+  <data name="Library_Folders" xml:space="preserve"><value>Папки</value></data>
+  <data name="Library_Empty_Title" xml:space="preserve"><value>Додайте першу пісню</value></data>
+  <data name="Library_Empty_Body" xml:space="preserve"><value>Файл, запис або посилання на YouTube — Strunika знайде акорди.</value></data>
+  <data name="Library_Add" xml:space="preserve"><value>Додати пісню</value></data>
+
+  <data name="Settings_Appearance" xml:space="preserve"><value>Вигляд</value></data>
+  <data name="Settings_Theme" xml:space="preserve"><value>Тема</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Мова</value></data>
+  <data name="Settings_LeftHanded" xml:space="preserve"><value>Лівша</value></data>
+  <data name="Settings_Tuner" xml:space="preserve"><value>Тюнер</value></data>
+  <data name="Settings_A4" xml:space="preserve"><value>Опорна A4</value></data>
+  <data name="Settings_DefaultTuning" xml:space="preserve"><value>Стрій за замовчуванням</value></data>
+  <data name="Settings_Recognition" xml:space="preserve"><value>Розпізнавання</value></data>
+  <data name="Settings_BeatSnap" xml:space="preserve"><value>Прилипання до бітів</value></data>
+  <data name="Settings_Expert" xml:space="preserve"><value>Експертні налаштування</value></data>
+  <data name="Settings_DevPro" xml:space="preserve"><value>Pro-перемикач (dev)</value></data>
+  <data name="Settings_About" xml:space="preserve"><value>Про застосунок</value></data>
+  <data name="Settings_Version" xml:space="preserve"><value>Версія</value></data>
+  <data name="Settings_Privacy" xml:space="preserve"><value>Приватність і ліцензії</value></data>
+
+  <data name="Pro_Title" xml:space="preserve"><value>Strunika Pro</value></data>
+  <data name="Pro_Features" xml:space="preserve"><value>Строї · A4 · капо і транспонування · швидкість · A–B луп · Chord Editor · папки · експорт · пісні без ліміту</value></data>
+  <data name="Pro_LearnMore" xml:space="preserve"><value>Дізнатися більше</value></data>
+  <data name="Pro_Restore" xml:space="preserve"><value>Відновити покупки</value></data>
+  <data name="Pro_Redeem" xml:space="preserve"><value>Ввести код</value></data>
+  <data name="Pro_Year" xml:space="preserve"><value>Рік</value></data>
+  <data name="Pro_Month" xml:space="preserve"><value>Місяць</value></data>
+  <data name="Pro_SaveYear" xml:space="preserve"><value>−40 %</value></data>
+  <data name="Pro_Continue" xml:space="preserve"><value>Продовжити</value></data>
+  <data name="Pro_Terms" xml:space="preserve"><value>Умови</value></data>
+  <data name="Pro_Locked_Body" xml:space="preserve"><value>Це частина Strunika Pro.</value></data>
+  <data name="Pro_All" xml:space="preserve"><value>Усі можливості Pro</value></data>
+  <data name="Pro_PriceSoon" xml:space="preserve"><value>Ціни з’являться після підключення App Store</value></data>
+
+  <data name="Feature_AltTunings" xml:space="preserve"><value>Альтернативні строї</value></data>
+  <data name="Feature_A4Reference" xml:space="preserve"><value>Опорна частота A4</value></data>
+  <data name="Feature_TransposeCapo" xml:space="preserve"><value>Транспонування і капо</value></data>
+  <data name="Feature_Speed" xml:space="preserve"><value>Швидкість відтворення</value></data>
+  <data name="Feature_ABLoop" xml:space="preserve"><value>A–B луп</value></data>
+  <data name="Feature_Export" xml:space="preserve"><value>Експорт</value></data>
+  <data name="Feature_ChordEditor" xml:space="preserve"><value>Chord Editor</value></data>
+  <data name="Feature_Folders" xml:space="preserve"><value>Папки й сетлісти</value></data>
+  <data name="Feature_FullChordVocabulary" xml:space="preserve"><value>Повний словник акордів</value></data>
+  <data name="Feature_UnlimitedSongs" xml:space="preserve"><value>Пісні без ліміту</value></data>
+</root>

@@ -27,6 +27,7 @@
 - [ ] Capo detection / transposition helper
 
 ## Phase 5 — Mobile (.NET MAUI)
+Detailed v1 plan (milestones M0–M8, architecture, risks): `src/Strunika.Mobile/PLAN.md`; design decisions: `.claude/skills/strunika-ui/SKILL.md`.
 - [ ] Extract ViewModels to a shared project
 - [ ] Platform audio capture (AVAudioEngine / AudioRecord bindings)
 - [ ] Allocation-free audio path in Core (mobile GC discipline)

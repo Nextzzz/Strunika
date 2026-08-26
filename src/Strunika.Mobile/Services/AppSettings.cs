@@ -1,0 +1,86 @@
+namespace Strunika.Mobile.Services;
+
+/// <summary>
+/// User preferences behind the Settings tab, persisted with Preferences.
+/// Static on purpose: read from anywhere, one <see cref="Changed"/> event
+/// for views that mirror a setting (e.g. expert mode on the Live tab).
+/// </summary>
+public static class AppSettings
+{
+    public static event EventHandler<string>? Changed;
+
+    private static void Raise(string key) => Changed?.Invoke(null, key);
+
+    // ---- first launch ------------------------------------------------
+
+    public static bool WelcomeDone
+    {
+        get => Preferences.Default.Get("welcome_done", false);
+        set { Preferences.Default.Set("welcome_done", value); Raise(nameof(WelcomeDone)); }
+    }
+
+    // ---- appearance --------------------------------------------------
+
+    /// <summary>"system" | "dark" | "light".</summary>
+    public static string Theme
+    {
+        get => Preferences.Default.Get("ui_theme", "system");
+        set
+        {
+            Preferences.Default.Set("ui_theme", value);
+            ApplyTheme();
+            Raise(nameof(Theme));
+        }
+    }
+
+    public static int ThemeIndex
+    {
+        get => Theme switch { "dark" => 1, "light" => 2, _ => 0 };
+        set => Theme = value switch { 1 => "dark", 2 => "light", _ => "system" };
+    }
+
+    public static void ApplyTheme()
+    {
+        if (Application.Current == null) return;
+        Application.Current.UserAppTheme = Theme switch
+        {
+            "dark" => AppTheme.Dark,
+            "light" => AppTheme.Light,
+            _ => AppTheme.Unspecified,
+        };
+    }
+
+    public static bool LeftHanded
+    {
+        get => Preferences.Default.Get("left_handed", false);
+        set { Preferences.Default.Set("left_handed", value); Raise(nameof(LeftHanded)); }
+    }
+
+    // ---- tuner -------------------------------------------------------
+
+    public static double A4Reference
+    {
+        get => Preferences.Default.Get("a4_reference", 440.0);
+        set { Preferences.Default.Set("a4_reference", value); Raise(nameof(A4Reference)); }
+    }
+
+    public static string DefaultTuning
+    {
+        get => Preferences.Default.Get("default_tuning", "standard");
+        set { Preferences.Default.Set("default_tuning", value); Raise(nameof(DefaultTuning)); }
+    }
+
+    // ---- recognition -------------------------------------------------
+
+    public static bool BeatSnap
+    {
+        get => Preferences.Default.Get("beat_snap", true);
+        set { Preferences.Default.Set("beat_snap", value); Raise(nameof(BeatSnap)); }
+    }
+
+    public static bool Expert
+    {
+        get => Preferences.Default.Get("expert_mode", false);
+        set { Preferences.Default.Set("expert_mode", value); Raise(nameof(Expert)); }
+    }
+}

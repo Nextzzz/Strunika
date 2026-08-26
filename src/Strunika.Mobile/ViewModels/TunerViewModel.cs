@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Strunika.Core.Analysis;
+using Strunika.Mobile.Localization;
 using Strunika.Mobile.Services;
 
 namespace Strunika.Mobile.ViewModels;
@@ -28,11 +29,17 @@ public partial class TunerViewModel : ObservableObject
     private string _lastNote = "";
     private DateTime _lastGoodAt = DateTime.MinValue;
 
+    /// <summary>Empty while nothing is detected — the hero label keeps its
+    /// height, so the layout does not jump when the first note lands.</summary>
     [ObservableProperty]
-    private string noteName = "—";
+    private string noteName = "";
+
+    /// <summary>"−6 ¢ · трохи нижче ♭" under the note.</summary>
+    [ObservableProperty]
+    private string centsText = "";
 
     [ObservableProperty]
-    private string hint = "Натисни «Слухати» і зіграй ноту";
+    private string hint = Loc.Get("Tuner_Hint_Idle");
 
     /// <summary>Needle offset in device units (bound to TranslationX).</summary>
     [ObservableProperty]
@@ -44,10 +51,21 @@ public partial class TunerViewModel : ObservableObject
     [ObservableProperty]
     private bool listening;
 
-    public TunerViewModel(IMicrophoneSource microphone)
+    private readonly Pro.IProGate _pro;
+
+    /// <summary>A4 reference is a Pro feature; the chip shows a lock until unlocked.</summary>
+    public bool A4Locked => !_pro.Has(Pro.Feature.A4Reference);
+
+    public string A4Text => $"A4 · {AppSettings.A4Reference:0} Hz";
+
+    public TunerViewModel(IMicrophoneSource microphone, Pro.IProGate pro)
     {
         _microphone = microphone;
+        _pro = pro;
+        _pro.Changed += (_, _) => OnPropertyChanged(nameof(A4Locked));
+        AppSettings.Changed += (_, key) => { if (key == nameof(AppSettings.A4Reference)) OnPropertyChanged(nameof(A4Text)); };
         _microphone.ChunkAvailable += OnChunk;
+        Loc.Instance.PropertyChanged += (_, _) => { if (!Listening) Hint = Loc.Get("Tuner_Hint_Idle"); };
     }
 
     [RelayCommand]
@@ -59,17 +77,17 @@ public partial class TunerViewModel : ObservableObject
             _timer?.Stop();
             Listening = false;
             Reset();
-            Hint = "Натисни «Слухати» і зіграй ноту";
+            Hint = Loc.Get("Tuner_Hint_Idle");
             return;
         }
 
         if (!await _microphone.StartAsync())
         {
-            Hint = "Нема доступу до мікрофона — дозволь у Налаштуваннях.";
+            Hint = Loc.Get("Tuner_NoMic");
             return;
         }
         Listening = true;
-        Hint = "";
+        Hint = Loc.Get("Tuner_Hint_Play");
         _timer ??= Application.Current!.Dispatcher.CreateTimer();
         _timer.Interval = TimeSpan.FromMilliseconds(80);
         _timer.Tick -= OnTick;
@@ -79,7 +97,8 @@ public partial class TunerViewModel : ObservableObject
 
     private void Reset()
     {
-        NoteName = "—";
+        NoteName = "";
+        CentsText = "";
         NeedleOffset = 0;
         InTune = false;
         _lastNote = "";
@@ -130,8 +149,14 @@ public partial class TunerViewModel : ObservableObject
         _lastNote = note;
         _lastGoodAt = DateTime.Now;
 
-        NoteName = note;
+        NoteName = name;
         NeedleOffset = Math.Clamp(_smoothedCents, -50, 50) * NeedlePixelsPerCent;
         InTune = Math.Abs(_smoothedCents) <= InTuneCents;
+        int rounded = (int)Math.Round(_smoothedCents);
+        string sign = rounded < 0 ? "−" : rounded > 0 ? "+" : "";
+        string verdict = InTune ? Loc.Get("Tuner_InTune")
+            : rounded < 0 ? Loc.Get("Tuner_Flat") + " ♭"
+            : Loc.Get("Tuner_Sharp") + " ♯";
+        CentsText = $"{sign}{Math.Abs(rounded)} ¢ · {verdict}";
     }
 }

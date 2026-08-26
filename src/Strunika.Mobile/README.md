@@ -9,13 +9,17 @@ recognition) lives in the shared, platform-neutral projects:
 
 Both are referenced directly; nothing Windows-specific leaks into them.
 
+Design system, product decisions and the Pro/free split: `.claude/skills/strunika-ui/SKILL.md`.
+Implementation plan (milestones M0–M8): `PLAN.md`. Mockups:
+https://claude.ai/code/artifact/776fc75b-7d00-4987-a13f-3d07d4954c22
+
 ## Model strategy (product decision, Aug 2026)
 
 | Where | Model | File | Why |
 |-------|-------|------|-----|
 | **Live play** | **base** | `btc_large_voca` | steadiest generalist for real-time strumming |
 | **Song analysis** | **self** | `btc_self` | best *legally clean* model (+0.6pp over base on a 808-song held-out set); trained on our own pseudo-labels + GuitarSet (CC-BY) + Billboard (CC0) |
-| mic/solo option | guitar2 | `btc_guitar2` | selectable in the live picker |
+| mic/solo option | guitar2 | `btc_guitar2` | selectable in the live picker (expert settings) |
 
 **Do NOT ship `btc_full`.** It is the strongest model (+2.3pp majmin, best
 major/minor accuracy) but was fine-tuned on the HookTheory dataset, which is
@@ -27,28 +31,34 @@ The `key prior` (diatonic second Viterbi pass, strength 0.5) is on by default
 inside `NeuralChordRecognizer` — it is the surgical lever for the residual
 major/minor confusion (measured: ensembles do NOT help, key prior does).
 
-## What exists
+## Structure (after M0)
 
-- **Тюнер** (`MainPage`) — YIN pitch, smoothed needle with hold, ±8-cent
-  green zone, Guitar-Tuna feel.
-- **Наживо** (`LivePage`) — DSP provisional guess (grey) + neural confirm
-  (big), model picker (base default), «Прості акорди» (triads, on) and
-  «Уточнювати» (same-root history revision) options.
-- `IMicrophoneSource` — 44100 Hz mono float stream:
-  `Platforms/iOS/IosMicrophoneSource` (AVAudioEngine + AVAudioConverter),
-  `Platforms/Windows/WindowsMicrophoneSource` (NAudio, dev head only).
-- `Services/ModelStore` — unpacks bundled ONNX models to the cache dir on
-  first use (ONNX needs real file paths, not asset streams).
+```
+App.xaml(.cs)        theme resources; first launch → WelcomePage, else RootPage
+Pages/               RootPage (4 tabs + PillTabBar), WelcomePage, PaywallSheet
+Views/               TunerView, LiveView, LibraryView, SettingsView (tab content)
+Controls/            PillTabBar, IconView + Icons (stroke icons drawn with Maui.Graphics),
+                     WaveMark (logo wave), Segmented, LockBadge
+ViewModels/          TunerViewModel, LiveViewModel, SettingsViewModel (CommunityToolkit.Mvvm)
+Services/            IMicrophoneSource (+ Platforms/*), ModelStore, AppSettings, Haptics, Motion
+Localization/        Loc (runtime language switch) + {loc:Str Key} markup; Resources/Strings/*.resx (en, uk)
+Theme/               Tokens (brand colours, source of truth) + {t:Theme Key} markup extension
+Pro/                 Feature, IProGate, DevProGate
+Resources/Fonts      Vollkorn SemiBold/Bold (OFL) as "Display"/"DisplayBold"; UI text = system font
+```
 
-## What's left (rough)
+Conventions that bit us on Windows (keep them):
 
-- **Пісня** page: file / recording input → `NeuralChordRecognizer`
-  (use **self** here) → chord timeline with a synced player, like the WPF
-  Song tab. `ChordTimeline.SnapToBeats` and `ChordLabels.Simplify/Transpose`
-  already exist in the shared projects.
-- Chord diagrams (fretboard shapes) for the shown chords.
-- Polish: blur/glass panels via `UIVisualEffectView` from platform code,
-  haptics (`HapticFeedback`), SF-symbol icons.
+- Themed colours: `{t:Theme TextSec}` / `IconView.ThemeKey` — never raw hex, and never
+  an `AppThemeBinding` object inside a ResourceDictionary (the XAML loader rejects it).
+- `Span` does not inherit `FontFamily` from the Label style — set it on the span.
+- Do not replace `Window.Page` at runtime (the WinUI window collapses); use
+  `Navigation.InsertPageBefore` + `PopAsync`, as WelcomePage does.
+- WinUI `ToggleSwitch` reserves ~154 px for captions; `MauiProgram` maps `MinWidth = 0`.
+- The dev window is pinned to the top of the screen (`App.CreateWindow`); a
+  window taller than the display looks like clipped layout.
+- `STRUNIKA_RESET=1` environment variable wipes preferences (re-test first launch).
+- Unhandled exceptions are written to `Documents\Strunika\logs\strunika-<date>.log`.
 
 ## Build & deploy (no Mac)
 

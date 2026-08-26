@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Views.TunerView"
+             x:DataType="vm:TunerViewModel">
+
+    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,*,Auto,Auto,Auto" RowSpacing="0">
+
+        <Label Grid.Row="0" Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Tuner}" VerticalOptions="End" />
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+            <Border Style="{StaticResource Chip}">
+                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                    <Label FontSize="14" Text="{loc:Str Tuner_Tuning}" VerticalOptions="Center" />
+                    <Label FontSize="14" Text="·" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <Label FontSize="14" Text="{loc:Str Tuner_Standard}" VerticalOptions="Center" />
+                    <controls:IconView Name="chevD" Size="14" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
+            <Grid>
+                <Border Style="{StaticResource Chip}">
+                    <Label FontSize="14" Text="{Binding A4Text}" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnA4Tapped" />
+                    </Border.GestureRecognizers>
+                </Border>
+                <controls:LockBadge IsLocked="{Binding A4Locked}" Margin="0,-6,-6,0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
+            </Grid>
+        </HorizontalStackLayout>
+
+        <VerticalStackLayout Grid.Row="2" VerticalOptions="Center" Spacing="2">
+            <HorizontalStackLayout Spacing="7" HorizontalOptions="Center" IsVisible="{Binding Listening}">
+                <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" />
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Tuner_Listening}" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <Label Style="{StaticResource ChordHero}" FontSize="150" Text="{Binding NoteName}" Margin="0,6,0,0" MinimumHeightRequest="170" />
+            <Label Style="{StaticResource Subhead}" FontSize="17" Text="{Binding CentsText}" HorizontalTextAlignment="Center" MinimumHeightRequest="24" />
+        </VerticalStackLayout>
+
+        <!-- Scale: 300 px track = ±50 cents; zone = ±8 cents; the needle slides by NeedleOffset (3 px per cent).
+             M1 replaces this with the "sagging string" indicator. -->
+        <Grid Grid.Row="3" WidthRequest="300" HeightRequest="70" HorizontalOptions="Center">
+            <BoxView WidthRequest="300" HeightRequest="2" Color="{t:Theme Separator}" VerticalOptions="Center" HorizontalOptions="Center" />
+            <BoxView WidthRequest="48" HeightRequest="16" Color="{t:Theme Glow}" CornerRadius="6" VerticalOptions="Center" HorizontalOptions="Center" />
+            <BoxView WidthRequest="2" HeightRequest="26" Color="{t:Theme Dim}" VerticalOptions="Center" HorizontalOptions="Center" />
+            <BoxView WidthRequest="6" HeightRequest="44" CornerRadius="3" Color="{t:Theme Fill}"
+                     VerticalOptions="Center" HorizontalOptions="Center" TranslationX="{Binding NeedleOffset}" />
+            <Label Text="♭" Style="{StaticResource Caption}" HorizontalOptions="Start" VerticalOptions="End" />
+            <Label Text="♯" Style="{StaticResource Caption}" HorizontalOptions="End" VerticalOptions="End" />
+        </Grid>
+
+        <Label Grid.Row="4" Style="{StaticResource Footnote}" Text="{Binding Hint}" HorizontalTextAlignment="Center" Margin="0,10,0,0" MinimumHeightRequest="20" />
+
+        <Button Grid.Row="5" Command="{Binding ToggleCommand}" Margin="0,16,0,0" Text="{loc:Str Common_Listen}">
+            <Button.Triggers>
+                <DataTrigger TargetType="Button" Binding="{Binding Listening}" Value="True">
+                    <Setter Property="Text" Value="{loc:Str Common_Stop}" />
+                    <Setter Property="BackgroundColor" Value="{t:Theme Surface2}" />
+                    <Setter Property="TextColor" Value="{t:Theme TextPri}" />
+                </DataTrigger>
+            </Button.Triggers>
+        </Button>
+    </Grid>
+</ContentView>

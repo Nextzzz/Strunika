@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.PaywallSheet"
+             ios:Page.UseSafeArea="True"
+             ios:Page.ModalPresentationStyle="FormSheet"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="24,16,24,28" RowDefinitions="Auto,*,Auto">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,44">
+            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="48" WidthRequest="220" HorizontalOptions="Start" />
+            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
+                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Spacing="14" Margin="0,12,0,0">
+                <Label Style="{StaticResource LargeTitle}" FontSize="32">
+                    <Label.FormattedText>
+                        <FormattedString>
+                            <Span Text="Strunika " FontFamily="Display" />
+                            <Span Text="Pro" FontFamily="Display" TextColor="{t:Theme AccentText}" />
+                        </FormattedString>
+                    </Label.FormattedText>
+                </Label>
+
+                <Border x:Name="FeatureCallout" StrokeShape="RoundRectangle 14" BackgroundColor="{t:Theme Surface2}" Padding="14,12" IsVisible="False">
+                    <VerticalStackLayout Spacing="2">
+                        <Label x:Name="FeatureName" Style="{StaticResource Headline}" />
+                        <Label Style="{StaticResource Footnote}" Text="{loc:Str Pro_Locked_Body}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Pro_All}" Margin="0,6,0,0" />
+                <VerticalStackLayout x:Name="FeatureList" Spacing="8" />
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,10,0,0">
+                    <Border StrokeShape="RoundRectangle 16" StrokeThickness="2" Stroke="{t:Theme Accent}" BackgroundColor="{t:Theme Surface1}" Padding="14,12">
+                        <VerticalStackLayout Spacing="2">
+                            <HorizontalStackLayout Spacing="8">
+                                <Label Style="{StaticResource Headline}" Text="{loc:Str Pro_Year}" />
+                                <Border StrokeShape="RoundRectangle 8" BackgroundColor="{t:Theme Fill}" Padding="6,1" StrokeThickness="0">
+                                    <Label Text="{loc:Str Pro_SaveYear}" FontSize="11" FontAttributes="Bold" TextColor="{t:Theme OnFill}" />
+                                </Border>
+                            </HorizontalStackLayout>
+                            <Label Style="{StaticResource Title2}" Text="—" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Column="1" StrokeShape="RoundRectangle 16" StrokeThickness="1" Stroke="{t:Theme Separator}" BackgroundColor="{t:Theme Surface1}" Padding="14,12">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Style="{StaticResource Headline}" Text="{loc:Str Pro_Month}" />
+                            <Label Style="{StaticResource Title2}" Text="—" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+                <Label Style="{StaticResource Caption}" Text="{loc:Str Pro_PriceSoon}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <VerticalStackLayout Grid.Row="2" Spacing="12" Margin="0,12,0,0">
+            <Button Text="{loc:Str Pro_Continue}" IsEnabled="False" />
+            <HorizontalStackLayout Spacing="18" HorizontalOptions="Center">
+                <Label Text="{loc:Str Pro_Restore}" Style="{StaticResource Footnote}" TextColor="{t:Theme AccentText}" FontAttributes="Bold" />
+                <Label Text="{loc:Str Pro_Redeem}" Style="{StaticResource Footnote}" TextColor="{t:Theme AccentText}" FontAttributes="Bold" />
+                <Label Text="{loc:Str Pro_Terms}" Style="{StaticResource Footnote}" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

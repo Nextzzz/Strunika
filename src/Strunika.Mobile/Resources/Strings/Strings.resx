@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="App_Name" xml:space="preserve"><value>Strunika</value></data>
+  <data name="Common_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Common_Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Common_Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="Common_Listen" xml:space="preserve"><value>Listen</value></data>
+  <data name="Common_Soon" xml:space="preserve"><value>Coming soon</value></data>
+
+  <data name="Tab_Tuner" xml:space="preserve"><value>Tuner</value></data>
+  <data name="Tab_Live" xml:space="preserve"><value>Live</value></data>
+  <data name="Tab_Songs" xml:space="preserve"><value>Songs</value></data>
+  <data name="Tab_Settings" xml:space="preserve"><value>Settings</value></data>
+
+  <data name="Welcome_Tagline" xml:space="preserve"><value>Tuner · Live chords · Chords from songs</value></data>
+  <data name="Welcome_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Welcome_Theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="Welcome_ChangeLater" xml:space="preserve"><value>You can change this any time in Settings</value></data>
+  <data name="Welcome_MicNote" xml:space="preserve"><value>We’ll ask for the microphone when you tap “Listen”</value></data>
+  <data name="Lang_Uk" xml:space="preserve"><value>Українська</value></data>
+  <data name="Lang_En" xml:space="preserve"><value>English</value></data>
+  <data name="Theme_System" xml:space="preserve"><value>System</value></data>
+  <data name="Theme_Dark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Theme_Light" xml:space="preserve"><value>Light</value></data>
+
+  <data name="Tuner_Listening" xml:space="preserve"><value>Listening</value></data>
+  <data name="Tuner_Hint_Idle" xml:space="preserve"><value>Tap “Listen” and play a note</value></data>
+  <data name="Tuner_Hint_Play" xml:space="preserve"><value>Play any string</value></data>
+  <data name="Tuner_NoMic" xml:space="preserve"><value>No microphone access — allow it in Settings.</value></data>
+  <data name="Tuner_Flat" xml:space="preserve"><value>slightly flat</value></data>
+  <data name="Tuner_Sharp" xml:space="preserve"><value>slightly sharp</value></data>
+  <data name="Tuner_InTune" xml:space="preserve"><value>in tune</value></data>
+  <data name="Tuner_Tuning" xml:space="preserve"><value>Tuning</value></data>
+  <data name="Tuner_Standard" xml:space="preserve"><value>Standard</value></data>
+  <data name="Tuner_AutoHint" xml:space="preserve"><value>Auto · tap a peg to lock a string</value></data>
+
+  <data name="Live_Idle" xml:space="preserve"><value>Tap “Listen” and play</value></data>
+  <data name="Live_Listening" xml:space="preserve"><value>Listening…</value></data>
+  <data name="Live_Stopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="Live_Unpacking" xml:space="preserve"><value>Unpacking model…</value></data>
+  <data name="Live_ModelMissing" xml:space="preserve"><value>Model not found</value></data>
+  <data name="Live_NoNeural" xml:space="preserve"><value>Listening (no neural net)</value></data>
+  <data name="Live_Ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="Live_Guess" xml:space="preserve"><value>guess</value></data>
+  <data name="Live_Mode" xml:space="preserve"><value>Mode</value></data>
+  <data name="Live_SimpleChords" xml:space="preserve"><value>Simple chords</value></data>
+  <data name="Live_Revise" xml:space="preserve"><value>Refine</value></data>
+  <data name="Live_Metronome" xml:space="preserve"><value>Metronome</value></data>
+  <data name="Live_History" xml:space="preserve"><value>History</value></data>
+  <data name="Model_Base" xml:space="preserve"><value>Base</value></data>
+  <data name="Model_Guitar" xml:space="preserve"><value>Guitar</value></data>
+
+  <data name="Library_Search" xml:space="preserve"><value>Search</value></data>
+  <data name="Library_All" xml:space="preserve"><value>All</value></data>
+  <data name="Library_Favourites" xml:space="preserve"><value>Favourites</value></data>
+  <data name="Library_Folders" xml:space="preserve"><value>Folders</value></data>
+  <data name="Library_Empty_Title" xml:space="preserve"><value>Add your first song</value></data>
+  <data name="Library_Empty_Body" xml:space="preserve"><value>A file, a recording or a YouTube link — Strunika will find the chords.</value></data>
+  <data name="Library_Add" xml:space="preserve"><value>Add song</value></data>
+
+  <data name="Settings_Appearance" xml:space="preserve"><value>Appearance</value></data>
+  <data name="Settings_Theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Settings_LeftHanded" xml:space="preserve"><value>Left-handed</value></data>
+  <data name="Settings_Tuner" xml:space="preserve"><value>Tuner</value></data>
+  <data name="Settings_A4" xml:space="preserve"><value>A4 reference</value></data>
+  <data name="Settings_DefaultTuning" xml:space="preserve"><value>Default tuning</value></data>
+  <data name="Settings_Recognition" xml:space="preserve"><value>Recognition</value></data>
+  <data name="Settings_BeatSnap" xml:space="preserve"><value>Snap to beats</value></data>
+  <data name="Settings_Expert" xml:space="preserve"><value>Expert settings</value></data>
+  <data name="Settings_DevPro" xml:space="preserve"><value>Pro override (dev)</value></data>
+  <data name="Settings_About" xml:space="preserve"><value>About</value></data>
+  <data name="Settings_Version" xml:space="preserve"><value>Version</value></data>
+  <data name="Settings_Privacy" xml:space="preserve"><value>Privacy &amp; licences</value></data>
+
+  <data name="Pro_Title" xml:space="preserve"><value>Strunika Pro</value></data>
+  <data name="Pro_Features" xml:space="preserve"><value>Tunings · A4 · capo &amp; transpose · speed · A–B loop · Chord Editor · folders · export · unlimited songs</value></data>
+  <data name="Pro_LearnMore" xml:space="preserve"><value>Learn more</value></data>
+  <data name="Pro_Restore" xml:space="preserve"><value>Restore purchases</value></data>
+  <data name="Pro_Redeem" xml:space="preserve"><value>Redeem code</value></data>
+  <data name="Pro_Year" xml:space="preserve"><value>Year</value></data>
+  <data name="Pro_Month" xml:space="preserve"><value>Month</value></data>
+  <data name="Pro_SaveYear" xml:space="preserve"><value>−40 %</value></data>
+  <data name="Pro_Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="Pro_Terms" xml:space="preserve"><value>Terms</value></data>
+  <data name="Pro_Locked_Body" xml:space="preserve"><value>This is part of Strunika Pro.</value></data>
+  <data name="Pro_All" xml:space="preserve"><value>All Pro features</value></data>
+  <data name="Pro_PriceSoon" xml:space="preserve"><value>Prices appear once the App Store is connected</value></data>
+
+  <data name="Feature_AltTunings" xml:space="preserve"><value>Alternative tunings</value></data>
+  <data name="Feature_A4Reference" xml:space="preserve"><value>A4 reference pitch</value></data>
+  <data name="Feature_TransposeCapo" xml:space="preserve"><value>Transpose &amp; capo</value></data>
+  <data name="Feature_Speed" xml:space="preserve"><value>Playback speed</value></data>
+  <data name="Feature_ABLoop" xml:space="preserve"><value>A–B loop</value></data>
+  <data name="Feature_Export" xml:space="preserve"><value>Export</value></data>
+  <data name="Feature_ChordEditor" xml:space="preserve"><value>Chord Editor</value></data>
+  <data name="Feature_Folders" xml:space="preserve"><value>Folders &amp; setlists</value></data>
+  <data name="Feature_FullChordVocabulary" xml:space="preserve"><value>Full chord vocabulary</value></data>
+  <data name="Feature_UnlimitedSongs" xml:space="preserve"><value>Unlimited songs</value></data>
+</root>

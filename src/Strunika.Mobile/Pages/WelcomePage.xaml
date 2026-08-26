@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.WelcomePage"
+             ios:Page.UseSafeArea="True"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="24,40,24,32" RowDefinitions="Auto,*,Auto,*,Auto" RowSpacing="0">
+
+        <VerticalStackLayout Grid.Row="0" Spacing="6" HorizontalOptions="Center">
+            <Image Source="strunika_mark.png" HeightRequest="138" WidthRequest="250" Aspect="AspectFit" HorizontalOptions="Center" />
+            <Label FontFamily="Display" FontSize="46" Text="Strunika" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
+            <Label Style="{StaticResource Subhead}" Text="{loc:Str Welcome_Tagline}" HorizontalTextAlignment="Center" Margin="0,4,0,0" />
+            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" WidthRequest="342" HeightRequest="64" HorizontalOptions="Center" Margin="0,22,0,0" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="2" Spacing="22">
+            <VerticalStackLayout Spacing="10">
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Welcome_Language}" />
+                <controls:Segmented x:Name="LanguagePicker"
+                                    TrackColor="{t:Theme Surface1}" SeparatorColor="{t:Theme Separator}"
+                                    SelectedColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}"
+                                    InactiveTextColor="{t:Theme TextSec}" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Spacing="10">
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Welcome_Theme}" />
+                <controls:Segmented x:Name="ThemePicker"
+                                    TrackColor="{t:Theme Surface1}" SeparatorColor="{t:Theme Separator}"
+                                    SelectedColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}"
+                                    InactiveTextColor="{t:Theme TextSec}" />
+            </VerticalStackLayout>
+            <Label Style="{StaticResource Footnote}" Text="{loc:Str Welcome_ChangeLater}" HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="4" Spacing="14">
+            <Button Text="{loc:Str Common_Start}" HeightRequest="54" CornerRadius="15" Clicked="OnStartClicked">
+                <Button.Shadow>
+                    <Shadow Brush="{t:Theme Glow, Brush=True}" Radius="24" Opacity="0.8" Offset="0,8" />
+                </Button.Shadow>
+            </Button>
+            <Label Style="{StaticResource Caption}" Text="{loc:Str Welcome_MicNote}" HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

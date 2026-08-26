@@ -1,0 +1,209 @@
+# Strunika.Mobile — план реалізації v1
+
+Дизайн і продуктові рішення: `.claude/skills/strunika-ui/SKILL.md` (§5 Decisions log) і макети
+https://claude.ai/code/artifact/776fc75b-7d00-4987-a13f-3d07d4954c22. Цей файл — *як* це збудувати
+в MAUI, у якому порядку, і що вважати готовим. Оновлюйте його разом зі скілом.
+
+## 0. Вихідна точка (перевірено 2026-08-26)
+
+- Windows-голова збирається: `dotnet build -f net9.0-windows10.0.19041.0` у `src/Strunika.Mobile`
+  (SDK 9.0.317 через `global.json`; встановлені воркоуди `maui-ios`, `maui-windows`).
+- Є: `TunerViewModel` (YIN + згладжена стрілка, hold), `LiveViewModel` (DSP-здогадка +
+  нейронне підтвердження, історія), `IMicrophoneSource` (iOS `AVAudioEngine`, Windows NAudio),
+  `ModelStore` (розпаковка ONNX у кеш), Shell на 2 вкладки, стандартні кольори/шрифти шаблону.
+- Спільні API, які використовуємо без змін:
+  `PitchDetector.Detect`, `Notes.Describe`, `StreamingChordDetector`, `SlidingNeuralChordDetector`
+  (`AddSamples` + `Tick` + `ConfirmedChanged`), `NeuralChordRecognizer.Recognize(samples22050)`,
+  `HalfbandDecimator.Decimate` (44.1k→22.05k), `OnsetDetector`/`TempoEstimator`/`BeatTracker`,
+  `ChordTimeline.SnapToBeats`, `ChordLabels.Pretty/Simplify/Transpose`, `KeyPrior` (увімкнений
+  усередині рекогнайзера). Еталон конвеєра пісні — `Strunika.App/ViewModels/SongViewModel.cs`
+  (рядки ~470–510).
+- Чого **немає для iOS**: декодування mp3/m4a (NAudio — лише Windows), плеєр, YouTube без yt-dlp,
+  StoreKit, хаптика/blur, SQLite, експорт.
+
+## 1. Архітектура
+
+```
+Strunika.Mobile/
+  App.xaml(.cs)            ресурси тем, запуск: Welcome або Root
+  RootPage.xaml            4 вкладки як ContentView + PillTabBar-оверлей (Shell TabBar не використовуємо)
+  Pages/                   WelcomePage, SongPage, EditorPage, PaywallSheet, AddSongSheet, TuningSheet…
+  Views/                   TunerView, LiveView, LibraryView, SettingsView (вміст вкладок)
+  Controls/                PillTabBar, TunerString, ConfidenceRing, ChordHero, ChordDiagram,
+                           StringTimeline, WaveMark (логотип-хвиля), LockBadge, Segmented
+  ViewModels/              по одному на екран; CommunityToolkit.Mvvm
+  Models/                  Song, ChordSegmentDto, Take, Tuning, ChordShape
+  Services/                інтерфейси + Platforms/* реалізації (нижче)
+  Data/                    SongRepository (sqlite-net-pcl), міграції
+  Pro/                     Feature, IProGate, DevProGate, StoreProGate, FreeQuota
+  Resources/Styles/        Colors.xaml (токени зі скіла §1), Styles.xaml, Typography.xaml
+  Resources/Strings/       Strings.resx (en), Strings.uk.resx
+  Resources/Fonts/         дисплейна антиква (OFL) + SF за замовчуванням (системний)
+  Resources/Raw/           models/*.onnx, chords/shapes.json
+```
+
+Інтерфейси сервісів (усі — DI-синглтони, реалізації під `Platforms/iOS` і `Platforms/Windows`):
+
+| Інтерфейс | Що робить | iOS | Windows-голова |
+|---|---|---|---|
+| `IMicrophoneSource` | є | AVAudioEngine | NAudio |
+| `IAudioDecoder` | файл → `float[]` mono 44.1k | `AVAssetReader` + `AVAudioConverter` | NAudio (`AudioLoader.LoadMono`) |
+| `IAudioPlayer` | Load/Play/Pause/Seek/Rate/Position-події | `AVPlayer` (rate зі збереженням висоти) | NAudio `AudioPlayer` (+ SoundTouch для швидкості або без швидкості на голові) |
+| `IYouTubeSource` | URL → тимчасовий аудіофайл (ніколи не експортується) + метадані | YoutubeExplode | YoutubeExplode (навмисно без yt-dlp — як на iOS) |
+| `IMetronome` | клік за темпом, події «клік у момент t» для маскування | AVAudioEngine player node | NAudio |
+| `IHaptics` | Click/Success/Selection | `UIImpactFeedbackGenerator` | no-op |
+| `IProGate` | `Has(Feature)`, `Changed` | StoreProGate (StoreKit) ∨ DevProGate | DevProGate (завжди Pro) |
+| `ISongRepository` | CRUD пісень/сегментів/папок | sqlite-net-pcl | те саме |
+| `IExporter` | TXT / PDF / XLSX / share | PDF: `UIGraphicsPDFRenderer`; XLSX: MiniExcel | PDF пропускаємо, XLSX/TXT ті самі |
+| `IAppSettings` | Preferences-обгортка (тема, мова, лівша, A4, стрій…) | Preferences | Preferences |
+
+Навігація: `NavigationPage(RootPage)` з прихованим баром. `RootPage` тримає 4 `ContentView`
+живими (тюнер і наживо не втрачають стан) і перемикає їх за `PillTabBar.SelectedIndex`;
+`SongPage`/`EditorPage`/аркуші — `PushAsync`/`PushModalAsync`. Shell прибираємо — овальний
+селектор із pan-жестом і анімацією натиску простіше зробити власним контролом, ніж
+переписувати нативний `UITabBar`.
+
+NuGet, які додаємо: `CommunityToolkit.Maui` (Popup для аркушів, `IconTintColorBehavior`,
+`MediaElement` не використовуємо), `sqlite-net-pcl` + `SQLitePCLRaw.bundle_green`,
+`YoutubeExplode`, `MiniExcel`, `Plugin.InAppBilling` (StoreKit; альтернатива — власний
+біндинг StoreKit 2, якщо плагін не покриє offer codes).
+
+## 2. Етапи
+
+Порядок обраний так, щоб спільні контроли (таймлайн, акорд-герой, діаграма) з'явились до
+екранів, які їх перевикористовують, а перевірка на Windows-голові була можлива після кожного етапу.
+
+### M0 — Фундамент (≈2 дні) — ✅ виконано 2026-08-26 на Windows-голові
+Зроблено: токени (`Theme/Tokens.cs` + `{t:Theme}`), стилі, Vollkorn, uk/en `.resx` + `{loc:Str}` з живим перемиканням, `RootPage` + `PillTabBar` (drag/snap/bounce), `WelcomePage`, `SettingsView`, `IProGate`/`DevProGate`/`LockBadge`/`PaywallSheet`, іконки через `IconView`, App Icon full-bleed, splash. Не перевірено на iPhone (немає Apple Developer). Пастки Windows описані в README.
+- `Colors.xaml`: токени зі скіла (Bg/Surface1/Surface2/Separator/TextPri/TextSec/Dim/Accent/
+  AccentText/Fill/OnFill/Glow) для Dark і Light через `AppThemeBinding`; `Styles.xaml` —
+  Label-стилі (LargeTitle, Title, Body, Footnote), Button (primary gold / secondary surface),
+  Chip, Card, Switch, Segmented. Жодного сирого hex у сторінках.
+- Шрифти: дисплейна антиква (OFL, з макетів Young Serif; замінюється однією константою)
+  для акордів/нот/великих заголовків; решта — системний.
+- Локалізація: `Strings.resx` + `Strings.uk.resx`, `LocalizationManager` з подією зміни мови,
+  markup-розширення `{loc:Str Key}`; усі рядки з `MainPage`/`LivePage` переносяться в ресурси.
+- `RootPage` + `PillTabBar` (GraphicsView + `PanGestureRecognizer`): 4 вкладки, овальний
+  селектор, перетягування зі снапом (`SpringOut` ~300 мс), натиск → scale 1.04 (120 мс),
+  відпускання → пружинно назад до 1.0 з легким недольотом 0.99 (`SpringOut` ~350 мс), Reduce Motion → без перельоту, хаптика на снапі.
+- `WelcomePage` (перший запуск, прапорець у Preferences): логотип-хвиля (`WaveMark`),
+  мова з прапорцями (SVG), тема з іконками ◐ ☾ ☀, «Почати» → тюнер.
+- `SettingsView` (скелет усіх груп з макета) + `IAppSettings`.
+- `Pro/`: `Feature` enum (AltTunings, A4Reference, TransposeCapo, Speed, ABLoop, Export,
+  ChordEditor, Folders, FullChordVocabulary, UnlimitedSongs), `IProGate`, `DevProGate`
+  (прапорець в «Експертних», у Windows-голові завжди true), `LockBadge` контрол, `PaywallSheet`
+  (компактний + повний, ціни поки заглушки з ресурсів — StoreKit у M6).
+- Іконки: SVG у `Resources/Images` (MauiImage) + `IconTintColorBehavior`; App Icon —
+  full-bleed варіант `strunika_guitar_bg.svg` без скруглених кутів; splash з тим самим тлом.
+- ✅ Готово, коли: Windows-голова показує Welcome → Root з 4 вкладками, таб-бар тягнеться
+  і пружинить, тема/мова перемикаються з Налаштувань, замочки відкривають paywall.
+
+### M1 — Тюнер (≈2 дні)
+- Модель строїв (`Tuning`: назва, струни з MIDI-нотами): Standard (free), Drop D, Half-step,
+  Full-step, DADGAD, Open G, Open D, Ukulele, Bass (🔒).
+- `TunerViewModel`: авто-визначення струни (найближча струна обраного строю), ручна
+  фіксація тапом по кілочку, A4 430–450 (🔒, зберігається), відхилення в центах відносно
+  цільової струни; існуючі згладжування/hold зберігаються.
+- Згладжування: поточний YIN «трясе» (відгук користувача) — медіанний фільтр по 3–5 вимірах + EMA + обмеження швидкості руху струни (slew), hold на затуханні.
+- `TunerString` (GraphicsView, `Invalidate` з таймера 60 Гц): струна, що провисає на
+  `cents`, зона ±8 ¢, бусина; у строї — випрямляється, спалахує золотом, `IHaptics.Success`
+  один раз на «вхід у стрій»; Reduce Motion — без спалаху.
+- Ряд кілочків (E₂ A D G B E₄ — цифри лише при повторюваних назвах), аркуш вибору строю.
+- ✅ Windows-голова: реальна гітара/YouTube-тон у мікрофон — струна визначається сама, фіксація працює.
+
+### M2 — Бібліотека пісень + аналіз (≈3 дні)
+- SQLite: `Song` (id, title, artist, source(File/Record/YouTube), sourceRef, thumbnailPath,
+  durationSec, key, bpm, createdAt, favourite, folderId, edited), `SongSegment` (songId, start,
+  end, label, bass?) — або JSON-колонка сегментів; `Folder` (🔒); `Take` для «Наживо».
+- `AnalysisService`: черга завдань з прогресом і скасуванням (`IProgress<double>`,
+  `CancellationToken`): decode 44.1k → `HalfbandDecimator` → `NeuralChordRecognizer(self,
+  OverlapWindows=true).Recognize` → `ChordLabels.Pretty` → onset/tempo/beats →
+  `SnapToBeats` → збереження. На фоновому потоці; ONNX-сесія кешується на модель.
+- `FreeQuota`: 20 пісень назавжди + 1/день (локальна дата), у `SecureStorage`
+  (Keychain); повторний аналіз тієї самої пісні не рахується; вже проаналізоване не блокується.
+- `LibraryView`: картки (мініатюра/гліф джерела, назва, виконавець, тональність, темп,
+  тривалість, зірочка, «змінено»), картка в процесі аналізу з прогресом і скасуванням, пошук,
+  сортування, фільтри Усі/Обрані/Папки(🔒), свайп-видалення, порожній стан.
+- `AddSongSheet`: Файл (FilePicker: mp3/m4a/wav), Запис (мікрофон → m4a/wav в AppData, хвиля
+  й таймер), YouTube (поле URL, автопідстановка з буфера, метадані й мініатюра через
+  YoutubeExplode; graceful «YouTube тимчасово недоступний»).
+- ✅ Windows-голова: файл і YouTube-посилання аналізуються, з'являються в бібліотеці, ліміт рахується.
+
+### M3 — Екран пісні (≈3 дні)
+- `ChordHero` (спільний з Наживо): великий акорд антиквою + `ChordDiagram`.
+- `ChordDiagram`: `Resources/Raw/chords/shapes.json` (24 тризвуки + 7/m7/maj7/sus2/sus4/dim,
+  2–4 позиції), капо-усвідомлений вибір форми, дзеркало для лівші, тап → альтернативні позиції.
+- `StringTimeline` (GraphicsView): кеш піків хвилі, бусини сегментів пропорційно тривалості,
+  бітова сітка, нерухомий курсор по центру; pan → скраб (без звуку, `IAudioPlayer.Pause` +
+  `Seek` на відпускання → `Play`), тап по бусині → seek; інерція не потрібна.
+- **Наступний акорд**: поруч із поточним показуємо наступний акорд і його діаграму (менші, приглушені); коли він настає — анімація переходу в позицію героя (~250 мс), наступний займає слот прев'ю. Те саме при відтворенні дубля на «Наживо».
+- Транспорт: play/pause, ±5 с, A–B (🔒), швидкість 0.5–1.25 (🔒; iOS `AVPlayer.Rate` з
+  `AudioTimePitchAlgorithm.TimeDomain`), «клік у темпі пісні» (`IMetronome` за bpm і фазою
+  бітів), прості акорди, транспонування/капо (🔒, `ChordLabels.Transpose`, діаграма за капо).
+- YouTube: `WebView` з IFrame API (згорнута смужка → розгортається), JS-міст: `currentTime`
+  кожні 100 мс, `seekTo`, `playbackRate`; в «Експертних» — відтворення аудіопотоку через `IAudioPlayer`.
+- ✅ Windows-голова: файл грає синхронно з таймлайном, скраб/тап працюють, діаграми правильні.
+
+### M4 — «Наживо» як запис (≈3 дні)
+- `TakeRecorder`: мікрофонні чанки → кільцевий буфер + файл дубля (wav у AppData; дубль
+  зберігається в бібліотеку як джерело «Запис» за бажанням користувача).
+- Сегменти з часом: підтвердження `SlidingNeuralChordDetector` штампуються позицією в семплах
+  (не `DateTime`), DSP-здогадка — тільки для героя.
+- `LiveView` = `ChordHero` (менший, кільце впевненості з `StreamingChordDetector.Confidence`)
+  + той самий `StringTimeline` у режимі «запис»: курсор = «зараз», праворуч порожньо; pan/тап
+  ставлять прослуховування на паузу, відпускання грає дубль з цієї точки; «Слухати» продовжує
+  запис новим дублем. Режими розпізнавання — лише за прапорцем «Експертні».
+- «Прості акорди» увімкнено; вимкнення — 🔒 `FullChordVocabulary`.
+- Метроном: `IMetronome` + маскування кадрів кліку в детекторах (невелика зміна в Core/Neural:
+  `MuteRange(sampleStart, sampleEnd)` перед `AddSamples`), підказка про навушники.
+- ✅ Windows-голова: сесія записується, після стопу можна відмотати і переслухати з акордами.
+
+### M5 — Chord Editor (≈4 дні)
+- `EditorPage` (push зі сторінки пісні або дубля): картка сегмента, undo/redo (стек команд:
+  Relabel, MoveBoundary, Split, Merge, Insert, Delete, NudgeBeat), збільшений `StringTimeline`
+  у режимі редагування: вибір сегмента, ручки країв з прилипанням до бітів (утримання — вільно),
+  ряди корінь · тип · бас, дії, луп сегмента (`IAudioPlayer` A–B на межах сегмента).
+- Лічильник «безкоштовно 3 пісні» (`SecureStorage`, за songId), далі 🔒 `ChordEditor`;
+  збереження ставить `edited=true`, повторний аналіз питає перед перезаписом; експорт бере правлені акорди.
+- ✅ Windows-голова: цикл «змінити акорд → пересунути межу → undo → зберегти → знову відкрити».
+
+### M6 — Pro і Store (≈2 дні; потребує Apple Developer)
+- Продукти: `pro.monthly`, `pro.yearly` (auto-renewable, без пробного періоду), Offer Codes.
+- `StoreProGate` (`Plugin.InAppBilling` або власний StoreKit 2 біндинг): купівля, відновлення,
+  статус підписки при старті, `PresentCodeRedemptionSheet` для кнопки «Ввести код».
+- Paywall отримує локалізовані ціни зі Store; DevProGate вимикається в Release (крім TestFlight).
+- ✅ Sandbox-покупка на пристрої відкриває всі 🔒.
+
+### M7 — Експорт (≈1–2 дні)
+- TXT (акорди по тактах), XLSX (MiniExcel: початок, кінець, такт, акорд), PDF (iOS
+  `UIGraphicsPDFRenderer`; на Windows-голові — пропуск з повідомленням), Share Sheet.
+
+### M8 — iOS-полірування і реліз (постійно, фінал ≈3 дні)
+- Blur-панелі через `UIVisualEffectView` (аркуші, плаваючий таб-бар) з fallback Surface1@92%.
+- Хаптика на ключових подіях; Reduce Motion; Dynamic Type; портрет; `UIDeviceFamily=1`;
+  iOS 16+; App Icon full-bleed; Launch Screen; Privacy manifest (мікрофон, без збору даних).
+- Продуктивність: заміри аналізу 4-хв пісні на iPhone; `GraphicsView` без алокацій у `Draw`.
+- Пайплайн: GitHub Actions macOS → TestFlight (для друзів і релізу); Hot Restart — для щоденних хотфіксів.
+
+## 3. Ризики й що перевірити першим на айфоні
+
+1. **ONNX Runtime + Hot Restart.** `Microsoft.ML.OnnxRuntime` тягне нативний xcframework;
+   Hot Restart історично не підтримує нативні статичні бібліотеки/фреймворки з NuGet. Перший
+   тест на пристрої — саме запуск моделі. Якщо не піде — збірка через macOS CI (TestFlight)
+   стає основним шляхом на пристрій.
+2. **Час аналізу** на iPhone (BTC + CQT на 22.05k): треба заміряти; можливо, потрібен
+   `OverlapWindows=false` для довгих треків або прогрес по вікнах.
+3. **YouTube**: YoutubeExplode ламається періодично — оновлення пакета + graceful-стан;
+   у Store не заявляємо «завантаження».
+4. **Швидкість відтворення на Windows-голові**: NAudio без time-stretch; або SoundTouch.Net,
+   або тестувати швидкість лише на iOS.
+5. **Маскування кліку метронома** потребує маленького API в `StreamingChordDetector`/
+   `SlidingNeuralChordDetector` — узгодити з десктопом (той самий Core).
+6. **StoreKit через плагін** може не покривати offer codes — тоді тонкий власний біндинг.
+
+## 4. Definition of Done для v1
+
+Усі екрани з макетів працюють на Windows-голові та iPhone у темній і світлій темі, uk/en;
+безкоштовний шлях: тюнер (Standard), наживо, 20 пісень + 1/день, прості акорди, метроном,
+3 пісні в редакторі; Pro відкриває решту; жодних сторонніх SDK аналітики; TestFlight-збірка
+доступна друзям.

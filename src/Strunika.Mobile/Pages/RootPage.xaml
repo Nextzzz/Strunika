@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:views="clr-namespace:Strunika.Mobile.Views"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.RootPage"
+             ios:Page.UseSafeArea="True"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}">
+        <views:TunerView x:Name="Tuner" />
+        <views:LiveView x:Name="Live" IsVisible="False" />
+        <views:LibraryView x:Name="Library" IsVisible="False" />
+        <views:SettingsView x:Name="Settings" IsVisible="False" />
+
+        <Border x:Name="BottomShade" VerticalOptions="End" HeightRequest="100" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+
+        <controls:PillTabBar x:Name="TabBar"
+                             VerticalOptions="End"
+                             Margin="14,0,14,22"
+                             HeightRequest="66"
+                             BarColor="{t:Theme Surface1}"
+                             SeparatorColor="{t:Theme Separator}"
+                             SelectorColor="{t:Theme Fill}"
+                             OnSelectorColor="{t:Theme OnFill}"
+                             InactiveColor="{t:Theme TextSec}"
+                             GlowColor="{t:Theme Glow}"
+                             Selected="OnTabSelected" />
+    </Grid>
+</ContentPage>
