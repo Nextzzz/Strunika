@@ -39,16 +39,19 @@ public partial class LiveViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool reviseHistory = true;
 
-    /// <summary>Which bundled model confirms chords; switchable live.</summary>
-    public ObservableCollection<string> LiveModels { get; } = new() { "Гітарна", "Базова" };
+    /// <summary>Which bundled model confirms chords; switchable live.
+    /// DEFAULT = Базова for live play (product decision, Aug 2026):
+    /// the base generalist is the steadiest for real-time strumming.
+    /// Guitar2 stays selectable for solo/mic experiments.</summary>
+    public ObservableCollection<string> LiveModels { get; } = new() { "Базова", "Гітарна" };
 
     [ObservableProperty]
-    private string selectedLiveModel = "Гітарна";
+    private string selectedLiveModel = "Базова";
 
     private static readonly Dictionary<string, string> ModelFiles = new()
     {
-        ["Гітарна"] = "btc_guitar2",
         ["Базова"] = "btc_large_voca",
+        ["Гітарна"] = "btc_guitar2",
     };
 
     partial void OnSelectedLiveModelChanged(string value)

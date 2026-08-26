@@ -34,10 +34,17 @@
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 
 		<!-- Neural models travel as raw assets; base stays for A/B, as on desktop. -->
-		<MauiAsset Include="..\..\ml\models\btc_guitar2.onnx" LogicalName="models/btc_guitar2.onnx" />
-		<MauiAsset Include="..\..\ml\models\btc_guitar2.json" LogicalName="models/btc_guitar2.json" />
+		<!-- Model roster (see README.md):
+		     btc_large_voca = base — LIVE play default;
+		     btc_self       = self-trained (legally clean) — SONG analysis default;
+		     btc_guitar2    = mic/solo option, selectable in live.
+		     btc_full (HookTheory) is deliberately NOT bundled — NC licence. -->
 		<MauiAsset Include="..\..\ml\models\btc_large_voca.onnx" LogicalName="models/btc_large_voca.onnx" />
 		<MauiAsset Include="..\..\ml\models\btc_large_voca.json" LogicalName="models/btc_large_voca.json" />
+		<MauiAsset Include="..\..\ml\models\btc_self.onnx" LogicalName="models/btc_self.onnx" />
+		<MauiAsset Include="..\..\ml\models\btc_self.json" LogicalName="models/btc_self.json" />
+		<MauiAsset Include="..\..\ml\models\btc_guitar2.onnx" LogicalName="models/btc_guitar2.onnx" />
+		<MauiAsset Include="..\..\ml\models\btc_guitar2.json" LogicalName="models/btc_guitar2.json" />
 	</ItemGroup>
 
 	<ItemGroup>
