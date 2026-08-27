@@ -150,13 +150,5 @@ public partial class LibraryView : ContentView
     private static Task ShowMessageAsync(string text) =>
         Host?.DisplayAlert(Loc.Get("Tab_Songs"), text, "OK") ?? Task.CompletedTask;
 
-    /// <summary>Song page arrives in M3; until then a summary proves the analysis.</summary>
-    private static async Task OpenAsync(SongItem item)
-    {
-        if (Host == null) return;
-        var song = item.Song;
-        var chords = song.Segments.Select(s => s.Label).Where(l => l != "—").Distinct().Take(12);
-        var body = $"{song.Key ?? "?"} · ♩ {song.Bpm:0} · {SongItem.Duration(song.DurationSec)}\n{song.Segments.Count} segments\n{string.Join("  ", chords)}\n\n{Loc.Get("Song_Soon")}";
-        await Host.DisplayAlert(song.Title, body, "OK");
-    }
+    private static Task OpenAsync(SongItem item) => SongPage.OpenAsync(item.Song);
 }

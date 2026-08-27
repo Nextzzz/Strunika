@@ -15,11 +15,12 @@
 	<array>
 		<string>arm64</string>
 	</array>
+	<!-- iPhone: portrait only (v1 decision, 2026-08-27) - every screen is laid out
+	     for a tall viewport. iPad keeps all orientations; its landscape layouts
+	     land in M8. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

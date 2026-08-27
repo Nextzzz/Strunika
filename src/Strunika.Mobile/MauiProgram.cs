@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Maui.Platform;
 using Microsoft.Maui.LifecycleEvents;
+using Microsoft.Maui.Platform;
+
 using Strunika.Mobile.Pages;
 using Strunika.Mobile.Pro;
 using Strunika.Mobile.Services;
@@ -32,6 +33,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMicrophoneSource, Platforms.iOS.IosMicrophoneSource>();
         builder.Services.AddSingleton<IAudioDecoder, Platforms.iOS.IosAudioDecoder>();
         builder.Services.AddSingleton<ISoundPlayer, Platforms.iOS.IosSoundPlayer>();
+        builder.Services.AddTransient<IAudioPlayer, Platforms.iOS.IosAudioPlayer>();
+        builder.Services.AddSingleton<IClickPlayer, Platforms.iOS.IosClickPlayer>();
         // UISwitch's off track is a faint grey that vanishes on the warm surfaces:
         // paint it with the Separator token (rounded background under the track).
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("OffTrack", (handler, _) =>
@@ -50,6 +53,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMicrophoneSource, Platforms.Windows.WindowsMicrophoneSource>();
         builder.Services.AddSingleton<IAudioDecoder, Platforms.Windows.WindowsAudioDecoder>();
         builder.Services.AddSingleton<ISoundPlayer, Platforms.Windows.WindowsSoundPlayer>();
+        builder.Services.AddTransient<IAudioPlayer, Platforms.Windows.WindowsAudioPlayer>();
+        builder.Services.AddSingleton<IClickPlayer, Platforms.Windows.WindowsClickPlayer>();
+        // The YouTube embed is driven programmatically: WebView2 must allow play() without a gesture.
+        Environment.SetEnvironmentVariable("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--autoplay-policy=no-user-gesture-required");
         // No Mica/acrylic backdrop: it bleeds a blurred desktop through any
         // transparent pixels (canvas corners, fades) on the dev head.
         builder.ConfigureLifecycleEvents(events => events.AddWindows(w => w.OnWindowCreated(window =>

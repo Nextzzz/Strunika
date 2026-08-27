@@ -8,7 +8,7 @@
              x:Class="Strunika.Mobile.Views.TunerView"
              x:DataType="vm:TunerViewModel">
 
-    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,Auto,*,120,Auto,Auto" RowSpacing="0">
+    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,Auto,*,120,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
 
         <Grid Grid.Row="0">
             <HorizontalStackLayout Spacing="0" VerticalOptions="End">
@@ -23,7 +23,7 @@
                     <Label FontSize="14" Text="{loc:Str Tuner_Tuning}" VerticalOptions="Center" />
                     <Label FontSize="14" Text="·" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
                     <Label FontSize="14" Text="{Binding TuningName}" VerticalOptions="Center" />
-                    <controls:IconView Name="chevD" Size="14" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <controls:IconView Name="chevD" Size="{t:Size 14}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnTuningTapped" />
@@ -42,10 +42,10 @@
 
         <!-- Hero: note + points while listening, an invitation while idle. -->
         <!-- "Start again": under the tuning selector (user request 2026-08-27), big enough to hit. -->
-        <Border Grid.Row="2" Style="{StaticResource Chip}" HeightRequest="36" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}"
+        <Border Grid.Row="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 36}" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}"
             HorizontalOptions="Start" Margin="0,10,0,0" IsVisible="{Binding ShowStartAgainChip}">
             <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                <controls:IconView Name="undo" Size="16" Color="{t:Theme OnFill}" VerticalOptions="Center" />
+                <controls:IconView Name="undo" Size="{t:Size 16}" Color="{t:Theme OnFill}" VerticalOptions="Center" />
                 <Label FontSize="14" FontAttributes="Bold" Text="{loc:Str Tuner_StartAgain}" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
             </HorizontalStackLayout>
             <Border.GestureRecognizers>
@@ -56,12 +56,12 @@
         <Grid Grid.Row="3">
             <VerticalStackLayout VerticalOptions="Center" Spacing="0" IsVisible="{Binding Listening}">
                 <HorizontalStackLayout Spacing="7" HorizontalOptions="Center">
-                    <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" />
+                    <BoxView WidthRequest="{t:Size 8}" HeightRequest="{t:Size 8}" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" />
                     <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Tuner_Listening}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
-                <Label Style="{StaticResource ChordHero}" FontSize="140" Text="{Binding NoteName}" Margin="0,4,0,0" MinimumHeightRequest="160" />
-                <Label Text="{Binding PointsText}" FontSize="52" FontAttributes="Bold" HorizontalTextAlignment="Center"
-                       TextColor="{t:Theme TextPri}" MinimumHeightRequest="64" FontAutoScalingEnabled="False">
+                <Label Style="{StaticResource ChordHero}" FontSize="{t:Size 140, Hero=True}" Text="{Binding NoteName}" Margin="0,4,0,0" MinimumHeightRequest="{t:Size 160, Min=44}" />
+                <Label Text="{Binding PointsText}" FontSize="{t:Size 52, Hero=True}" FontAttributes="Bold" HorizontalTextAlignment="Center"
+                       TextColor="{t:Theme TextPri}" MinimumHeightRequest="{t:Size 64, Min=44}" FontAutoScalingEnabled="False">
                     <Label.Triggers>
                         <DataTrigger TargetType="Label" Binding="{Binding InTune}" Value="True">
                             <Setter Property="TextColor" Value="{t:Theme AccentText}" />
@@ -69,7 +69,7 @@
                     </Label.Triggers>
                 </Label>
             </VerticalStackLayout>
-            <Label x:Name="IdleLabel" Style="{StaticResource Title2}" FontSize="30" Text="{Binding IdleMessage}"
+            <Label x:Name="IdleLabel" Style="{StaticResource Title2}" FontSize="{t:Size 30, Hero=True}" Text="{Binding IdleMessage}"
                    HorizontalTextAlignment="Center" VerticalOptions="Center" IsVisible="{Binding Listening, Converter={StaticResource Not}}" />
         </Grid>
 
@@ -83,8 +83,8 @@
                     BindableLayout.ItemsSource="{Binding Pegs}">
             <BindableLayout.ItemTemplate>
                 <DataTemplate x:DataType="vm:PegItem">
-                    <Grid WidthRequest="50" HeightRequest="50">
-                        <Border WidthRequest="46" HeightRequest="46" StrokeShape="RoundRectangle 23" Padding="0" HorizontalOptions="Center" VerticalOptions="Center"
+                    <Grid WidthRequest="{t:Size 50, Min=44}" HeightRequest="{t:Size 50, Min=44}">
+                        <Border WidthRequest="{t:Size 46, Min=44}" HeightRequest="{t:Size 46, Min=44}" StrokeShape="{t:Round 46, Min=44}" Padding="0" HorizontalOptions="Center" VerticalOptions="Center"
                                 BackgroundColor="{t:Theme Surface2}" Stroke="{t:Theme Surface2}" StrokeThickness="2">
                             <Border.Triggers>
                                 <DataTrigger TargetType="Border" Binding="{Binding IsActive}" Value="True">
@@ -126,10 +126,10 @@
                             </HorizontalStackLayout>
                         </Border>
                         <!-- Lock badge: the string is pinned by hand (tap again to release). -->
-                        <Border WidthRequest="20" HeightRequest="20" StrokeShape="RoundRectangle 10" Padding="0" StrokeThickness="2"
+                        <Border WidthRequest="{t:Size 20}" HeightRequest="{t:Size 20}" StrokeShape="{t:Round 20}" Padding="0" StrokeThickness="2"
                                 Stroke="{t:Theme Bg}" BackgroundColor="{t:Theme TextPri}"
                                 HorizontalOptions="End" VerticalOptions="End" IsVisible="{Binding IsLocked}">
-                            <controls:IconView Name="lock" Size="11" Color="{t:Theme Bg}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <controls:IconView Name="lock" Size="{t:Size 11}" Color="{t:Theme Bg}" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Border>
                         <Grid.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding TapPegCommand, Source={RelativeSource AncestorType={x:Type vm:TunerViewModel}}}"

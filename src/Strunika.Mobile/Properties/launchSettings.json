@@ -3,6 +3,56 @@
     "Windows Machine": {
       "commandName": "Project",
       "nativeDebugging": false
+    },
+    "iPhone SE (375×667)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "375x667" }
+    },
+    "iPhone 13 mini (375×812)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "375x812" }
+    },
+    "iPhone 16 (393×852)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "393x852" }
+    },
+    "iPhone 16 Pro Max (430×932)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "430x932" }
+    },
+    "iPad mini (744×1133)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "744x1133" }
+    },
+    "iPad 11 in (820×1180)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "820x1180" }
+    },
+    "iPad Pro 13 in (1024×1366)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "1024x1366" }
+    },
+    "Landscape · iPhone SE (667×375)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "667x375" }
+    },
+    "Landscape · iPhone 16 (852×393)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "852x393" }
+    },
+    "Landscape · iPad 11 in (1180×820)": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": { "STRUNIKA_WINDOW": "1180x820" }
     }
   }
 }

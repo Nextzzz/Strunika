@@ -74,10 +74,13 @@ public sealed partial class SongItem : ObservableObject
         IsAnalyzing = true;
         IsFailed = false;
         Progress = value;
-        string stageText = Loc.Get("Library_Stage_" + stage);
-        ProgressText = stage is AnalysisStage.Recognizing or AnalysisStage.Downloading
-            ? $"{stageText} · {value * 100:0} %"
-            : stageText;
+        // Every working stage reads "Analysing · N %": what happens to the audio
+        // on the way is an implementation detail, not something to narrate.
+        bool working = stage is AnalysisStage.Downloading or AnalysisStage.Decoding or AnalysisStage.Recognizing
+                             or AnalysisStage.Beats or AnalysisStage.Saving;
+        ProgressText = working
+            ? $"{Loc.Get("Library_Stage_Recognizing")} · {value * 100:0} %"
+            : Loc.Get("Library_Stage_" + stage);
     }
 
     private static string Meta(Song s)

@@ -41,12 +41,34 @@ public sealed class Song
     /// <summary>Model that produced the timeline (e.g. "btc_self"), for re-analysis prompts.</summary>
     public string? Model { get; set; }
     public string SegmentsJson { get; set; } = "[]";
+    /// <summary>Beat times in seconds (metronome, beat ticks); "[]" for songs analysed before M3.</summary>
+    public string BeatsJson { get; set; } = "[]";
+    /// <summary>Loudness envelope for the chord track (base64 of <see cref="Strunika.Core.Audio.Waveform"/>
+    /// bytes, 40 per second); empty for songs analysed before M3 — the page fills it in on first open.</summary>
+    public string PeaksB64 { get; set; } = "";
+    /// <summary>Which <see cref="Strunika.Core.Audio.Waveform"/> version drew
+    /// <see cref="PeaksB64"/>; an older one is recomputed on first open.</summary>
+    public int PeaksVersion { get; set; }
 
     [Ignore]
     public IReadOnlyList<ChordSegmentDto> Segments
     {
         get => JsonSerializer.Deserialize<List<ChordSegmentDto>>(SegmentsJson) ?? new List<ChordSegmentDto>();
         set => SegmentsJson = JsonSerializer.Serialize(value);
+    }
+
+    [Ignore]
+    public double[] Beats
+    {
+        get => JsonSerializer.Deserialize<double[]>(BeatsJson) ?? Array.Empty<double>();
+        set => BeatsJson = JsonSerializer.Serialize(value);
+    }
+
+    [Ignore]
+    public byte[] Peaks
+    {
+        get { try { return string.IsNullOrEmpty(PeaksB64) ? Array.Empty<byte>() : Convert.FromBase64String(PeaksB64); } catch (FormatException) { return Array.Empty<byte>(); } }
+        set => PeaksB64 = value.Length == 0 ? "" : Convert.ToBase64String(value);
     }
 
     [Ignore]

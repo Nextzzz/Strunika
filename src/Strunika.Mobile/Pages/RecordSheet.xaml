@@ -13,19 +13,19 @@
     <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,28" RowDefinitions="Auto,*,Auto,Auto">
         <Grid Grid.Row="0" ColumnDefinitions="*,44">
             <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Record_Title}" VerticalOptions="Center" />
-            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
-                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+            <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCancelTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>
 
         <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" Spacing="18">
             <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
-                <Ellipse x:Name="Dot" WidthRequest="10" HeightRequest="10" Fill="{t:Theme Error, Brush=True}" VerticalOptions="Center" />
+                <Ellipse x:Name="Dot" WidthRequest="{t:Size 10}" HeightRequest="{t:Size 10}" Fill="{t:Theme Error, Brush=True}" VerticalOptions="Center" />
                 <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Record_Title}" TextColor="{t:Theme Error}" VerticalOptions="Center" />
             </HorizontalStackLayout>
-            <Label x:Name="Timer" Text="0:00" FontFamily="DisplayBold" FontSize="72" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center" />
-            <controls:LevelMeter x:Name="Meter" HeightRequest="72" Color="{t:Theme Accent}" DimColor="{t:Theme Surface2}" />
+            <Label x:Name="Timer" Text="0:00" FontFamily="DisplayBold" FontSize="{t:Size 72, Hero=True}" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center" />
+            <controls:LevelMeter x:Name="Meter" HeightRequest="{t:Size 72, Min=44}" Color="{t:Theme Accent}" DimColor="{t:Theme Surface2}" />
             <Label Text="{loc:Str Record_Hint}" Style="{StaticResource Subhead}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
 

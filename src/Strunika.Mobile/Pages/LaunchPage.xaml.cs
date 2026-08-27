@@ -32,6 +32,7 @@ public partial class LaunchPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _ = Services.RemoteFlags.RefreshAsync();                 // kill switches, in the background
         if (_done) return;
         _done = true;
 

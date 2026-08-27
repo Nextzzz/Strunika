@@ -140,10 +140,10 @@
   <data name="Library_Err_Interrupted" xml:space="preserve"><value>Перервано — торкнись, щоб повторити</value></data>
   <data name="Library_Retry" xml:space="preserve"><value>Повторити</value></data>
   <data name="Library_Stage_Queued" xml:space="preserve"><value>У черзі…</value></data>
-  <data name="Library_Stage_Downloading" xml:space="preserve"><value>Отримую звук</value></data>
-  <data name="Library_Stage_Decoding" xml:space="preserve"><value>Читаю звук</value></data>
+  <data name="Library_Stage_Downloading" xml:space="preserve"><value>Аналізую</value></data>
+  <data name="Library_Stage_Decoding" xml:space="preserve"><value>Аналізую</value></data>
   <data name="Library_Stage_Recognizing" xml:space="preserve"><value>Аналізую</value></data>
-  <data name="Library_Stage_Beats" xml:space="preserve"><value>Шукаю ритм</value></data>
+  <data name="Library_Stage_Beats" xml:space="preserve"><value>Аналізую</value></data>
   <data name="Library_Stage_Saving" xml:space="preserve"><value>Зберігаю</value></data>
   <data name="Library_SortTitle" xml:space="preserve"><value>Сортувати за</value></data>
   <data name="Library_Sort_Date" xml:space="preserve"><value>Дата</value></data>
@@ -182,4 +182,33 @@
   <data name="Pro_Soon_Karaoke" xml:space="preserve"><value>Караоке / мінусовка</value></data>
   <data name="Pro_Soon_Karaoke_Hint" xml:space="preserve"><value>Прибери вокал і співай або грай під оригінал</value></data>
   <data name="Settings_SkipWelcome" xml:space="preserve"><value>Пропускати вітальне вікно</value></data>
+  <data name="Song_Key" xml:space="preserve"><value>Тон.</value></data>
+  <data name="Song_Capo" xml:space="preserve"><value>Капо {0}</value></data>
+  <data name="Song_Simple" xml:space="preserve"><value>Прості акорди</value></data>
+  <data name="Song_Next" xml:space="preserve"><value>далі ·</value></data>
+  <data name="Song_Click" xml:space="preserve"><value>Метроном</value></data>
+  <data name="Song_Editor" xml:space="preserve"><value>Редактор акордів</value></data>
+  <data name="Song_NoBeats" xml:space="preserve"><value>Для цієї пісні ще немає сітки бітів — переаналізуй її, щоб з'явився клік.</value></data>
+  <data name="Song_SpeedUnsupported" xml:space="preserve"><value>Зміна швидкості працює на iPhone; у Windows-версії відтворення 1×.</value></data>
+  <data name="Song_CapoTitle" xml:space="preserve"><value>Капо</value></data>
+  <data name="Song_CapoNone" xml:space="preserve"><value>Без капо</value></data>
+  <data name="Song_Fret" xml:space="preserve"><value>лад {0}</value></data>
+  <data name="Song_Transpose" xml:space="preserve"><value>Транспонувати</value></data>
+  <data name="Song_TransposeStep" xml:space="preserve"><value>{0:+#;−#;0} півтонів</value></data>
+  <data name="Song_Player_Hide" xml:space="preserve"><value>Сховати плеєр</value></data>
+  <data name="Song_Player_Show" xml:space="preserve"><value>Показати плеєр</value></data>
+  <data name="Song_Editor_Soon" xml:space="preserve"><value>Редактор акордів з'явиться на наступному кроці.</value></data>
+  <data name="Song_Editor_Short" xml:space="preserve"><value>Редактор</value></data>
+  <data name="Song_Alt_Title" xml:space="preserve"><value>аплікатури</value></data>
+  <data name="Song_Alt_Hint" xml:space="preserve"><value>Оберіть зручну позицію — вона лишиться для цього акорду.</value></data>
+  <data name="Song_Alt_Only" xml:space="preserve"><value>Інших позицій для цього акорду не знаємо.</value></data>
+  <data name="Song_Alt_Open" xml:space="preserve"><value>Відкрита позиція</value></data>
+  <data name="Song_YT_Error" xml:space="preserve"><value>YouTube не дає відтворити це відео всередині застосунку (помилка {0}). Акорди працюють, а відео можна відкрити на YouTube.</value></data>
+  <data name="Song_YT_Open" xml:space="preserve"><value>Відкрити YouTube</value></data>
+  <data name="Song_Key_Full" xml:space="preserve"><value>Тональність</value></data>
+  <data name="Song_Speed" xml:space="preserve"><value>Швидкість</value></data>
+  <data name="Song_Loop" xml:space="preserve"><value>Луп A–B</value></data>
+  <data name="Song_Capo_Label" xml:space="preserve"><value>Капо</value></data>
+  <data name="Settings_DevWindow" xml:space="preserve"><value>Вікно як пристрій</value></data>
+  <data name="Library_YT_Off" xml:space="preserve"><value>Аналіз пісень з YouTube тимчасово вимкнено. Файли й записи працюють як завжди.</value></data>
 </root>

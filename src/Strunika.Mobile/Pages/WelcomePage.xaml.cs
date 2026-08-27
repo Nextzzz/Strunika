@@ -114,7 +114,7 @@ public partial class WelcomePage : ContentPage
             }, 0, width)
             .Commit(this, "greeting", 16, WipeMs, Easing.SinInOut, (_, _) => done.TrySetResult());
         // Sound after the wipe has started, off the UI thread (see the players).
-        _ = Task.Run(() => _services.GetService<Services.ISoundPlayer>()?.PlayAsync(Services.SoundAssets.Greeting));
+        _ = Task.Run(() => _services.GetService<Services.ISoundPlayer>()?.PlayAsync(Services.SoundAssets.Greeting, Services.SoundAssets.GreetingVolume));
         await done.Task;
         WaveClip.IsVisible = false;
         GreetingClip.Clip = null;

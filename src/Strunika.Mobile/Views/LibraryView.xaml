@@ -8,7 +8,7 @@
              x:Class="Strunika.Mobile.Views.LibraryView"
              x:DataType="vm:LibraryViewModel">
 
-    <Grid Padding="0,8,0,0">
+    <Grid Padding="0,8,0,0" Margin="{t:ContentInset}">
 
 
         <!-- Cards -->
@@ -18,10 +18,10 @@
                 <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
             </CollectionView.ItemsLayout>
             <CollectionView.Header>
-                <BoxView x:Name="HeaderSpacer" HeightRequest="240" Color="Transparent" />
+                <BoxView x:Name="HeaderSpacer" HeightRequest="{t:Size 240, Min=44}" Color="Transparent" />
             </CollectionView.Header>
             <CollectionView.Footer>
-                <BoxView HeightRequest="104" Color="Transparent" />
+                <BoxView HeightRequest="{t:Size 104, Min=44}" Color="Transparent" />
             </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SongItem">
@@ -52,7 +52,7 @@
                             <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="12">
 
                                 <!-- Thumbnail or source glyph -->
-                                <Border Grid.Column="0" WidthRequest="56" HeightRequest="56" StrokeShape="RoundRectangle 12" StrokeThickness="0" Padding="0" VerticalOptions="Center">
+                                <Border Grid.Column="0" WidthRequest="{t:Size 56, Min=44}" HeightRequest="{t:Size 56, Min=44}" StrokeShape="RoundRectangle 12" StrokeThickness="0" Padding="0" VerticalOptions="Center">
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                             <GradientStop Color="{t:Theme Accent2}" Offset="0" />
@@ -60,7 +60,7 @@
                                         </LinearGradientBrush>
                                     </Border.Background>
                                     <Grid>
-                                        <controls:IconView Name="{Binding Glyph}" Size="24" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <controls:IconView Name="{Binding Glyph}" Size="{t:Size 24}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                                         <Image Source="{Binding Thumbnail}" Aspect="AspectFill" IsVisible="{Binding HasThumbnail}" />
                                     </Grid>
                                 </Border>
@@ -76,7 +76,7 @@
                                         <Label Text="{Binding MetaText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
                                         <Border IsVisible="{Binding Edited}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="7,1" VerticalOptions="Center">
                                             <HorizontalStackLayout Spacing="3">
-                                                <controls:IconView Name="pencil" Size="11" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                                                <controls:IconView Name="pencil" Size="{t:Size 11}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                                                 <Label Text="{loc:Str Library_Edited}" FontSize="11" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
                                             </HorizontalStackLayout>
                                         </Border>
@@ -84,7 +84,7 @@
 
                                     <!-- analysing: bar + stage -->
                                     <VerticalStackLayout Spacing="5" IsVisible="{Binding IsAnalyzing}">
-                                        <ProgressBar Progress="{Binding Progress}" ProgressColor="{t:Theme Accent}" BackgroundColor="{t:Theme Surface2}" HeightRequest="4" />
+                                        <ProgressBar Progress="{Binding Progress}" ProgressColor="{t:Theme Accent}" BackgroundColor="{t:Theme Surface2}" HeightRequest="{t:Size 4}" />
                                         <Label Text="{Binding ProgressText}" FontSize="12" FontAttributes="Bold" TextColor="{t:Theme AccentText}" />
                                     </VerticalStackLayout>
 
@@ -94,13 +94,13 @@
 
                                 <!-- Swipe-to-delete hint in the corner: arrow + bin (user request 2026-08-27). -->
                                 <HorizontalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="End" VerticalOptions="Start" Margin="0,-6,-4,0" InputTransparent="True" Opacity="0.7">
-                                    <controls:IconView Name="chevL" Size="10" Color="{t:Theme Dim}" VerticalOptions="Center" />
-                                    <controls:IconView Name="trash" Size="12" Color="{t:Theme Dim}" VerticalOptions="Center" />
+                                    <controls:IconView Name="chevL" Size="{t:Size 10}" Color="{t:Theme Dim}" VerticalOptions="Center" />
+                                    <controls:IconView Name="trash" Size="{t:Size 12}" Color="{t:Theme Dim}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <!-- Star / cancel (Borders: a bare GraphicsView gets no taps on Windows) -->
-                                <Grid Grid.Column="2" WidthRequest="36" HeightRequest="36" VerticalOptions="Center">
+                                <Grid Grid.Column="2" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" VerticalOptions="Center">
                                     <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="RoundRectangle 18" Padding="0" IsVisible="{Binding IsAnalyzing, Converter={StaticResource Not}}">
-                                        <controls:IconView Name="star" Size="20" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center">
+                                        <controls:IconView Name="star" Size="{t:Size 20}" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center">
                                             <controls:IconView.Triggers>
                                                 <DataTrigger TargetType="controls:IconView" Binding="{Binding Favourite}" Value="True">
                                                     <Setter Property="Color" Value="{t:Theme AccentText}" />
@@ -113,7 +113,7 @@
                                         </Border.GestureRecognizers>
                                     </Border>
                                     <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="RoundRectangle 18" Padding="0" IsVisible="{Binding IsAnalyzing}">
-                                        <controls:IconView Name="x" Size="18" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center" />
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding CancelCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}" CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
@@ -129,12 +129,12 @@
 
         <!-- Empty state -->
         <VerticalStackLayout VerticalOptions="Center" Spacing="10" Padding="36,160,36,104" IsVisible="{Binding IsEmpty}">
-            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="64" />
+            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="{t:Size 64, Min=44}" />
             <Label Style="{StaticResource Title2}" Text="{loc:Str Library_Empty_Title}" HorizontalTextAlignment="Center" Margin="0,8,0,0" />
             <Label Style="{StaticResource Subhead}" Text="{loc:Str Library_Empty_Body}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
 
-        <Border x:Name="HeaderShade" VerticalOptions="Start" HeightRequest="28" Margin="0,240,0,0" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+        <Border x:Name="HeaderShade" VerticalOptions="Start" HeightRequest="{t:Size 28}" Margin="0,240,0,0" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
         <!-- Pinned header over the list (declared last = drawn on top): opaque page
              background, then a short shade below it so cards dissolve as they scroll under.
              The list's header spacer follows this block's height (code-behind). -->
@@ -146,12 +146,12 @@
                 <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Songs}" VerticalOptions="End" />
                 <controls:ProSuffix IsVisible="{Binding IsPro}" />
             </HorizontalStackLayout>
-            <Border Grid.Column="1" x:Name="AddButton" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18"
+            <Border Grid.Column="1" x:Name="AddButton" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}"
                     BackgroundColor="{t:Theme Fill}" VerticalOptions="End" Padding="0">
                 <Border.Shadow>
                     <Shadow Brush="{t:Theme Glow, Brush=True}" Radius="14" Opacity="0.6" Offset="0,4" />
                 </Border.Shadow>
-                <controls:IconView Name="plus" Size="20" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <controls:IconView Name="plus" Size="{t:Size 20}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnAddTapped" />
                 </Border.GestureRecognizers>
@@ -160,23 +160,23 @@
 
         <!-- Pinned ways of adding a song (★ in the add sheet) -->
         <Grid Grid.Row="1" x:Name="QuickRow" Margin="0,14,0,0" ColumnSpacing="10" RowSpacing="10">
-            <Border x:Name="QuickYouTube" Style="{StaticResource Card}" Padding="12,0" HeightRequest="56">
+            <Border x:Name="QuickYouTube" Style="{StaticResource Card}" Padding="12,0" HeightRequest="{t:Size 56, Min=44}">
                 <HorizontalStackLayout Spacing="10" VerticalOptions="Center" HorizontalOptions="Center">
-                    <controls:IconView Name="youtube" Size="22" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <controls:IconView Name="youtube" Size="{t:Size 22}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
                     <Label Text="YouTube" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
                 <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding QuickYouTubeCommand}" /></Border.GestureRecognizers>
             </Border>
-            <Border x:Name="QuickFile" Style="{StaticResource Card}" Padding="12,0" HeightRequest="56">
+            <Border x:Name="QuickFile" Style="{StaticResource Card}" Padding="12,0" HeightRequest="{t:Size 56, Min=44}">
                 <HorizontalStackLayout Spacing="10" VerticalOptions="Center" HorizontalOptions="Center">
-                    <controls:IconView Name="file" Size="22" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <controls:IconView Name="file" Size="{t:Size 22}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
                     <Label Text="{loc:Str Library_FromFile}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                 </HorizontalStackLayout>
                 <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding QuickFileCommand}" /></Border.GestureRecognizers>
             </Border>
-            <Border x:Name="QuickRecord" Style="{StaticResource Card}" Padding="12,0" HeightRequest="56">
+            <Border x:Name="QuickRecord" Style="{StaticResource Card}" Padding="12,0" HeightRequest="{t:Size 56, Min=44}">
                 <HorizontalStackLayout Spacing="10" VerticalOptions="Center" HorizontalOptions="Center">
-                    <controls:IconView Name="mic" Size="22" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <controls:IconView Name="mic" Size="{t:Size 22}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
                     <Label Text="{loc:Str Library_Record}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                 </HorizontalStackLayout>
                 <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding QuickRecordCommand}" /></Border.GestureRecognizers>
@@ -184,17 +184,17 @@
         </Grid>
 
         <!-- Search -->
-        <Border Grid.Row="2" Margin="0,14,0,0" StrokeShape="RoundRectangle 12" Padding="12,0" HeightRequest="40" IsVisible="{Binding HasSongs}">
+        <Border Grid.Row="2" Margin="0,14,0,0" StrokeShape="RoundRectangle 12" Padding="12,0" HeightRequest="{t:Size 40}" IsVisible="{Binding HasSongs}">
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                <controls:IconView Name="search" Size="18" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                <controls:IconView Name="search" Size="{t:Size 18}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                 <Entry Grid.Column="1" x:Name="SearchEntry" Text="{Binding Query}" Placeholder="{loc:Str Library_Search}" ReturnType="Search"
-                       VerticalOptions="Center" MinimumHeightRequest="40" HeightRequest="40" FontSize="16" />
+                       VerticalOptions="Center" MinimumHeightRequest="{t:Size 40}" HeightRequest="{t:Size 40}" FontSize="16" />
             </Grid>
         </Border>
 
         <!-- Filters + sort -->
         <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding HasSongs}">
-            <Border Grid.Column="0" Style="{StaticResource Chip}" HeightRequest="32" Padding="14,0">
+            <Border Grid.Column="0" Style="{StaticResource Chip}" HeightRequest="{t:Size 32}" Padding="14,0">
                 <Border.Triggers>
                     <DataTrigger TargetType="Border" Binding="{Binding Filter}" Value="0">
                         <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
@@ -213,7 +213,7 @@
                 </Border.GestureRecognizers>
             </Border>
 
-            <Border Grid.Column="1" Style="{StaticResource Chip}" HeightRequest="32" Padding="12,0">
+            <Border Grid.Column="1" Style="{StaticResource Chip}" HeightRequest="{t:Size 32}" Padding="12,0">
                 <Border.Triggers>
                     <DataTrigger TargetType="Border" Binding="{Binding Filter}" Value="1">
                         <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
@@ -221,7 +221,7 @@
                     </DataTrigger>
                 </Border.Triggers>
                 <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
-                    <controls:IconView Name="star" Size="15" Color="{t:Theme TextPri}" VerticalOptions="Center">
+                    <controls:IconView Name="star" Size="{t:Size 15}" Color="{t:Theme TextPri}" VerticalOptions="Center">
                         <controls:IconView.Triggers>
                             <DataTrigger TargetType="controls:IconView" Binding="{Binding Filter}" Value="1">
                                 <Setter Property="Color" Value="{t:Theme OnFill}" />
@@ -243,7 +243,7 @@
             </Border>
 
             <Grid Grid.Column="2">
-                <Border Style="{StaticResource Chip}" HeightRequest="32" Padding="12,0">
+                <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 32}" Padding="12,0">
                     <Border.Triggers>
                         <DataTrigger TargetType="Border" Binding="{Binding Filter}" Value="2">
                             <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
@@ -251,7 +251,7 @@
                         </DataTrigger>
                     </Border.Triggers>
                     <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
-                        <controls:IconView Name="folder" Size="15" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                        <controls:IconView Name="folder" Size="{t:Size 15}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                         <Label Text="{loc:Str Library_Folders}" FontSize="14" VerticalOptions="Center" TextColor="{t:Theme TextSec}">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding Filter}" Value="2">
@@ -270,7 +270,7 @@
 
             <HorizontalStackLayout Grid.Column="4" Spacing="3" VerticalOptions="Center">
                 <Label Text="{Binding SortLabel}" FontSize="13" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
-                <controls:IconView Name="chevD" Size="13" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                <controls:IconView Name="chevD" Size="{t:Size 13}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                 <HorizontalStackLayout.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnSortTapped" />
                 </HorizontalStackLayout.GestureRecognizers>

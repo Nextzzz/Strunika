@@ -9,12 +9,17 @@ namespace Strunika.Mobile.Services;
 public interface ISoundPlayer
 {
     /// <param name="asset">Logical asset name, e.g. "sounds/greeting.wav".</param>
-    Task PlayAsync(string asset);
+    /// <param name="volume">0–1, applied to this one playback.</param>
+    Task PlayAsync(string asset, double volume = 1.0);
 }
 
 public static class SoundAssets
 {
     public const string Greeting = "sounds/greeting.wav";
+
+    /// <summary>How loud the welcome greeting plays (0–1). The wav is rendered
+    /// at full scale, so this is the one place to calibrate it.</summary>
+    public const double GreetingVolume = 0.06;
 
     /// <summary>Unpacks a raw asset to the cache directory (idempotent) and returns its path.</summary>
     public static async Task<string?> EnsureAsync(string asset)

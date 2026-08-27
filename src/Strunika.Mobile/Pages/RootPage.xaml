@@ -15,12 +15,13 @@
         <views:LibraryView x:Name="Library" IsVisible="False" />
         <views:SettingsView x:Name="Settings" IsVisible="False" />
 
-        <Border x:Name="BottomShade" VerticalOptions="End" HeightRequest="100" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+        <Border x:Name="BottomShade" VerticalOptions="End" HeightRequest="{t:Size 100, Min=44}" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
 
+        <Grid VerticalOptions="End" Margin="{t:ContentInset}">
         <controls:PillTabBar x:Name="TabBar"
                              VerticalOptions="End"
                              Margin="14,0,14,22"
-                             HeightRequest="66"
+                             HeightRequest="{t:Size 66, Min=44}"
                              BarColor="{t:Theme Surface1}"
                              SeparatorColor="{t:Theme Separator}"
                              SelectorColor="{t:Theme Fill}"
@@ -28,5 +29,6 @@
                              InactiveColor="{t:Theme TextSec}"
                              GlowColor="{t:Theme Glow}"
                              Selected="OnTabSelected" />
+        </Grid>
     </Grid>
 </ContentPage>

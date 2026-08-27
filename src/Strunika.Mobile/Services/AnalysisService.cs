@@ -145,13 +145,11 @@ public sealed class AnalysisService
             var novelty = onsets.NoveltyCurve(samples44, 44100, beatProgress, ct);
             double frameRate = onsets.FrameRate(44100);
             double bpm = new TempoEstimator().Estimate(novelty, frameRate);
+            var beats = new BeatTracker().Track(novelty, frameRate, bpm)
+                .Select(f => Math.Round((f * onsets.Hop + onsets.NFft / 2.0) / 44100.0, 3))
+                .ToList();
             if (AppSettings.BeatSnap)
-            {
-                var beats = new BeatTracker().Track(novelty, frameRate, bpm)
-                    .Select(f => (f * onsets.Hop + onsets.NFft / 2.0) / 44100.0)
-                    .ToList();
                 segments = ChordTimeline.SnapToBeats(segments, beats);
-            }
 
             // 4. Save.
             Report(id, AnalysisStage.Saving, beatEnd);
@@ -161,6 +159,9 @@ public sealed class AnalysisService
             song.Key = key;
             song.Model = model;
             song.Segments = segments.Select(s => new ChordSegmentDto(s.Start, s.End, s.Label)).ToList();
+            song.Beats = beats.ToArray();
+            song.Peaks = Strunika.Core.Audio.Waveform.Peaks(samples44, 44100);
+            song.PeaksVersion = Strunika.Core.Audio.Waveform.Version;
             song.Edited = false;
             song.Status = SongStatus.Ready;
             await _songs.UpdateAsync(song);

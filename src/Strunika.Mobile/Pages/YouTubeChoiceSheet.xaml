@@ -13,8 +13,8 @@
     <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,28" RowDefinitions="Auto,Auto,Auto,Auto">
         <Grid Grid.Row="0" ColumnDefinitions="*,44">
             <Label Style="{StaticResource Title2}" Text="{loc:Str Library_YT_Choice_Title}" VerticalOptions="Center" LineBreakMode="WordWrap" />
-            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
-                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+            <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>
@@ -22,8 +22,8 @@
         <!-- Use the clipboard link -->
         <Border Grid.Row="1" Margin="0,18,0,0" StrokeShape="RoundRectangle 16" BackgroundColor="{t:Theme Fill}" StrokeThickness="0" Padding="14,12">
             <Grid ColumnDefinitions="44,*" ColumnSpacing="12">
-                <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 12" BackgroundColor="#2616110B" StrokeThickness="0" Padding="0">
-                    <controls:IconView Name="link" Size="22" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="RoundRectangle 12" BackgroundColor="#2616110B" StrokeThickness="0" Padding="0">
+                    <controls:IconView Name="link" Size="{t:Size 22}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Border>
                 <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                     <Label Text="{loc:Str Library_YT_UseLink}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme OnFill}" />
@@ -36,8 +36,8 @@
         <!-- Built-in YouTube -->
         <Border Grid.Row="2" Margin="0,10,0,0" Style="{StaticResource Card}" Padding="14,12">
             <Grid ColumnDefinitions="44,*" ColumnSpacing="12">
-                <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
-                    <controls:IconView Name="youtube" Size="22" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
+                    <controls:IconView Name="youtube" Size="{t:Size 22}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Border>
                 <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                     <Label Text="{loc:Str Library_YT_Browse}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />

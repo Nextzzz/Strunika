@@ -58,6 +58,11 @@ Conventions that bit us on Windows (keep them):
 - The dev window is pinned to the top of the screen (`App.CreateWindow`); a
   window taller than the display looks like clipped layout.
 - `STRUNIKA_RESET=1` environment variable wipes preferences (re-test first launch).
+- Device-shaped dev window: **Settings → About → "Window as device"** (debug builds) resizes it live and remembers
+  the choice (`Services/DevWindow.cs`); `STRUNIKA_WINDOW=375x667` (the launch profiles in
+  `Properties/launchSettings.json`) overrides it. Visual Studio sometimes refuses to switch to a freshly added
+  profile until it is restarted — the in-app switch does not depend on it. Sizes in XAML are `{t:Size}` tokens from
+  `Theme/Metrics.cs` — see the design skill §6 before adding any fixed number.
 - Unhandled exceptions are written to `Documents\Strunika\logs\strunika-<date>.log`.
 
 ## Build & deploy (no Mac)
@@ -88,6 +93,9 @@ from Swift — but that needs a Mac and is not planned.
   resolves them. Only MP4/AAC audio streams are accepted (WebM/Opus is undecodable on both platforms). If YoutubeExplode
   breaks for good, the escape hatch is our own Innertube `player` request with the client yt-dlp uses without PO tokens
   (`android vr` as of yt-dlp 2026.07) — see `Strunika.Media/YoutubeAudioService` for the desktop tiers.
+- `Services/RemoteFlags` fetches `flags.json` (repo root, served from the raw GitHub URL - the repo must be public,
+  otherwise host the file elsewhere and change `RemoteFlags.Url`) at launch; `youtube_analysis=false` switches the
+  YouTube add paths off for every install. Nothing blocks on it; a failed fetch keeps the last known values.
 - Free quota counters live in `SecureStorage`; the unpackaged Windows head falls back to `Preferences` when the
   secure store throws.
 - Test harness: `shot.ps1` gained `~play:<wav>` / `~mute` (in-process SoundPlayer), `~keys:<SendKeys>`, `~click:fx:fy`
@@ -112,3 +120,39 @@ from Swift — but that needs a Mac and is not planned.
   Windows, which cuts a glow into a hard-edged band (Welcome's Start button).
 - Fonts: Vollkorn SemiBold/Bold (`Display`/`DisplayBold`), OFL. The welcome greeting is the user's SVG lettering (`Resources/Images/hello_uk.svg`, `hello_en.svg`), not a font.
 
+## M3 notes (song page)
+
+- YouTube playback is the official **IFrame API** inside a page of ours (`Resources/Raw/player.html`), driven by
+  `strPlay/strPause/strSeek/strRate/strState` from `Controls/YouTubeEmbedView`. The page **must be served from a real
+  https origin** — navigating straight to `youtube.com/embed/…`, or `NavigateToString` HTML, leaves the player without
+  an origin/referrer and it fails with "video player configuration error 153". Windows gets the origin from
+  `CoreWebView2.SetVirtualHostNameToFolderMapping("strunika.local", <cache>/web)`; iOS from the `BaseUrl` of
+  `HtmlWebViewSource` (WKWebView honours it). Player errors 101/150 (owner disallows embedding) surface as an alert
+  offering to open the video on YouTube.
+- **`EvaluateJavaScriptAsync` return values differ per platform.** WKWebView returns a JS string verbatim; WebView2
+  JSON-encodes it and MAUI strips only the outer quotes, so a JSON string comes back as `{\"t\":0,...}` — still
+  escaped. `YouTubeEmbedView.Unwrap` undoes either form. (Symptom before the fix: every probe threw
+  `JsonReaderException: '' is an invalid start of a property name`, the transport looked permanently unready and
+  the conveyor snapped back to 0.)
+- The player page warms the video up muted right after `onReady` (play → first frame → pause → rewind → unmute) so
+  the user's first ▶ starts the song instead of a spinner; a real play cancels the warm-up. The song view-model
+  treats "playing but position unchanged between two probes" as buffering and holds the conveyor there. The Windows head needs
+  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--autoplay-policy=no-user-gesture-required` (set in `MauiProgram` before the
+  first WebView2 is created) or `play()` from script is rejected. iOS: MAUI's `MauiWKWebView` builds its
+  `WKWebViewConfiguration` with `AllowsInlineMediaPlayback = true` and `MediaTypesRequiringUserActionForPlayback = None`
+  (`playsinline=1` is in the embed URL too) — **verify on device**; if the embed still refuses `play()`, subclass
+  `WebViewHandler` and override `CreatePlatformView` with your own configuration.
+- File playback: `Platforms/Windows/WindowsAudioPlayer` (NAudio `WaveOutEvent` + `AudioFileReader`; no rate change —
+  the page says so) and `Platforms/iOS/IosAudioPlayer` (AVAudioPlayer with `EnableRate`, Playback session) — the iOS
+  one is unverified like the decoder. `IClickPlayer` mixes synthesized clicks (`Services/MetronomeClick.Render`) into
+  a `MixingSampleProvider` on Windows / a second AVAudioPlayer on iOS.
+- `ChordTrack` gestures live on a transparent `BoxView` over the `GraphicsView` (same Windows limitation as
+  `IconView`); a mouse drag is the pan. It is redrawn every frame from a 16 ms dispatcher timer; the position is
+  predicted from the frame clock and reconciled with the transport every 200 ms, because polling NAudio (and
+  especially a WebView) at 60 Hz is what made the first version stutter.
+- The waveform behind the track is `Song.PeaksB64` — one byte per 25 ms from `Strunika.Core.Audio.Waveform`,
+  written by `AnalysisService`. Songs analysed before it existed get their peaks computed on first open (local
+  files only; YouTube audio is never kept, so those need a re-analysis to gain a waveform).
+- Chord shapes are a code table (`Models/ChordShapes.cs`: open forms + movable E/A forms, capo-aware), not a JSON
+  asset — nothing to load, easy to unit test.
+- `IAudioPlayer` is registered transient (one per song page, disposed in `OnDisappearing`); `IClickPlayer` is a singleton.

@@ -83,7 +83,7 @@
     <!-- Chord names and the tuner note. -->
     <Style TargetType="Label" x:Key="ChordHero">
         <Setter Property="FontFamily" Value="DisplayBold" />
-        <Setter Property="FontSize" Value="96" />
+        <Setter Property="FontSize" Value="{t:Size 96, Hero=True}" />
         <Setter Property="TextColor" Value="{t:Theme Accent}" />
         <Setter Property="HorizontalTextAlignment" Value="Center" />
         <Setter Property="LineBreakMode" Value="NoWrap" />

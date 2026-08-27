@@ -27,6 +27,13 @@ public sealed class PillTabBar : GraphicsView, IDrawable
     // The capsule fills the whole control (spacing comes from Margin): transparent
     // canvas regions show the window backdrop on Windows, so there are none.
     private const float InsetX = 0f, InsetTop = 0f, InsetBottom = 0f;
+    private const float LabelSize = 10.5f, LabelMin = 8f;
+    /// <summary>Average advance per glyph for the bold UI face, in em. Calibrated
+    /// on the dev head: Segoe UI Bold Cyrillic draws about 0.68 em while Win2D
+    /// reports 0.59 (13 % short); SF Pro Bold sits near 0.6.</summary>
+    private static readonly float LabelEm = DeviceInfo.Platform == DevicePlatform.WinUI ? 0.70f : 0.64f;
+    private float _labelFont = LabelSize, _labelFontForWidth = -1;
+    private bool _measureLogged;
 
     public static readonly BindableProperty SelectedIndexProperty =
         BindableProperty.Create(nameof(SelectedIndex), typeof(int), typeof(PillTabBar), 0, BindingMode.TwoWay,
@@ -161,7 +168,30 @@ public sealed class PillTabBar : GraphicsView, IDrawable
     }
 
     /// <summary>Re-read labels (after a language change) and redraw.</summary>
-    public void Refresh() => Invalidate();
+    public void Refresh() { _labelFontForWidth = -1; Invalidate(); }
+
+    /// <summary>One font size for all labels, shrunk (down to <see cref="LabelMin"/>)
+    /// until the widest label fits its slot — "Налаштування" on a compact phone.</summary>
+    private float LabelFont(ICanvas canvas, float itemW)
+    {
+        if (Math.Abs(_labelFontForWidth - itemW) < 0.5f) return _labelFont;
+        _labelFontForWidth = itemW;
+        float size = LabelSize, room = itemW - 4f;
+        foreach (var tab in Tabs)
+        {
+            // Win2D under-reports bold Cyrillic, so the measurement is checked
+            // against a per-glyph estimate (about 0.62 em for a bold sans) and
+            // the wider of the two decides.
+            float measured = canvas.GetStringSize(tab.Label, Microsoft.Maui.Graphics.Font.DefaultBold, LabelSize).Width * 1.08f;
+            float estimated = tab.Label.Length * LabelEm * LabelSize;
+            float w = Math.Max(measured, estimated);
+            if (!_measureLogged) Strunika.Core.Diagnostics.FileLog.Info($"tabbar label \"{tab.Label}\": measured {measured:0.0}, estimated {estimated:0.0}, slot {itemW:0.0}");
+            if (w > room) size = Math.Min(size, LabelSize * room / w);
+        }
+        _measureLogged = true;
+        _labelFont = Math.Max(LabelMin, size);
+        return _labelFont;
+    }
 
     // ---- drawing -----------------------------------------------------
 
@@ -213,8 +243,8 @@ public sealed class PillTabBar : GraphicsView, IDrawable
             }
 
             canvas.FontColor = color;
-            canvas.FontSize = 10.5f;
             canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
+            canvas.FontSize = LabelFont(canvas, itemW);
             canvas.DrawString(Tabs[i].Label, cx - itemW / 2, Pad + 33, itemW, 14,
                 HorizontalAlignment.Center, VerticalAlignment.Top);
         }

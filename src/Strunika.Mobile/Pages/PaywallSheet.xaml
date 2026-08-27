@@ -14,7 +14,7 @@
     <!-- No side padding on the root: the ScrollView spans the screen so the scroll
          indicator sits at the edge, right of the content; the 24 pt inset lives
          in the content and in the pinned header. -->
-    <Grid BackgroundColor="{t:Theme Bg}" Padding="0,0,0,28" RowDefinitions="*,Auto">
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="0,0,0,28" RowDefinitions="*,Auto" Margin="{t:ContentInset}">
 
         <ScrollView Grid.Row="0">
             <VerticalStackLayout Spacing="14" Padding="24,96,24,8">
@@ -34,7 +34,7 @@
                 <Border Style="{StaticResource Card}" Padding="14,10" BackgroundColor="{t:Theme Surface1}" StrokeThickness="1" Stroke="{t:Theme Separator}">
                     <VerticalStackLayout Spacing="10">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                            <controls:IconView Name="sliders" Size="18" Color="{t:Theme AccentText}" VerticalOptions="Start" Margin="0,2,0,0" />
+                            <controls:IconView Name="sliders" Size="{t:Size 18}" Color="{t:Theme AccentText}" VerticalOptions="Start" Margin="0,2,0,0" />
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                 <Label Text="{loc:Str Pro_Soon_Stems}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />
                                 <Label Text="{loc:Str Pro_Soon_Stems_Hint}" Style="{StaticResource Caption}" LineBreakMode="WordWrap" />
@@ -45,7 +45,7 @@
                         </Grid>
                         <BoxView Style="{StaticResource SeparatorLine}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                            <controls:IconView Name="mic" Size="18" Color="{t:Theme AccentText}" VerticalOptions="Start" Margin="0,2,0,0" />
+                            <controls:IconView Name="mic" Size="{t:Size 18}" Color="{t:Theme AccentText}" VerticalOptions="Start" Margin="0,2,0,0" />
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                 <Label Text="{loc:Str Pro_Soon_Karaoke}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />
                                 <Label Text="{loc:Str Pro_Soon_Karaoke_Hint}" Style="{StaticResource Caption}" LineBreakMode="WordWrap" />
@@ -56,7 +56,7 @@
                         </Grid>
                         <BoxView Style="{StaticResource SeparatorLine}" />
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                            <controls:IconView Name="wave" Size="18" Color="{t:Theme AccentText}" VerticalOptions="Start" Margin="0,2,0,0" />
+                            <controls:IconView Name="wave" Size="{t:Size 18}" Color="{t:Theme AccentText}" VerticalOptions="Start" Margin="0,2,0,0" />
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                 <Label Text="{loc:Str Pro_Soon_BassTabs}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />
                                 <Label Text="{loc:Str Pro_Soon_BassTabs_Hint}" Style="{StaticResource Caption}" LineBreakMode="WordWrap" />
@@ -94,9 +94,9 @@
         <!-- Pinned header: the page background fading out downwards (gradient set in
              code, theme-aware), so content scrolling underneath dissolves gradually
              like under the tab bar. -->
-        <Border x:Name="HeaderShade" Grid.Row="0" VerticalOptions="Start" HeightRequest="108" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
-        <Grid Grid.Row="0" VerticalOptions="Start" Padding="24,16,24,0" ColumnDefinitions="Auto,Auto,*,44" ColumnSpacing="0" HeightRequest="68">
-            <Label Style="{StaticResource LargeTitle}" FontSize="32" VerticalOptions="Center">
+        <Border x:Name="HeaderShade" Grid.Row="0" VerticalOptions="Start" HeightRequest="{t:Size 108, Min=44}" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+        <Grid Grid.Row="0" VerticalOptions="Start" Padding="24,16,24,0" ColumnDefinitions="Auto,Auto,*,44" ColumnSpacing="0" HeightRequest="{t:Size 68, Min=44}">
+            <Label Style="{StaticResource LargeTitle}" FontSize="{t:Size 32, Hero=True}" VerticalOptions="Center">
                 <Label.FormattedText>
                     <FormattedString>
                         <Span Text="Strunika " FontFamily="Display" />
@@ -105,9 +105,9 @@
                 </Label.FormattedText>
             </Label>
             <!-- The string-wave after "Pro", scaled with the title (54×20 at Title2 → 78×29 at 32 pt). -->
-            <controls:WaveMark Grid.Column="1" Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" WidthRequest="78" HeightRequest="29" VerticalOptions="Center" Margin="10,2,0,0" />
-            <Border Grid.Column="3" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Center">
-                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+            <controls:WaveMark Grid.Column="1" Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" WidthRequest="{t:Size 78, Min=44}" HeightRequest="{t:Size 29}" VerticalOptions="Center" Margin="10,2,0,0" />
+            <Border Grid.Column="3" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Center">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>

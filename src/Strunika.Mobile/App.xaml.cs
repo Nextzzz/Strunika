@@ -30,11 +30,16 @@ public partial class App : Application
         // a 1200-px display, which looks like clipped layout but is not.
         var display = DeviceDisplay.Current.MainDisplayInfo;
         double screenHeight = display.Height / Math.Max(1, display.Density);
+        // A device-shaped window: STRUNIKA_WINDOW=375x667 (launch profiles) or the
+        // preset chosen in Settings → About — the same design must hold from
+        // iPhone SE to iPad Pro.
+        var (w, h) = Services.DevWindow.Startup();
         window.X = 40;
         window.Y = 0;
-        window.Width = 430;
-        window.Height = Math.Min(900, screenHeight - 48);
+        window.Width = w;
+        window.Height = Math.Min(h, screenHeight - 48);
 #endif
+        Theme.Metrics.Instance.Attach(window);
         return window;
     }
 }

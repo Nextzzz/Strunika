@@ -8,7 +8,7 @@
              x:Class="Strunika.Mobile.Views.LiveView"
              x:DataType="vm:LiveViewModel">
 
-    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,*,Auto,Auto,Auto,Auto" RowSpacing="0">
+    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,*,Auto,Auto,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
 
         <HorizontalStackLayout Grid.Row="0" Spacing="0" VerticalOptions="End">
             <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Live}" VerticalOptions="End" />
@@ -17,7 +17,7 @@
 
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
             <HorizontalStackLayout Spacing="7" VerticalOptions="Center">
-                <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" IsVisible="{Binding Listening}" />
+                <BoxView WidthRequest="{t:Size 8}" HeightRequest="{t:Size 8}" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" IsVisible="{Binding Listening}" />
                 <Label Style="{StaticResource Footnote}" Text="{Binding Status}" VerticalOptions="Center" />
             </HorizontalStackLayout>
             <Border Grid.Column="1" Style="{StaticResource Chip}" IsVisible="{Binding ExpertMode}">
@@ -25,25 +25,25 @@
                     <Label FontSize="14" Text="{loc:Str Live_Mode}" VerticalOptions="Center" />
                     <Label FontSize="14" Text="·" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
                     <Picker ItemsSource="{Binding LiveModels}" SelectedItem="{Binding SelectedLiveModel}"
-                            FontSize="14" MinimumHeightRequest="30" MinimumWidthRequest="90" VerticalOptions="Center" />
+                            FontSize="14" MinimumHeightRequest="{t:Size 30}" MinimumWidthRequest="{t:Size 90, Min=44}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
             </Border>
         </Grid>
 
         <VerticalStackLayout Grid.Row="2" VerticalOptions="Center" Spacing="0">
-            <Label Style="{StaticResource Subhead}" HorizontalTextAlignment="Center" MinimumHeightRequest="22" Text="{Binding GuessText}" />
-            <Label Style="{StaticResource ChordHero}" Text="{Binding ConfirmedChord}" MinimumHeightRequest="120" />
+            <Label Style="{StaticResource Subhead}" HorizontalTextAlignment="Center" MinimumHeightRequest="{t:Size 22}" Text="{Binding GuessText}" />
+            <Label Style="{StaticResource ChordHero}" Text="{Binding ConfirmedChord}" MinimumHeightRequest="{t:Size 120, Min=44}" />
         </VerticalStackLayout>
 
         <Label Grid.Row="3" Style="{StaticResource Eyebrow}" Text="{loc:Str Live_History}" Margin="0,0,0,6" />
 
-        <CollectionView Grid.Row="4" ItemsSource="{Binding History}" HeightRequest="44" ItemsUpdatingScrollMode="KeepLastItemInView">
+        <CollectionView Grid.Row="4" ItemsSource="{Binding History}" HeightRequest="{t:Size 44, Min=44}" ItemsUpdatingScrollMode="KeepLastItemInView">
             <CollectionView.ItemsLayout>
                 <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8" />
             </CollectionView.ItemsLayout>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
-                    <Border BackgroundColor="{t:Theme Surface2}" StrokeShape="RoundRectangle 12" StrokeThickness="0" Padding="14,0" HeightRequest="36" VerticalOptions="Center">
+                    <Border BackgroundColor="{t:Theme Surface2}" StrokeShape="RoundRectangle 12" StrokeThickness="0" Padding="14,0" HeightRequest="{t:Size 36}" VerticalOptions="Center">
                         <Label Style="{StaticResource ChordSmall}" FontSize="18" Text="{Binding .}" VerticalOptions="Center" />
                     </Border>
                 </DataTemplate>
@@ -57,9 +57,9 @@
                                     BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
             </Grid>
             <Label Grid.Column="1" Text="{loc:Str Live_SimpleChords}" FontSize="15" VerticalOptions="Center" LineBreakMode="TailTruncation" />
-            <Border Grid.Column="2" Style="{StaticResource Chip}" HeightRequest="36" Opacity="0.6">
+            <Border Grid.Column="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 36}" Opacity="0.6">
                 <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                    <controls:IconView Name="metro" Size="18" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <controls:IconView Name="metro" Size="{t:Size 18}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                     <Label FontSize="14" Text="{loc:Str Live_Metronome}" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
             </Border>

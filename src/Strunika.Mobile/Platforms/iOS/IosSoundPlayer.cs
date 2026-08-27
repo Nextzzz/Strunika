@@ -13,7 +13,7 @@ public sealed class IosSoundPlayer : ISoundPlayer
 {
     private AVAudioPlayer? _player;   // kept alive until playback ends
 
-    public async Task PlayAsync(string asset)
+    public async Task PlayAsync(string asset, double volume = 1.0)
     {
         var path = await SoundAssets.EnsureAsync(asset);
         if (path == null) return;
@@ -28,6 +28,7 @@ public sealed class IosSoundPlayer : ISoundPlayer
                 Strunika.Core.Diagnostics.FileLog.Error("sound play: " + error?.LocalizedDescription);
                 return;
             }
+            _player.Volume = (float)Math.Clamp(volume, 0, 1);
             _player.FinishedPlaying += (_, _) => { _player?.Dispose(); _player = null; };
             _player.PrepareToPlay();
             _player.Play();

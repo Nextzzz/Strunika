@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
+             x:Class="Strunika.Mobile.Pages.SongPage"
+             x:DataType="vm:SongViewModel"
+             ios:Page.UseSafeArea="True"
+             NavigationPage.HasNavigationBar="False"
+             NavigationPage.HasBackButton="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="0,8,0,20" RowDefinitions="44,Auto,Auto,3*,2*,Auto,Auto" RowSpacing="0">
+
+        <!-- Header: back · title/artist · Chord Editor -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="8,0,12,0" ColumnSpacing="6" Margin="{t:ContentInset}">
+            <HorizontalStackLayout Spacing="0" VerticalOptions="Center" MinimumHeightRequest="{t:Size 44, Min=44}" Padding="0,4">
+                <controls:IconView Name="chevL" Size="{t:Size 27}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                <Label Text="{loc:Str Tab_Songs}" FontSize="18" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
+                <HorizontalStackLayout.GestureRecognizers><TapGestureRecognizer Tapped="OnBackTapped" /></HorizontalStackLayout.GestureRecognizers>
+            </HorizontalStackLayout>
+            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                <Label Text="{Binding Title}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                <Label Text="{Binding SubtitleText}" FontSize="12" TextColor="{t:Theme TextSec}" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+            </VerticalStackLayout>
+            <Border Grid.Column="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 40}" Padding="13,0" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}" HorizontalOptions="End" VerticalOptions="Center">
+                <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
+                    <controls:IconView Name="pencil" Size="{t:Size 17}" Color="{t:Theme OnFill}" VerticalOptions="Center" />
+                    <Label Text="{loc:Str Song_Editor_Short}" FontSize="14" FontAttributes="Bold" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditorTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- Now playing · what is next: the name sits above its own box -->
+        <Grid Grid.Row="3" x:Name="Panel" ColumnDefinitions="0,Auto,*,Auto,*,Auto,0" Padding="20,10,20,4" Margin="{t:ContentInset}">
+            <Border Grid.Column="1" StrokeThickness="0" BackgroundColor="Transparent" Padding="0" HorizontalOptions="Center" VerticalOptions="Fill">
+                <controls:ChordDiagram x:Name="CurrentDiagram" Shape="{Binding CurrentShape}" Title="{Binding CurrentChord}" ShowFrets="True" LeftHanded="{Binding LeftHanded}"
+                                       WidthRequest="{t:Size 168, Hero=True}" VerticalOptions="Fill"
+                                       LineColor="{t:Theme TextPri}" DotColor="{t:Theme Accent}" MutedColor="{t:Theme Dim}"
+                                       FretTextColor="{t:Theme TextSec}" TitleColor="{t:Theme AccentText}" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCurrentShapeTapped" /></Border.GestureRecognizers>
+            </Border>
+
+            <controls:IconView Grid.Column="3" Name="chevR" Size="{t:Size 22}" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding HasNext}" />
+
+            <Border Grid.Column="5" StrokeThickness="0" BackgroundColor="Transparent" Padding="0" HorizontalOptions="Center" VerticalOptions="Fill" Opacity="0.7" IsVisible="{Binding HasNext}">
+                <controls:ChordDiagram x:Name="NextDiagram" Shape="{Binding NextShape}" Title="{Binding NextChord}" ShowFrets="True" LeftHanded="{Binding LeftHanded}"
+                                       WidthRequest="{t:Size 100, Hero=True}" VerticalOptions="Fill" Margin="0,20"
+                                       LineColor="{t:Theme TextSec}" DotColor="{t:Theme AccentText}" MutedColor="{t:Theme Dim}"
+                                       FretTextColor="{t:Theme TextSec}" TitleColor="{t:Theme TextPri}" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnNextShapeTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- YouTube strip (collapsed player) -->
+        <Border Grid.Row="1" x:Name="Strip" Style="{StaticResource Card}" Padding="6,0,8,0" HeightRequest="{t:Size 52, Min=44}" Margin="{t:ContentInset Plus=True, Top=12}" IsVisible="{Binding IsYouTube}">
+            <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="10">
+                <Border WidthRequest="{t:Size 40}" HeightRequest="{t:Size 40}" StrokeShape="RoundRectangle 9" StrokeThickness="0" Padding="0" VerticalOptions="Center">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="{t:Theme Accent2}" Offset="0" />
+                            <GradientStop Color="{t:Theme Surface2}" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid>
+                        <controls:IconView Name="youtube" Size="{t:Size 20}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Image x:Name="Thumb" Aspect="AspectFill" />
+                    </Grid>
+                </Border>
+                <Label Grid.Column="1" FontSize="13" TextColor="{t:Theme TextSec}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1">
+                    <Label.FormattedText>
+                        <FormattedString>
+                            <Span Text="YouTube" TextColor="{t:Theme TextPri}" FontAttributes="Bold" />
+                            <Span Text=" · " />
+                            <Span Text="{Binding Title}" />
+                        </FormattedString>
+                    </Label.FormattedText>
+                </Label>
+                <controls:IconView Grid.Column="2" x:Name="PlayerChevron" Name="chevD" Size="{t:Size 18}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+            </Grid>
+            <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnPlayerStripTapped" /></Border.GestureRecognizers>
+        </Border>
+        <Border Grid.Row="2" x:Name="PlayerHost" StrokeShape="RoundRectangle 12" StrokeThickness="0" Padding="0" Margin="{t:ContentInset Plus=True}" HeightRequest="1" Opacity="0" IsVisible="{Binding IsYouTube}">
+            <controls:YouTubeEmbedView x:Name="Player" />
+        </Border>
+
+        <!-- The conveyor -->
+        <controls:ChordTrack Grid.Row="4" x:Name="Track" Margin="0,8,0,14" MinimumHeightRequest="{t:Size 110, Min=44}"
+                             Segments="{Binding Segments}" Beats="{Binding BeatTimes}" Peaks="{Binding Peaks}"
+                             Duration="{Binding Duration}"
+                             LoopStart="{Binding LoopStart}" LoopEnd="{Binding LoopEnd}"
+                             Accent="{t:Theme Accent}" OnAccent="{t:Theme OnFill}" WaveColor="{t:Theme Surface2}"
+                             PillColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}" LineColor="{t:Theme Dim}" />
+
+        <!-- Position slider -->
+        <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="22,0,22,0" Margin="{t:ContentInset}">
+            <Label Text="{Binding PositionText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+            <Slider Grid.Column="1" x:Name="Seeker" Minimum="0" Maximum="{Binding SliderMax}"
+                    MinimumTrackColor="{t:Theme Accent}" MaximumTrackColor="{t:Theme Separator}" ThumbColor="{t:Theme Accent}"
+                    ValueChanged="OnSeekerChanged" DragStarted="OnSeekerDragStarted" DragCompleted="OnSeekerDragCompleted" />
+            <Label Grid.Column="2" Text="{Binding DurationText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+        </Grid>
+
+        <!-- Transport: metronome · chord skip · play · A–B -->
+        <Grid Grid.Row="6" ColumnDefinitions="Auto,*,60,78,60,*,Auto" Padding="22,10,22,0" ColumnSpacing="0" Margin="{t:ContentInset}">
+            <Grid VerticalOptions="Center">
+                <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 46, Min=44}" Padding="16,0">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding HasLoop}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
+                            <Setter Property="Stroke" Value="{t:Theme Fill}" />
+                        </DataTrigger>
+                    </Border.Triggers>
+                    <Label Text="{Binding LoopText}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding HasLoop}" Value="True">
+                                <Setter Property="TextColor" Value="{t:Theme OnFill}" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding ToggleLoopCommand}" /></Border.GestureRecognizers>
+                </Border>
+                <controls:LockBadge IsLocked="{Binding LoopLocked}" Margin="0,-6,-6,0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
+            </Grid>
+
+            <Border Grid.Column="2" WidthRequest="{t:Size 60, Min=44}" HeightRequest="{t:Size 60, Min=44}" StrokeShape="{t:Round 60, Min=44}" StrokeThickness="0" BackgroundColor="Transparent" Padding="0" VerticalOptions="Center">
+                <controls:IconView Name="prevCh" Size="{t:Size 28}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding PrevChordCommand}" /></Border.GestureRecognizers>
+            </Border>
+            <Border Grid.Column="3" WidthRequest="{t:Size 78, Min=44}" HeightRequest="{t:Size 78, Min=44}" StrokeShape="{t:Round 78, Min=44}" StrokeThickness="0" BackgroundColor="{t:Theme Fill}" Padding="0" VerticalOptions="Center">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding CanPlay}" Value="False">
+                        <Setter Property="Opacity" Value="0.35" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.Shadow><Shadow Brush="{t:Theme Glow, Brush=True}" Radius="18" Opacity="0.7" Offset="0,6" /></Border.Shadow>
+                <Grid>
+                    <controls:IconView Name="play" Size="{t:Size 34}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" Margin="4,0,0,0" IsVisible="{Binding ShowPause, Converter={StaticResource Not}}" />
+                    <controls:IconView Name="pause" Size="{t:Size 32}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding ShowPause}" />
+                </Grid>
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding TogglePlayCommand}" /></Border.GestureRecognizers>
+            </Border>
+            <Border Grid.Column="4" WidthRequest="{t:Size 60, Min=44}" HeightRequest="{t:Size 60, Min=44}" StrokeShape="{t:Round 60, Min=44}" StrokeThickness="0" BackgroundColor="Transparent" Padding="0" VerticalOptions="Center">
+                <controls:IconView Name="nextCh" Size="{t:Size 28}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding NextChordCommand}" /></Border.GestureRecognizers>
+            </Border>
+
+            <Border Grid.Column="6" WidthRequest="{t:Size 56, Min=44}" HeightRequest="{t:Size 56, Min=44}" StrokeShape="{t:Round 56, Min=44}" StrokeThickness="0" BackgroundColor="{t:Theme Surface1}" Padding="0" VerticalOptions="Center">
+                <controls:IconView Name="dots" Size="{t:Size 24}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnMoreTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+
+        <!-- "More": everything that is not needed on every bar -->
+        <BoxView x:Name="MoreScrim" Grid.Row="0" Grid.RowSpan="7" Color="#99000000" Opacity="0" InputTransparent="True">
+            <BoxView.GestureRecognizers><TapGestureRecognizer Tapped="OnMoreTapped" /></BoxView.GestureRecognizers>
+        </BoxView>
+
+        <Border x:Name="MoreSheet" Grid.Row="0" Grid.RowSpan="7" VerticalOptions="End" TranslationY="600" Margin="{t:ContentInset}"
+                BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="20,10,20,24"
+                StrokeShape="RoundRectangle 24,24,0,0">
+            <Border.Shadow><Shadow Brush="#40000000" Radius="22" Opacity="0.6" Offset="0,-6" /></Border.Shadow>
+            <VerticalStackLayout Spacing="4">
+                <BoxView WidthRequest="{t:Size 40}" HeightRequest="{t:Size 5}" CornerRadius="3" Color="{t:Theme Separator}" HorizontalOptions="Center" Margin="0,0,0,8" />
+
+                <!-- Key: semitones from the original -->
+                <Grid ColumnDefinitions="*,Auto" HeightRequest="{t:Size 52, Min=44}">
+                    <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                        <Label Text="{loc:Str Song_Key_Full}" FontSize="16" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
+                        <controls:LockBadge IsLocked="{Binding CapoLocked}" HorizontalOptions="Start" VerticalOptions="Center" Margin="0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                        <Border WidthRequest="{t:Size 38}" HeightRequest="{t:Size 38}" StrokeShape="{t:Round 38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                            <controls:IconView Name="minus" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding TransposeDownCommand}" /></Border.GestureRecognizers>
+                        </Border>
+                        <Label Text="{Binding TransposeText}" FontFamily="Display" FontSize="19" TextColor="{t:Theme AccentText}" HorizontalTextAlignment="Center" WidthRequest="{t:Size 46, Min=44}" VerticalOptions="Center" />
+                        <Border WidthRequest="{t:Size 38}" HeightRequest="{t:Size 38}" StrokeShape="{t:Round 38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                            <controls:IconView Name="plus" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding TransposeUpCommand}" /></Border.GestureRecognizers>
+                        </Border>
+                    </HorizontalStackLayout>
+                </Grid>
+
+                <!-- Speed -->
+                <Grid ColumnDefinitions="*,Auto" HeightRequest="{t:Size 52, Min=44}">
+                    <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                        <Label Text="{loc:Str Song_Speed}" FontSize="16" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
+                        <controls:LockBadge IsLocked="{Binding SpeedLocked}" HorizontalOptions="Start" VerticalOptions="Center" Margin="0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
+                    </HorizontalStackLayout>
+                    <Picker Grid.Column="1" ItemsSource="{Binding SpeedOptions}" SelectedItem="{Binding SelectedSpeed, Mode=TwoWay}"
+                            WidthRequest="{t:Size 110, Min=44}" FontSize="16" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Simple chords: the same switch row as in Settings -->
+                <Grid ColumnDefinitions="*,Auto" HeightRequest="{t:Size 52, Min=44}">
+                    <Label Text="{loc:Str Song_Simple}" FontSize="16" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
+                    <Switch Grid.Column="1" IsToggled="{Binding SimpleChords, Mode=TwoWay}" VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Metronome and how loud it is -->
+                <Grid ColumnDefinitions="*,Auto" HeightRequest="{t:Size 52, Min=44}">
+                    <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                        <controls:IconView Name="metro" Size="{t:Size 20}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                        <Label Text="{loc:Str Song_Click}" FontSize="16" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Switch Grid.Column="1" IsToggled="{Binding Metronome, Mode=TwoWay}" VerticalOptions="Center" />
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 46, Min=44}" IsVisible="{Binding Metronome}">
+                    <controls:IconView Name="vol" Size="{t:Size 18}" Color="{t:Theme Dim}" VerticalOptions="Center" Margin="2,0,0,0" />
+                    <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding ClickVolume, Mode=TwoWay}" Margin="0,0,10,0"
+                            MinimumTrackColor="{t:Theme Accent}" MaximumTrackColor="{t:Theme Separator}" ThumbColor="{t:Theme Accent}" VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Volume -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 52, Min=44}">
+                    <controls:IconView Name="vol" Size="{t:Size 22}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}" Margin="0,0,10,0"
+                            MinimumTrackColor="{t:Theme Accent}" MaximumTrackColor="{t:Theme Separator}" ThumbColor="{t:Theme Accent}" VerticalOptions="Center" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

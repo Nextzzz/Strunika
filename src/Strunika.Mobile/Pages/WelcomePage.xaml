@@ -10,11 +10,16 @@
              NavigationPage.HasNavigationBar="False">
 
     <!-- Content starts invisible and fades in over 0.5 s (GreetAsync); the page background is the darkness it appears from. -->
-    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}" Padding="24,40,24,32" RowDefinitions="Auto,*,Auto,*,Auto" RowSpacing="0" Opacity="0">
+    <!-- The grid is at least as tall as the viewport, so its star rows still
+         spread the blocks on a tall phone; on a short one (SE) it overflows and
+         the ScrollView takes over. -->
+    <ScrollView x:Name="Scroller" VerticalScrollBarVisibility="Default">
+    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}" Padding="24,40,24,32" RowDefinitions="Auto,*,Auto,*,Auto" RowSpacing="0" Opacity="0"
+          MinimumHeightRequest="{Binding Height, Source={x:Reference Scroller}}">
 
         <VerticalStackLayout Grid.Row="0" Spacing="6" HorizontalOptions="Center">
-            <Image Source="strunika_mark.png" HeightRequest="138" WidthRequest="250" Aspect="AspectFit" HorizontalOptions="Center" />
-            <Label FontFamily="Display" FontSize="46" Text="Strunika" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
+            <Image Source="strunika_mark.png" HeightRequest="{t:Size 138, Hero=True}" WidthRequest="{t:Size 250, Hero=True}" Aspect="AspectFit" HorizontalOptions="Center" />
+            <Label FontFamily="Display" FontSize="{t:Size 46, Hero=True}" Text="Strunika" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
             <Label Style="{StaticResource Subhead}" Text="{loc:Str Welcome_Tagline}" HorizontalTextAlignment="Center" Margin="0,4,0,0" />
             <!-- Hand-lettered greeting drawn as a string (user's own SVGs, 2026-08-27):
                  hello_uk for Ukrainian, hello_en for every other language, the user's own colours. -->
@@ -64,4 +69,5 @@
             <Label Style="{StaticResource Caption}" Text="{loc:Str Welcome_MicNote}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
     </Grid>
+    </ScrollView>
 </ContentPage>

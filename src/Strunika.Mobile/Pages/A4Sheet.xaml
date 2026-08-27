@@ -13,21 +13,21 @@
     <Grid BackgroundColor="{t:Theme Bg}" Padding="24,16,24,28" RowDefinitions="Auto,*,Auto">
         <Grid Grid.Row="0" ColumnDefinitions="*,44">
             <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Tuner_A4Title}" VerticalOptions="Center" />
-            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
-                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+            <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>
 
         <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" Spacing="18">
-            <Label x:Name="Value" Style="{StaticResource ChordHero}" FontSize="72" />
+            <Label x:Name="Value" Style="{StaticResource ChordHero}" FontSize="{t:Size 72, Hero=True}" />
             <Grid ColumnDefinitions="44,*,44" ColumnSpacing="12">
-                <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 22" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                <Border WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="{t:Round 44, Min=44}" BackgroundColor="{t:Theme Surface2}" Padding="0">
                     <Label Text="−" FontSize="24" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnMinus" /></Border.GestureRecognizers>
                 </Border>
                 <Slider x:Name="A4Slider" Grid.Column="1" Minimum="430" Maximum="450" ValueChanged="OnSliderChanged" VerticalOptions="Center" />
-                <Border Grid.Column="2" WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 22" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                <Border Grid.Column="2" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="{t:Round 44, Min=44}" BackgroundColor="{t:Theme Surface2}" Padding="0">
                     <Label Text="+" FontSize="24" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnPlus" /></Border.GestureRecognizers>
                 </Border>

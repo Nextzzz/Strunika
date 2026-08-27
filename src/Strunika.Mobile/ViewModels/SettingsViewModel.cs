@@ -92,6 +92,10 @@ public partial class SettingsViewModel : ObservableObject
 
     public bool DevProAvailable => DevProGate.IsAvailable;
 
+    public bool DevWindowAvailable => DevWindow.IsAvailable;
+    public string DevWindowName => DevWindow.Current.Name;
+    public void RefreshDevWindow() => OnPropertyChanged(nameof(DevWindowName));
+
     public bool DevPro
     {
         get => _devPro.IsPro;

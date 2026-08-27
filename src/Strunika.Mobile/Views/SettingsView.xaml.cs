@@ -17,6 +17,17 @@ public partial class SettingsView : ContentView
 
     private static Page? Host => Application.Current?.Windows.FirstOrDefault()?.Page;
 
+    private async void OnDevWindowTapped(object? sender, TappedEventArgs e)
+    {
+        if (Host == null || Vm == null) return;
+        var names = Services.DevWindow.Presets.Select(p => $"{p.Name} · {p.Width:0}×{p.Height:0}").ToArray();
+        string? choice = await Host.DisplayActionSheet(Loc.Get("Settings_DevWindow"), Loc.Get("Common_Cancel"), null, names);
+        int i = Array.IndexOf(names, choice);
+        if (i < 0) return;
+        Services.DevWindow.Apply(Services.DevWindow.Presets[i]);
+        Vm.RefreshDevWindow();
+    }
+
     private async void OnThemeTapped(object? sender, TappedEventArgs e)
     {
         if (Host == null || Vm == null) return;

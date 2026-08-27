@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.ChordShapesSheet"
+             ios:Page.UseSafeArea="True"
+             ios:Page.ModalPresentationStyle="FormSheet"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,24" RowDefinitions="Auto,Auto,*">
+        <Grid ColumnDefinitions="*,44">
+            <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                <Label x:Name="ChordLabel" FontFamily="DisplayBold" FontSize="{t:Size 34, Hero=True}" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
+                <Label Style="{StaticResource Title2}" Text="{loc:Str Song_Alt_Title}" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <Label Grid.Row="1" x:Name="Hint" Text="{loc:Str Song_Alt_Hint}" FontSize="13" TextColor="{t:Theme TextSec}" Margin="0,6,0,0" />
+
+        <ScrollView Grid.Row="2" Margin="0,14,0,0">
+            <FlexLayout x:Name="Options" Wrap="Wrap" JustifyContent="Start" AlignItems="Start" />
+        </ScrollView>
+    </Grid>
+</ContentPage>

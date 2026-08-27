@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+    #player { width: 100%; height: 100%; border: 0; }
+  </style>
+</head>
+<body>
+  <div id="player"></div>
+  <script>
+    // The official IFrame API, hosted on our own https origin — YouTube refuses
+    // to configure the player ("error 153") when the page has no real origin,
+    // which is what a plain NavigateToString / file:// page gives it.
+    var player = null, ready = false, err = 0;
+    // What the app asked for before the player existed - YouTube silently drops
+    // commands sent to an unready player, which looked like "play does nothing".
+    var wantPlay = false, wantSeek = null, wantRate = null, wantVolume = null, warming = false;
+
+    function param(name) {
+      var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        videoId: param('v'),
+        playerVars: { playsinline: 1, rel: 0, controls: 1, modestbranding: 1, origin: location.origin },
+        events: {
+          onReady: function () {
+            ready = true;
+            if (wantSeek !== null) player.seekTo(wantSeek, true);
+            if (wantRate !== null) player.setPlaybackRate(wantRate);
+            if (wantVolume !== null) player.setVolume(wantVolume);
+            if (wantPlay) { player.playVideo(); }
+            else {
+              // Buffer the first seconds silently, so pressing play starts the
+              // song instead of a spinner.
+              warming = true;
+              player.mute();
+              player.playVideo();
+            }
+          },
+          onError: function (e) { err = e && e.data ? e.data : 0; },
+          onStateChange: function (e) {
+            if (warming) {
+              if (e.data === 1) {                   // it started: stop and rewind, silently
+                warming = false;
+                player.pauseVideo();
+                player.seekTo(wantSeek !== null ? wantSeek : 0, true);
+                player.unMute();
+              }
+              return;
+            }
+            // The person used YouTube's own controls: keep our intent honest.
+            if (e.data === 1) wantPlay = true;
+            if (e.data === 2 || e.data === 0) wantPlay = false;
+          }
+        }
+      });
+    }
+
+    function strState() {
+      if (!player || !ready) return JSON.stringify({ t: 0, d: 0, p: false, w: wantPlay, r: 1, e: err, s: -9, ready: false });
+      var st = player.getPlayerState();
+      if (warming) return JSON.stringify({ t: wantSeek || 0, d: player.getDuration() || 0, p: false, w: false, r: 1, e: err, s: 5, ready: true });
+      return JSON.stringify({
+        t: player.getCurrentTime() || 0,
+        d: player.getDuration() || 0,
+        p: st === 1,                 // buffering is not playing: the conveyor must wait
+        w: wantPlay,
+        r: player.getPlaybackRate() || 1,
+        e: err,
+        s: st,        // -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+        ready: true
+      });
+    }
+
+    function strPlay() {
+      wantPlay = true;
+      warming = false;                          // a real play cancels the silent warm-up
+      if (player && ready) { player.unMute(); player.playVideo(); }
+    }
+    function strPause() { wantPlay = false; if (player && ready) player.pauseVideo(); }
+    function strSeek(t) { wantSeek = t; if (player && ready) player.seekTo(t, true); }
+    function strRate(r) { wantRate = r; if (player && ready) player.setPlaybackRate(r); }
+    function strVolume(v) { wantVolume = v; if (player && ready && !warming) player.setVolume(v); }
+
+    var tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+  </script>
+</body>
+</html>

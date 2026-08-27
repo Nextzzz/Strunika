@@ -15,8 +15,8 @@
     <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,28" RowDefinitions="Auto,Auto,*,Auto">
         <Grid Grid.Row="0" ColumnDefinitions="*,44">
             <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Library_Add}" VerticalOptions="Center" />
-            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
-                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+            <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>
@@ -27,15 +27,15 @@
             <!-- YouTube -->
             <Border Style="{StaticResource Card}" Padding="14,12">
                 <Grid ColumnDefinitions="44,*,40" ColumnSpacing="12">
-                    <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
-                        <controls:IconView Name="youtube" Size="22" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Border WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
+                        <controls:IconView Name="youtube" Size="{t:Size 22}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                         <Label Text="{loc:Str Library_YouTube}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />
                         <Label Text="{loc:Str Library_YouTube_Hint}" Style="{StaticResource Footnote}" />
                     </VerticalStackLayout>
-                    <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" StrokeShape="RoundRectangle 20" BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="0" VerticalOptions="Center">
-                        <controls:IconView Name="star" Size="20" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Border Grid.Column="2" WidthRequest="{t:Size 40}" HeightRequest="{t:Size 40}" StrokeShape="{t:Round 40}" BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="0" VerticalOptions="Center">
+                        <controls:IconView Name="star" Size="{t:Size 20}" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center">
                             <controls:IconView.Triggers>
                                 <DataTrigger TargetType="controls:IconView" Binding="{Binding PinYouTube}" Value="True">
                                     <Setter Property="Color" Value="{t:Theme AccentText}" />
@@ -52,15 +52,15 @@
             <!-- File -->
             <Border Style="{StaticResource Card}" Padding="14,12">
                 <Grid ColumnDefinitions="44,*,40" ColumnSpacing="12">
-                    <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
-                        <controls:IconView Name="file" Size="22" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Border WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
+                        <controls:IconView Name="file" Size="{t:Size 22}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                         <Label Text="{loc:Str Library_FromFile}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />
                         <Label Text="{loc:Str Library_FromFile_Hint}" Style="{StaticResource Footnote}" />
                     </VerticalStackLayout>
-                    <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" StrokeShape="RoundRectangle 20" BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="0" VerticalOptions="Center">
-                        <controls:IconView Name="star" Size="20" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Border Grid.Column="2" WidthRequest="{t:Size 40}" HeightRequest="{t:Size 40}" StrokeShape="{t:Round 40}" BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="0" VerticalOptions="Center">
+                        <controls:IconView Name="star" Size="{t:Size 20}" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center">
                             <controls:IconView.Triggers>
                                 <DataTrigger TargetType="controls:IconView" Binding="{Binding PinFile}" Value="True">
                                     <Setter Property="Color" Value="{t:Theme AccentText}" />
@@ -77,15 +77,15 @@
             <!-- Record -->
             <Border Style="{StaticResource Card}" Padding="14,12">
                 <Grid ColumnDefinitions="44,*,40" ColumnSpacing="12">
-                    <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
-                        <controls:IconView Name="mic" Size="22" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Border WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
+                        <controls:IconView Name="mic" Size="{t:Size 22}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Border>
                     <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                         <Label Text="{loc:Str Library_Record}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />
                         <Label Text="{loc:Str Library_Record_Hint}" Style="{StaticResource Footnote}" />
                     </VerticalStackLayout>
-                    <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" StrokeShape="RoundRectangle 20" BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="0" VerticalOptions="Center">
-                        <controls:IconView Name="star" Size="20" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Border Grid.Column="2" WidthRequest="{t:Size 40}" HeightRequest="{t:Size 40}" StrokeShape="{t:Round 40}" BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="0" VerticalOptions="Center">
+                        <controls:IconView Name="star" Size="{t:Size 20}" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center">
                             <controls:IconView.Triggers>
                                 <DataTrigger TargetType="controls:IconView" Binding="{Binding PinRecord}" Value="True">
                                     <Setter Property="Color" Value="{t:Theme AccentText}" />

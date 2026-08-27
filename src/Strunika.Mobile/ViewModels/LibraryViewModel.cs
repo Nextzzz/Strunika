@@ -94,6 +94,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// clipboard offers a choice, otherwise the built-in YouTube opens.</summary>
     public async Task YouTubeTapAsync()
     {
+        if (!RemoteFlags.YouTubeAnalysis) { Message?.Invoke(this, Loc.Get("Library_YT_Off")); return; }
         var link = await ClipboardLinkAsync();
         if (link != null) YouTubeChoiceRequested?.Invoke(this, link);
         else BrowseYouTubeRequested?.Invoke(this, EventArgs.Empty);
@@ -270,6 +271,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Returns null on success or a Library_Err_* key.</summary>
     public async Task<string?> AddYouTubeAsync(string url)
     {
+        if (!RemoteFlags.YouTubeAnalysis) return "Library_YT_Off";
         var id = _youtube.TryParseVideoId(url);
         if (id == null) return "Library_Err_NotLink";
         var existing = _all.FirstOrDefault(i => i.Song.Source == SongSource.YouTube && i.Song.SourceRef == id);

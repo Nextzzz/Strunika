@@ -58,6 +58,20 @@ public static class AppSettings
         };
     }
 
+    /// <summary>Metronome level on the song page, 0–1.</summary>
+    public static double ClickVolume
+    {
+        get => Preferences.Default.Get("click_volume", 0.8);
+        set { Preferences.Default.Set("click_volume", Math.Clamp(value, 0, 1)); Raise(nameof(ClickVolume)); }
+    }
+
+    /// <summary>Song-page playback volume, 0–1.</summary>
+    public static double SongVolume
+    {
+        get => Preferences.Default.Get("song_volume", 1.0);
+        set { Preferences.Default.Set("song_volume", Math.Clamp(value, 0, 1)); Raise(nameof(SongVolume)); }
+    }
+
     public static bool LeftHanded
     {
         get => Preferences.Default.Get("left_handed", false);
