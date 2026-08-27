@@ -72,3 +72,43 @@ Conventions that bit us on Windows (keep them):
 Native rewrite escape hatch: if the UI ever needs true SwiftUI polish, the
 Core/Neural math can be exposed via .NET NativeAOT as a static lib and called
 from Swift — but that needs a Mac and is not planned.
+
+## M2 notes (song library)
+
+- **Windows head decodes through NAudio** (`Strunika.Media.AudioLoader`), with an **ffmpeg fallback** (`%LocalAppData%\Strunika\tools\ffmpeg.exe` or PATH) because MediaFoundation opens some YouTube DASH m4a files and then yields zero samples (e.g. `BdzZ_9QHQNQ`, AAC-LC, fine in ffmpeg); iOS uses `Platforms/iOS/IosAudioDecoder`
+  (AVAudioFile → mono → `Strunika.Core.Audio.Resampler`). The iOS decoder was written against the binding docs on the
+  Windows head and is **unverified until the first device build** — check `AVAudioPcmBuffer.FloatChannelData` layout and
+  `AVAudioFile.ReadIntoBuffer` first.
+- WinUI `TextBox` paints its own border; `MauiProgram` maps `EntryHandler` to clear it (theme-resource brushes).
+  Setting `TextControlBorderThemeThicknessFocused` there crashed navigation with `COMException 0x8000FFFF` — brushes only.
+- A bare `GraphicsView` (`IconView`) does not receive tap gestures on Windows; wrap tappable icons in a `Border`.
+- YouTube: plain YoutubeExplode, audio to `CacheDirectory/yt`, deleted after decoding. When it breaks, the card shows
+  "YouTube is temporarily unavailable" and can be retried by tapping it. **Keep the package current**: 6.6.1 threw
+  `VideoUnavailableException` from `GetManifestAsync` for most licensed music videos (metadata still worked), 6.6.2
+  resolves them. Only MP4/AAC audio streams are accepted (WebM/Opus is undecodable on both platforms). If YoutubeExplode
+  breaks for good, the escape hatch is our own Innertube `player` request with the client yt-dlp uses without PO tokens
+  (`android vr` as of yt-dlp 2026.07) — see `Strunika.Media/YoutubeAudioService` for the desktop tiers.
+- Free quota counters live in `SecureStorage`; the unpackaged Windows head falls back to `Preferences` when the
+  secure store throws.
+- Test harness: `shot.ps1` gained `~play:<wav>` / `~mute` (in-process SoundPlayer), `~keys:<SendKeys>`, `~click:fx:fy`
+  (no screenshot) and `~wait:ms` steps — file dialogs are driven with `~click` on the file-name box + `~keys:path{ENTER}`.
+- **Switch off-state colours**: `ToggleSwitchFillOff`/`StrokeOff` are *Brushes*, but `…PointerOver`/`…Pressed`
+  are plain *Colors* — the template's `LinearColorKeyFrame` animates `(Shape.Fill).(SolidColorBrush.Color)` of
+  `OuterBorder` with them, so a Brush under those keys renders as nothing (the "track vanishes on hover" bug).
+  They are written into the control's own `Resources` after `Loaded` (inserting in the handler mapping throws
+  `0x800F0902`) and mirrored in the application `ThemeDictionaries` in `Platforms/Windows/App.xaml`. The knob is one cream colour in both states (MAUI's On/Off visual states did not switch `ThumbColor`
+  reliably); iOS paints the off track with a rounded `BackgroundColor` on the UISwitch.
+- `LaunchPage` is the first page on every start (models unpacked, then Welcome/Root); the Windows head holds it
+  for 3 s so it can be seen — on iPhone it shows only as long as the work takes (≥0.5 s).
+- Buttons have `UseSystemFocusVisuals=false` on Windows: WinUI drew a dotted focus rectangle on the first button
+  after every page navigation.
+- Dev launches: `STRUNIKA_RESET=1` wipes preferences (harness `-Reset`), `STRUNIKA_WELCOME=1` only forces the
+  welcome screen (harness only; not set for Visual Studio — F5 behaves like a real install: Welcome on the first
+  launch or when "Skip the welcome screen" is off).
+- Paywall: from a locked control it is a modal sheet; from Settings → "Learn more" it is *pushed* (slides in from
+  the right, swipe-back on iPhone) with `HasBackButton=False` so the WinUI title-bar arrow stays hidden.
+- Shadows: put them on a rounded `Border`, not on a `Button` (WinUI casts the button shadow from its rectangular
+  bounds), and give the parent layout room on every side (`Margin="-24,-64,-24,-24" Padding="24,64,24,24"`) — layouts clip to their bounds on
+  Windows, which cuts a glow into a hard-edged band (Welcome's Start button).
+- Fonts: Vollkorn SemiBold/Bold (`Display`/`DisplayBold`), OFL. The welcome greeting is the user's SVG lettering (`Resources/Images/hello_uk.svg`, `hello_en.svg`), not a font.
+

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.YouTubeChoiceSheet"
+             ios:Page.UseSafeArea="True"
+             ios:Page.ModalPresentationStyle="FormSheet"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,28" RowDefinitions="Auto,Auto,Auto,Auto">
+        <Grid Grid.Row="0" ColumnDefinitions="*,44">
+            <Label Style="{StaticResource Title2}" Text="{loc:Str Library_YT_Choice_Title}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+            <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
+                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- Use the clipboard link -->
+        <Border Grid.Row="1" Margin="0,18,0,0" StrokeShape="RoundRectangle 16" BackgroundColor="{t:Theme Fill}" StrokeThickness="0" Padding="14,12">
+            <Grid ColumnDefinitions="44,*" ColumnSpacing="12">
+                <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 12" BackgroundColor="#2616110B" StrokeThickness="0" Padding="0">
+                    <controls:IconView Name="link" Size="22" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label Text="{loc:Str Library_YT_UseLink}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme OnFill}" />
+                    <Label x:Name="LinkLabel" FontSize="13" TextColor="{t:Theme OnFill}" Opacity="0.75" LineBreakMode="MiddleTruncation" MaxLines="1" />
+                </VerticalStackLayout>
+            </Grid>
+            <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnUseLinkTapped" /></Border.GestureRecognizers>
+        </Border>
+
+        <!-- Built-in YouTube -->
+        <Border Grid.Row="2" Margin="0,10,0,0" Style="{StaticResource Card}" Padding="14,12">
+            <Grid ColumnDefinitions="44,*" ColumnSpacing="12">
+                <Border WidthRequest="44" HeightRequest="44" StrokeShape="RoundRectangle 12" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0">
+                    <controls:IconView Name="youtube" Size="22" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label Text="{loc:Str Library_YT_Browse}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" />
+                    <Label Text="{loc:Str Library_YT_Browse_Hint}" Style="{StaticResource Footnote}" />
+                </VerticalStackLayout>
+            </Grid>
+            <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnBrowseTapped" /></Border.GestureRecognizers>
+        </Border>
+    </Grid>
+</ContentPage>

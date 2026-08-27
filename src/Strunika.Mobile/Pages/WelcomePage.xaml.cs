@@ -18,6 +18,9 @@ public partial class WelcomePage : ContentPage
     {
         _services = services;
         InitializeComponent();
+        ApplyGreeting();
+        Loc.Instance.PropertyChanged += (_, _) => ApplyGreeting();
+        Loaded += (_, _) => _ = GreetAsync();
 
         LanguagePicker.SetItems(new[]
         {
@@ -56,5 +59,64 @@ public partial class WelcomePage : ContentPage
         // replacing Window.Page outright collapses the WinUI window.
         Navigation.InsertPageBefore(root, this);
         await Navigation.PopAsync(animated: true);
+    }
+
+
+    /// <summary>Ukrainian gets its own lettering; every other language the English one.</summary>
+    private void ApplyGreeting()
+    {
+        // Brand Accent per theme, exactly like the wave it wipes into: Gold on dark, Copper on light.
+        string name = Loc.Instance.Culture.TwoLetterISOLanguageName == "uk" ? "hello_uk" : "hello_en";
+        Greeting.SetAppTheme(Image.SourceProperty, ImageSource.FromFile(name + "_light.png"), ImageSource.FromFile(name + ".png"));
+    }
+
+    private bool _greeted;
+
+    /// <summary>Wipe length; the dev head can stretch it (STRUNIKA_WIPE_MS) to inspect the join.</summary>
+    private static uint WipeMs
+    {
+        get
+        {
+#if WINDOWS
+            if (uint.TryParse(Environment.GetEnvironmentVariable("STRUNIKA_WIPE_MS"), out var ms) && ms > 0) return ms;
+#endif
+            return 2000;
+        }
+    }
+
+    /// <summary>Experimental (2026-08-27): the familiar wave is shown first,
+    /// (after the page fades in from the dark background in 0.5 s), then a slow
+    /// left-to-right wipe replaces it with the lettered greeting
+    /// while the strum plays. Reduce Motion: the greeting only.</summary>
+    private async Task GreetAsync()
+    {
+        if (_greeted) return;
+        _greeted = true;
+        if (Services.Motion.Reduced)
+        {
+            Root.Opacity = 1;
+            WaveClip.IsVisible = false;
+            return;
+        }
+        const double H = 200;
+        var waveClip = new Microsoft.Maui.Controls.Shapes.RectangleGeometry(new Rect(0, 0, 4000, H));
+        var wordClip = new Microsoft.Maui.Controls.Shapes.RectangleGeometry(new Rect(0, 0, 0, H));
+        WaveClip.Clip = waveClip;
+        GreetingClip.Clip = wordClip;
+        // The whole screen appears out of the dark in 0.5 s, then the string starts writing.
+        await Root.FadeTo(1, 500, Easing.CubicOut);
+        double width = GreetingClip.Width > 0 ? GreetingClip.Width : 342;
+        var done = new TaskCompletionSource();
+        new Animation(v =>
+            {
+                waveClip.Rect = new Rect(v, 0, Math.Max(0, width - v) + 1, H);
+                wordClip.Rect = new Rect(0, 0, v, H);
+            }, 0, width)
+            .Commit(this, "greeting", 16, WipeMs, Easing.SinInOut, (_, _) => done.TrySetResult());
+        // Sound after the wipe has started, off the UI thread (see the players).
+        _ = Task.Run(() => _services.GetService<Services.ISoundPlayer>()?.PlayAsync(Services.SoundAssets.Greeting));
+        await done.Task;
+        WaveClip.IsVisible = false;
+        GreetingClip.Clip = null;
     }
 }

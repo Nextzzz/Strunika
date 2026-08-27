@@ -19,7 +19,9 @@ public sealed class OnsetDetector
     public double FrameRate(int sampleRate) => sampleRate / (double)Hop;
 
     /// <summary>Normalized novelty curve (one value per STFT frame).</summary>
-    public double[] NoveltyCurve(float[] samples, int sampleRate)
+    public double[] NoveltyCurve(float[] samples, int sampleRate) => NoveltyCurve(samples, sampleRate, null, default);
+
+    public double[] NoveltyCurve(float[] samples, int sampleRate, IProgress<double>? progress, CancellationToken ct)
     {
         var stft = new Stft(NFft, Hop);
         int frames = stft.FrameCount(samples.Length);
@@ -31,6 +33,11 @@ public sealed class OnsetDetector
         int f = 0;
         foreach (var magnitude in stft.Magnitudes(samples))
         {
+            if ((f & 255) == 0)
+            {
+                ct.ThrowIfCancellationRequested();
+                progress?.Report(f / (double)frames);
+            }
             var compressed = new double[magnitude.Length];
             for (int k = 0; k < magnitude.Length; k++)
                 compressed[k] = Math.Log(1.0 + Gamma * magnitude[k]);

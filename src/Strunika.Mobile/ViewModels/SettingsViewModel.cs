@@ -48,6 +48,12 @@ public partial class SettingsViewModel : ObservableObject
         RefreshNames();
     }
 
+    public bool SkipWelcome
+    {
+        get => AppSettings.SkipWelcome;
+        set { AppSettings.SkipWelcome = value; OnPropertyChanged(); }
+    }
+
     public bool LeftHanded
     {
         get => AppSettings.LeftHanded;

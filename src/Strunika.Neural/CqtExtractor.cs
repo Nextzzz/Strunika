@@ -68,7 +68,7 @@ public sealed class CqtExtractor
     public double SecondsPerFrame => ChunkSeconds / FramesPerChunk;
 
     /// <summary>log-CQT features [frames, 144] for 22050 Hz mono audio.</summary>
-    public float[][] Extract(float[] samples)
+    public float[][] Extract(float[] samples, IProgress<double>? progress = null, CancellationToken ct = default)
     {
         int chunkSamples = (int)(SampleRate * ChunkSeconds);
         var features = new List<float[]>();
@@ -76,6 +76,8 @@ public sealed class CqtExtractor
         int position = 0;
         while (samples.Length > position + chunkSamples)
         {
+            ct.ThrowIfCancellationRequested();
+            progress?.Report(position / (double)samples.Length);
             AppendChunk(samples, position, chunkSamples, features);
             position += chunkSamples;
         }

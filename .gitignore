@@ -25,3 +25,6 @@ ml/bundle_hook/
 ml/bundle_pseudo/
 ml/collect_*.log
 ml/bundle_hook_train/
+
+# Source folders named Audio are code, not media (the audio/ rule above targets sample clips)
+!src/Strunika.Core/Audio/

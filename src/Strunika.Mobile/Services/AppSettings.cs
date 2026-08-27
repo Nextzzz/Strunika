@@ -19,6 +19,14 @@ public static class AppSettings
         set { Preferences.Default.Set("welcome_done", value); Raise(nameof(WelcomeDone)); }
     }
 
+    /// <summary>Skip the welcome screen on later launches (the first launch
+    /// always shows it). Default on — user decision 2026-08-27.</summary>
+    public static bool SkipWelcome
+    {
+        get => Preferences.Default.Get("skip_welcome", true);
+        set { Preferences.Default.Set("skip_welcome", value); Raise(nameof(SkipWelcome)); }
+    }
+
     // ---- appearance --------------------------------------------------
 
     /// <summary>"system" | "dark" | "light".</summary>
@@ -76,6 +84,29 @@ public static class AppSettings
     {
         get => Preferences.Default.Get("beat_snap", true);
         set { Preferences.Default.Set("beat_snap", value); Raise(nameof(BeatSnap)); }
+    }
+
+    /// <summary>Model used for song analysis ("btc_self" by default — the
+    /// legally clean self-trained model; see README "Model strategy").</summary>
+    public static string SongModel
+    {
+        get => Preferences.Default.Get("song_model", "btc_self");
+        set { Preferences.Default.Set("song_model", value); Raise(nameof(SongModel)); }
+    }
+
+    /// <summary>Ways of adding a song pinned to the top of the Songs screen
+    /// ("youtube", "file", "record"), comma-separated.</summary>
+    public static string PinnedSources
+    {
+        get => Preferences.Default.Get("pinned_sources", "youtube,file");
+        set { Preferences.Default.Set("pinned_sources", value); Raise(nameof(PinnedSources)); }
+    }
+
+    /// <summary>Library sort: "date" | "title" | "key".</summary>
+    public static string LibrarySort
+    {
+        get => Preferences.Default.Get("library_sort", "date");
+        set { Preferences.Default.Set("library_sort", value); Raise(nameof(LibrarySort)); }
     }
 
     public static bool Expert

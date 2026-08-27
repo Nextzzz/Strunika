@@ -5,4 +5,31 @@
     xmlns:maui="using:Microsoft.Maui"
     xmlns:local="using:Strunika.Mobile.WinUI">
 
+    <!-- Off-state ToggleSwitch colours for the dev head: WinUI's defaults are a
+         hairline that vanishes on the warm surfaces, and the template resolves
+         these ThemeResources at load time, so they must live in the application's
+         ThemeDictionaries (brand tokens: Separator fill, Dim stroke). -->
+    <maui:MauiWinUIApplication.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="#3A2E1C" />
+                    <Color x:Key="ToggleSwitchFillOffPointerOver">#3A2E1C</Color>
+                    <Color x:Key="ToggleSwitchFillOffPressed">#3A2E1C</Color>
+                    <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#7A6543" />
+                    <Color x:Key="ToggleSwitchStrokeOffPointerOver">#7A6543</Color>
+                    <Color x:Key="ToggleSwitchStrokeOffPressed">#7A6543</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="#D9C6A0" />
+                    <Color x:Key="ToggleSwitchFillOffPointerOver">#D9C6A0</Color>
+                    <Color x:Key="ToggleSwitchFillOffPressed">#D9C6A0</Color>
+                    <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#A08A5C" />
+                    <Color x:Key="ToggleSwitchStrokeOffPointerOver">#A08A5C</Color>
+                    <Color x:Key="ToggleSwitchStrokeOffPressed">#A08A5C</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </maui:MauiWinUIApplication.Resources>
+
 </maui:MauiWinUIApplication>

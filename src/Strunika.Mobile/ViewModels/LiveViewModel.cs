@@ -77,11 +77,14 @@ public partial class LiveViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<string> History { get; } = new();
 
+    /// <summary>Pro users see " Pro" + the wave after the page title.</summary>
+    public bool IsPro => _pro.IsPro;
+
     public LiveViewModel(IMicrophoneSource microphone, IProGate pro)
     {
         _microphone = microphone;
         _pro = pro;
-        _pro.Changed += (_, _) => OnPropertyChanged(nameof(FullVocabularyLocked));
+        _pro.Changed += (_, _) => { OnPropertyChanged(nameof(FullVocabularyLocked)); OnPropertyChanged(nameof(IsPro)); };
         selectedLiveModel = LiveModels[0];
         _dsp = new StreamingChordDetector(IMicrophoneSource.SampleRate);
         _dsp.ChordChanged += OnProvisional;

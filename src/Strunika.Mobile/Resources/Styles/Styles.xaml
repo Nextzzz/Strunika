@@ -182,27 +182,13 @@
     </Style>
 
     <!-- Controls -->
+    <!-- Gold track when on; the off track is painted by the platform mappings in
+         MauiProgram (Separator fill, Dim stroke). The knob is one cream colour in
+         both states and both themes — like UISwitch's white knob — because a
+         per-state thumb colour is not reliable across platforms. -->
     <Style TargetType="Switch">
         <Setter Property="OnColor" Value="{t:Theme Fill}" />
-        <Setter Property="ThumbColor" Value="{t:Theme Bg}" />
-        <Setter Property="VisualStateManager.VisualStateGroups">
-            <VisualStateGroupList>
-                <VisualStateGroup x:Name="CommonStates">
-                    <VisualState x:Name="Normal" />
-                    <VisualState x:Name="On">
-                        <VisualState.Setters>
-                            <Setter Property="OnColor" Value="{t:Theme Fill}" />
-                            <Setter Property="ThumbColor" Value="{t:Theme Bg}" />
-                        </VisualState.Setters>
-                    </VisualState>
-                    <VisualState x:Name="Off">
-                        <VisualState.Setters>
-                            <Setter Property="ThumbColor" Value="{t:Theme Bg}" />
-                        </VisualState.Setters>
-                    </VisualState>
-                </VisualStateGroup>
-            </VisualStateGroupList>
-        </Setter>
+        <Setter Property="ThumbColor" Value="{StaticResource LightBase}" />
     </Style>
 
     <Style TargetType="CheckBox">

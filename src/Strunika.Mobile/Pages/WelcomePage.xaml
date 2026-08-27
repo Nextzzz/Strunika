@@ -9,13 +9,28 @@
              ios:Page.UseSafeArea="True"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid BackgroundColor="{t:Theme Bg}" Padding="24,40,24,32" RowDefinitions="Auto,*,Auto,*,Auto" RowSpacing="0">
+    <!-- Content starts invisible and fades in over 0.5 s (GreetAsync); the page background is the darkness it appears from. -->
+    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}" Padding="24,40,24,32" RowDefinitions="Auto,*,Auto,*,Auto" RowSpacing="0" Opacity="0">
 
         <VerticalStackLayout Grid.Row="0" Spacing="6" HorizontalOptions="Center">
             <Image Source="strunika_mark.png" HeightRequest="138" WidthRequest="250" Aspect="AspectFit" HorizontalOptions="Center" />
             <Label FontFamily="Display" FontSize="46" Text="Strunika" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
             <Label Style="{StaticResource Subhead}" Text="{loc:Str Welcome_Tagline}" HorizontalTextAlignment="Center" Margin="0,4,0,0" />
-            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" WidthRequest="342" HeightRequest="64" HorizontalOptions="Center" Margin="0,22,0,0" />
+            <!-- Hand-lettered greeting drawn as a string (user's own SVGs, 2026-08-27):
+                 hello_uk for Ukrainian, hello_en for every other language, the user's own colours. -->
+            <!-- Experimental transition (2026-08-27): the wave shows first, then a
+                 left-to-right wipe swaps it for the hand-lettered greeting string. -->
+            <Grid WidthRequest="342" HeightRequest="90" HorizontalOptions="Center" Margin="0,16,0,0">
+                <Grid x:Name="WaveClip">
+                    <!-- Thickness (3.0 pt), length (inset 8 pt) and height (centre 45 + 13.75/2 = 51.87 pt) match the lettering line it wipes into. -->
+                    <controls:WaveMark x:Name="Wave" Color="{t:Theme Accent}" GlowColor="Transparent" Thickness="3.0" WidthRequest="326" HeightRequest="64" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,13.75,0,0" />
+                </Grid>
+                <Grid x:Name="GreetingClip">
+                    <!-- Fill (not Fit): the 1024×268 art maps to exactly 342×90 with no fractional height or centring
+                         offset, so its string line lands on a predictable row: 154.5/268·90 = 51.87 pt. -->
+                    <Image x:Name="Greeting" Source="hello_en.png" Aspect="Fill" />
+                </Grid>
+            </Grid>
         </VerticalStackLayout>
 
         <VerticalStackLayout Grid.Row="2" Spacing="22">
@@ -36,12 +51,16 @@
             <Label Style="{StaticResource Footnote}" Text="{loc:Str Welcome_ChangeLater}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
 
-        <VerticalStackLayout Grid.Row="4" Spacing="14">
-            <Button Text="{loc:Str Common_Start}" HeightRequest="54" CornerRadius="15" Clicked="OnStartClicked">
-                <Button.Shadow>
-                    <Shadow Brush="{t:Theme Glow, Brush=True}" Radius="24" Opacity="0.8" Offset="0,8" />
-                </Button.Shadow>
-            </Button>
+        <!-- Negative side margin + padding: the stack must not clip the button shadow (layouts clip to their bounds on Windows). -->
+        <VerticalStackLayout Grid.Row="4" Spacing="14" Margin="-24,-64,-24,-24" Padding="24,64,24,24">
+            <!-- Shadow on a rounded Border, not on the Button: WinUI casts a Button's
+                 shadow from its rectangular bounds, which shows as hard corners. -->
+            <Border StrokeShape="RoundRectangle 15" StrokeThickness="0" Padding="0" BackgroundColor="{t:Theme Fill}">
+                <Border.Shadow>
+                    <Shadow Brush="{t:Theme Glow, Brush=True}" Radius="28" Opacity="0.7" Offset="0,8" />
+                </Border.Shadow>
+                <Button Text="{loc:Str Common_Start}" HeightRequest="54" CornerRadius="15" Clicked="OnStartClicked" />
+            </Border>
             <Label Style="{StaticResource Caption}" Text="{loc:Str Welcome_MicNote}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
     </Grid>

@@ -17,12 +17,14 @@ public partial class RootPage : ContentPage
     private readonly View[] _tabs;
     private int _current;
 
-    public RootPage(TunerViewModel tuner, LiveViewModel live, SettingsViewModel settings)
+    public RootPage(TunerViewModel tuner, LiveViewModel live, LibraryViewModel library, SettingsViewModel settings)
     {
         InitializeComponent();
         Tuner.BindingContext = tuner;
         Live.BindingContext = live;
+        Library.BindingContext = library;
         Settings.BindingContext = settings;
+        _ = library.LoadAsync();
         _tabs = new View[] { Tuner, Live, Library, Settings };
 
         TabBar.Tabs.Add(new PillTab("fork", Loc.Get("Tab_Tuner")));

@@ -4,12 +4,148 @@
              xmlns:t="clr-namespace:Strunika.Mobile.Theme"
              xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
              xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
-             x:Class="Strunika.Mobile.Views.LibraryView">
+             xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
+             x:Class="Strunika.Mobile.Views.LibraryView"
+             x:DataType="vm:LibraryViewModel">
 
-    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,*" RowSpacing="0">
+    <Grid Padding="0,8,0,0">
 
+
+        <!-- Cards -->
+        <CollectionView x:Name="List" ItemsSource="{Binding Items}"
+                        SelectionMode="None" IsVisible="{Binding HasSongs}" VerticalScrollBarVisibility="Default">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.Header>
+                <BoxView x:Name="HeaderSpacer" HeightRequest="240" Color="Transparent" />
+            </CollectionView.Header>
+            <CollectionView.Footer>
+                <BoxView HeightRequest="104" Color="Transparent" />
+            </CollectionView.Footer>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:SongItem">
+                    <SwipeView>
+                        <SwipeView.RightItems>
+                            <SwipeItems Mode="Execute">
+                                <SwipeItem Text="{loc:Str Library_Delete}" BackgroundColor="{t:Theme Error}"
+                                           Command="{Binding DeleteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}"
+                                           CommandParameter="{Binding .}" />
+                            </SwipeItems>
+                        </SwipeView.RightItems>
+
+                        <!-- The list spans the screen so the scroll indicator sits at the edge; the card keeps
+                             the page inset (a Grid, because item-root margins are dropped on Windows). -->
+                        <Grid Padding="20,0">
+                        <Border Style="{StaticResource Card}">
+                            <!-- Windows/Mac only: right-click → Delete (SwipeView needs touch there). -->
+                            <FlyoutBase.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="{loc:Str Library_Delete}"
+                                                    Command="{Binding DeleteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}"
+                                                    CommandParameter="{Binding .}" />
+                                </MenuFlyout>
+                            </FlyoutBase.ContextFlyout>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OpenCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}" CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="12">
+
+                                <!-- Thumbnail or source glyph -->
+                                <Border Grid.Column="0" WidthRequest="56" HeightRequest="56" StrokeShape="RoundRectangle 12" StrokeThickness="0" Padding="0" VerticalOptions="Center">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="{t:Theme Accent2}" Offset="0" />
+                                            <GradientStop Color="{t:Theme Surface2}" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Grid>
+                                        <controls:IconView Name="{Binding Glyph}" Size="24" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <Image Source="{Binding Thumbnail}" Aspect="AspectFill" IsVisible="{Binding HasThumbnail}" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- Text -->
+                                <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                    <Label Text="{Binding Title}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" LineBreakMode="TailTruncation" MaxLines="1" />
+                                    <Label Text="{Binding Subtitle}" FontSize="14" TextColor="{t:Theme TextSec}" LineBreakMode="TailTruncation" MaxLines="1" />
+
+                                    <!-- ready: key · ♩ bpm · duration · edited -->
+                                    <HorizontalStackLayout Spacing="6" IsVisible="{Binding IsReady}">
+                                        <Label Text="{Binding KeyText}" FontFamily="Display" FontSize="14" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
+                                        <Label Text="{Binding MetaText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+                                        <Border IsVisible="{Binding Edited}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="7,1" VerticalOptions="Center">
+                                            <HorizontalStackLayout Spacing="3">
+                                                <controls:IconView Name="pencil" Size="11" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                                                <Label Text="{loc:Str Library_Edited}" FontSize="11" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <!-- analysing: bar + stage -->
+                                    <VerticalStackLayout Spacing="5" IsVisible="{Binding IsAnalyzing}">
+                                        <ProgressBar Progress="{Binding Progress}" ProgressColor="{t:Theme Accent}" BackgroundColor="{t:Theme Surface2}" HeightRequest="4" />
+                                        <Label Text="{Binding ProgressText}" FontSize="12" FontAttributes="Bold" TextColor="{t:Theme AccentText}" />
+                                    </VerticalStackLayout>
+
+                                    <!-- failed -->
+                                    <Label Text="{Binding FailText}" FontSize="12" FontAttributes="Bold" TextColor="{t:Theme Error}" IsVisible="{Binding IsFailed}" />
+                                </VerticalStackLayout>
+
+                                <!-- Swipe-to-delete hint in the corner: arrow + bin (user request 2026-08-27). -->
+                                <HorizontalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="End" VerticalOptions="Start" Margin="0,-6,-4,0" InputTransparent="True" Opacity="0.7">
+                                    <controls:IconView Name="chevL" Size="10" Color="{t:Theme Dim}" VerticalOptions="Center" />
+                                    <controls:IconView Name="trash" Size="12" Color="{t:Theme Dim}" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <!-- Star / cancel (Borders: a bare GraphicsView gets no taps on Windows) -->
+                                <Grid Grid.Column="2" WidthRequest="36" HeightRequest="36" VerticalOptions="Center">
+                                    <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="RoundRectangle 18" Padding="0" IsVisible="{Binding IsAnalyzing, Converter={StaticResource Not}}">
+                                        <controls:IconView Name="star" Size="20" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center">
+                                            <controls:IconView.Triggers>
+                                                <DataTrigger TargetType="controls:IconView" Binding="{Binding Favourite}" Value="True">
+                                                    <Setter Property="Color" Value="{t:Theme AccentText}" />
+                                                    <Setter Property="StrokeSize" Value="2.6" />
+                                                </DataTrigger>
+                                            </controls:IconView.Triggers>
+                                        </controls:IconView>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ToggleFavouriteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}" CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                    </Border>
+                                    <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="RoundRectangle 18" Padding="0" IsVisible="{Binding IsAnalyzing}">
+                                        <controls:IconView Name="x" Size="18" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding CancelCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}" CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        </Grid>
+                    </SwipeView>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Empty state -->
+        <VerticalStackLayout VerticalOptions="Center" Spacing="10" Padding="36,160,36,104" IsVisible="{Binding IsEmpty}">
+            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="64" />
+            <Label Style="{StaticResource Title2}" Text="{loc:Str Library_Empty_Title}" HorizontalTextAlignment="Center" Margin="0,8,0,0" />
+            <Label Style="{StaticResource Subhead}" Text="{loc:Str Library_Empty_Body}" HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+
+        <Border x:Name="HeaderShade" VerticalOptions="Start" HeightRequest="28" Margin="0,240,0,0" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+        <!-- Pinned header over the list (declared last = drawn on top): opaque page
+             background, then a short shade below it so cards dissolve as they scroll under.
+             The list's header spacer follows this block's height (code-behind). -->
+        <Grid x:Name="Header" VerticalOptions="Start" Padding="20,0" BackgroundColor="{t:Theme Bg}" RowDefinitions="44,Auto,Auto,Auto" RowSpacing="0">
+
+        <!-- Title + add -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-            <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Songs}" VerticalOptions="End" />
+            <HorizontalStackLayout Spacing="0" VerticalOptions="End">
+                <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Songs}" VerticalOptions="End" />
+                <controls:ProSuffix IsVisible="{Binding IsPro}" />
+            </HorizontalStackLayout>
             <Border Grid.Column="1" x:Name="AddButton" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18"
                     BackgroundColor="{t:Theme Fill}" VerticalOptions="End" Padding="0">
                 <Border.Shadow>
@@ -22,17 +158,124 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="1" Margin="0,14,0,0" StrokeShape="RoundRectangle 12" Padding="12,0" HeightRequest="40">
-            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+        <!-- Pinned ways of adding a song (★ in the add sheet) -->
+        <Grid Grid.Row="1" x:Name="QuickRow" Margin="0,14,0,0" ColumnSpacing="10" RowSpacing="10">
+            <Border x:Name="QuickYouTube" Style="{StaticResource Card}" Padding="12,0" HeightRequest="56">
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center" HorizontalOptions="Center">
+                    <controls:IconView Name="youtube" Size="22" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <Label Text="YouTube" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding QuickYouTubeCommand}" /></Border.GestureRecognizers>
+            </Border>
+            <Border x:Name="QuickFile" Style="{StaticResource Card}" Padding="12,0" HeightRequest="56">
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center" HorizontalOptions="Center">
+                    <controls:IconView Name="file" Size="22" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <Label Text="{loc:Str Library_FromFile}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding QuickFileCommand}" /></Border.GestureRecognizers>
+            </Border>
+            <Border x:Name="QuickRecord" Style="{StaticResource Card}" Padding="12,0" HeightRequest="56">
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center" HorizontalOptions="Center">
+                    <controls:IconView Name="mic" Size="22" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <Label Text="{loc:Str Library_Record}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding QuickRecordCommand}" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- Search -->
+        <Border Grid.Row="2" Margin="0,14,0,0" StrokeShape="RoundRectangle 12" Padding="12,0" HeightRequest="40" IsVisible="{Binding HasSongs}">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                 <controls:IconView Name="search" Size="18" Color="{t:Theme TextSec}" VerticalOptions="Center" />
-                <Label Text="{loc:Str Library_Search}" TextColor="{t:Theme TextSec}" FontSize="16" VerticalOptions="Center" />
-            </HorizontalStackLayout>
+                <Entry Grid.Column="1" x:Name="SearchEntry" Text="{Binding Query}" Placeholder="{loc:Str Library_Search}" ReturnType="Search"
+                       VerticalOptions="Center" MinimumHeightRequest="40" HeightRequest="40" FontSize="16" />
+            </Grid>
         </Border>
 
-        <VerticalStackLayout Grid.Row="2" VerticalOptions="Center" Spacing="10" Padding="16,0">
-            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="64" />
-            <Label Style="{StaticResource Title2}" Text="{loc:Str Library_Empty_Title}" HorizontalTextAlignment="Center" Margin="0,8,0,0" />
-            <Label Style="{StaticResource Subhead}" Text="{loc:Str Library_Empty_Body}" HorizontalTextAlignment="Center" />
-        </VerticalStackLayout>
+        <!-- Filters + sort -->
+        <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding HasSongs}">
+            <Border Grid.Column="0" Style="{StaticResource Chip}" HeightRequest="32" Padding="14,0">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding Filter}" Value="0">
+                        <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
+                        <Setter Property="Stroke" Value="Transparent" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Label Text="{loc:Str Library_All}" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" TextColor="{t:Theme TextPri}">
+                    <Label.Triggers>
+                        <DataTrigger TargetType="Label" Binding="{Binding Filter}" Value="0">
+                            <Setter Property="TextColor" Value="{t:Theme OnFill}" />
+                        </DataTrigger>
+                    </Label.Triggers>
+                </Label>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding SetFilterCommand}" CommandParameter="0" />
+                </Border.GestureRecognizers>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource Chip}" HeightRequest="32" Padding="12,0">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding Filter}" Value="1">
+                        <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
+                        <Setter Property="Stroke" Value="Transparent" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
+                    <controls:IconView Name="star" Size="15" Color="{t:Theme TextPri}" VerticalOptions="Center">
+                        <controls:IconView.Triggers>
+                            <DataTrigger TargetType="controls:IconView" Binding="{Binding Filter}" Value="1">
+                                <Setter Property="Color" Value="{t:Theme OnFill}" />
+                            </DataTrigger>
+                        </controls:IconView.Triggers>
+                    </controls:IconView>
+                    <Label Text="{loc:Str Library_Favourites}" FontSize="14" VerticalOptions="Center" TextColor="{t:Theme TextPri}">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding Filter}" Value="1">
+                                <Setter Property="TextColor" Value="{t:Theme OnFill}" />
+                                <Setter Property="FontAttributes" Value="Bold" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding SetFilterCommand}" CommandParameter="1" />
+                </Border.GestureRecognizers>
+            </Border>
+
+            <Grid Grid.Column="2">
+                <Border Style="{StaticResource Chip}" HeightRequest="32" Padding="12,0">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding Filter}" Value="2">
+                            <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
+                            <Setter Property="Stroke" Value="Transparent" />
+                        </DataTrigger>
+                    </Border.Triggers>
+                    <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
+                        <controls:IconView Name="folder" Size="15" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                        <Label Text="{loc:Str Library_Folders}" FontSize="14" VerticalOptions="Center" TextColor="{t:Theme TextSec}">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding Filter}" Value="2">
+                                    <Setter Property="TextColor" Value="{t:Theme OnFill}" />
+                                    <Setter Property="FontAttributes" Value="Bold" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                    </HorizontalStackLayout>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SetFilterCommand}" CommandParameter="2" />
+                    </Border.GestureRecognizers>
+                </Border>
+                <controls:LockBadge IsLocked="{Binding FoldersLocked}" HorizontalOptions="End" VerticalOptions="Start" Margin="0,-6,-6,0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
+            </Grid>
+
+            <HorizontalStackLayout Grid.Column="4" Spacing="3" VerticalOptions="Center">
+                <Label Text="{Binding SortLabel}" FontSize="13" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+                <controls:IconView Name="chevD" Size="13" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                <HorizontalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSortTapped" />
+                </HorizontalStackLayout.GestureRecognizers>
+            </HorizontalStackLayout>
+        </Grid>
+        </Grid>
     </Grid>
 </ContentView>

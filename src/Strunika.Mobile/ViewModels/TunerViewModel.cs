@@ -108,6 +108,9 @@ public partial class TunerViewModel : ObservableObject
     /// <summary>The last string just got tuned — the view runs the celebration.</summary>
     public event EventHandler? AllTunedReached;
 
+    /// <summary>Pro users see " Pro" + the wave after the page title.</summary>
+    public bool IsPro => _pro.IsPro;
+
     public TunerViewModel(IMicrophoneSource microphone, IProGate pro)
     {
         _microphone = microphone;
@@ -115,6 +118,7 @@ public partial class TunerViewModel : ObservableObject
         _pro.Changed += (_, _) =>
         {
             OnPropertyChanged(nameof(A4Locked));
+            OnPropertyChanged(nameof(IsPro));
             OnPropertyChanged(nameof(AltTuningsLocked));
             if (Tuning.IsPro && AltTuningsLocked)
                 ApplyTuning(Tuning.Standard);

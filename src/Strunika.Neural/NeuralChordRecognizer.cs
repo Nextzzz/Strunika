@@ -66,9 +66,10 @@ public sealed class NeuralChordRecognizer : IDisposable
     /// <summary>Per-frame chord labels (~92.6 ms per frame).
     /// <paramref name="smooth"/> false = raw argmax (golden-file parity
     /// with the Python reference); true = Viterbi-smoothed (product).</summary>
-    public string[] PredictFrames(float[] samples22050, bool smooth = true)
+    public string[] PredictFrames(float[] samples22050, bool smooth = true,
+        IProgress<double>? progress = null, CancellationToken ct = default)
     {
-        var logProbs = PredictLogProbs(samples22050);
+        var logProbs = PredictLogProbs(samples22050, progress, ct);
         DetectedKey = null;
         if (logProbs.Length == 0)
             return Array.Empty<string>();
@@ -109,9 +110,15 @@ public sealed class NeuralChordRecognizer : IDisposable
 
     /// <summary>Per-frame log-probabilities averaged over all enabled
     /// passes (probability space), log-softmax for Viterbi's reward scale.</summary>
-    private float[][] PredictLogProbs(float[] samples22050)
+    private float[][] PredictLogProbs(float[] samples22050, IProgress<double>? progress, CancellationToken ct)
     {
-        var features = _cqt.Extract(samples22050);
+        // Measured on a 3.5-minute song: the CQT takes about two thirds of
+        // the recognize stage, the ONNX windows the rest.
+        const double CqtShare = 0.65;
+        ct.ThrowIfCancellationRequested();
+        var features = _cqt.Extract(samples22050,
+            progress == null ? null : new Progress<double>(p => progress.Report(p * CqtShare)), ct);
+        progress?.Report(CqtShare);
         int frames = features.Length;
         if (frames == 0)
             return Array.Empty<float[]>();
@@ -141,12 +148,16 @@ public sealed class NeuralChordRecognizer : IDisposable
             : new[] { _session, _ensemble };
 
         var probs = new double[states];
+        int windowsTotal = sessions.Length * passes.Count * ((frames + _timestep - 1) / _timestep);
+        int windowsDone = 0;
         foreach (var session in sessions)
         foreach (var (offset, shift) in passes)
         {
             var input = shift == 0 ? features : ShiftBins(features, shift);
             for (int start = offset; start < frames; start += _timestep)
             {
+                ct.ThrowIfCancellationRequested();
+                progress?.Report(CqtShare + (1 - CqtShare) * Math.Min(1.0, windowsDone++ / (double)Math.Max(1, windowsTotal)));
                 int valid = Math.Min(_timestep, frames - start);
                 var tensor = new DenseTensor<float>(new[] { 1, _timestep, CqtExtractor.Bins });
                 for (int t = 0; t < valid; t++)
@@ -316,9 +327,11 @@ public sealed class NeuralChordRecognizer : IDisposable
     /// than <paramref name="minSegmentSeconds"/> are absorbed into their
     /// neighbor — frame-level flips are not musical events.</summary>
     public IReadOnlyList<NeuralChordSegment> Recognize(
-        float[] samples22050, double minSegmentSeconds = 0.3)
+        float[] samples22050, double minSegmentSeconds = 0.3,
+        IProgress<double>? progress = null, CancellationToken ct = default)
     {
-        var frames = PredictFrames(samples22050);
+        var frames = PredictFrames(samples22050, smooth: true, progress, ct);
+        progress?.Report(1.0);
         double spf = _cqt.SecondsPerFrame;
 
         var segments = new List<NeuralChordSegment>();

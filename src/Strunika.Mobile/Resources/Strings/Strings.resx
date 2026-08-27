@@ -84,7 +84,7 @@
   <data name="Pro_Features" xml:space="preserve"><value>Tunings · A4 · capo &amp; transpose · speed · A–B loop · Chord Editor · folders · export · unlimited songs</value></data>
   <data name="Pro_LearnMore" xml:space="preserve"><value>Learn more</value></data>
   <data name="Pro_Restore" xml:space="preserve"><value>Restore purchases</value></data>
-  <data name="Pro_Redeem" xml:space="preserve"><value>Redeem code</value></data>
+  <data name="Pro_Redeem" xml:space="preserve"><value>Promo code</value></data>
   <data name="Pro_Year" xml:space="preserve"><value>Year</value></data>
   <data name="Pro_Month" xml:space="preserve"><value>Month</value></data>
   <data name="Pro_SaveYear" xml:space="preserve"><value>−40 %</value></data>
@@ -122,4 +122,64 @@
   <data name="Tuner_LetsTune" xml:space="preserve"><value>Let’s tune!</value></data>
   <data name="Tuner_AllSet" xml:space="preserve"><value>All set — let’s play!</value></data>
   <data name="Tuner_StartAgain" xml:space="preserve"><value>Start again</value></data>
+  <data name="Library_FromFile" xml:space="preserve"><value>From a file</value></data>
+  <data name="Library_FromFile_Hint" xml:space="preserve"><value>mp3, m4a or wav from Files or iCloud</value></data>
+  <data name="Library_Record" xml:space="preserve"><value>Record</value></data>
+  <data name="Library_Record_Hint" xml:space="preserve"><value>Play into the microphone</value></data>
+  <data name="Library_YouTube" xml:space="preserve"><value>YouTube link</value></data>
+  <data name="Library_YouTube_Hint" xml:space="preserve"><value>A link from the clipboard or the built-in YouTube</value></data>
+  <data name="Library_UrlPlaceholder" xml:space="preserve"><value>https://youtube.com/…</value></data>
+  <data name="Library_Analyze" xml:space="preserve"><value>Find chords</value></data>
+  <data name="Library_Err_NotLink" xml:space="preserve"><value>That’s not a YouTube link</value></data>
+  <data name="Library_Err_YouTube" xml:space="preserve"><value>YouTube is temporarily unavailable</value></data>
+  <data name="Library_Err_File" xml:space="preserve"><value>Couldn’t read the file</value></data>
+  <data name="Library_Err_TooShort" xml:space="preserve"><value>Too short to analyse</value></data>
+  <data name="Library_Err_ModelMissing" xml:space="preserve"><value>Recognition model is missing</value></data>
+  <data name="Library_Err_Unknown" xml:space="preserve"><value>Analysis failed</value></data>
+  <data name="Library_Err_Quota" xml:space="preserve"><value>Free limit reached — tap for Pro</value></data>
+  <data name="Library_Err_Interrupted" xml:space="preserve"><value>Interrupted — tap to retry</value></data>
+  <data name="Library_Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="Library_Stage_Queued" xml:space="preserve"><value>Waiting…</value></data>
+  <data name="Library_Stage_Downloading" xml:space="preserve"><value>Fetching audio</value></data>
+  <data name="Library_Stage_Decoding" xml:space="preserve"><value>Reading audio</value></data>
+  <data name="Library_Stage_Recognizing" xml:space="preserve"><value>Analysing</value></data>
+  <data name="Library_Stage_Beats" xml:space="preserve"><value>Finding the beat</value></data>
+  <data name="Library_Stage_Saving" xml:space="preserve"><value>Saving</value></data>
+  <data name="Library_SortTitle" xml:space="preserve"><value>Sort by</value></data>
+  <data name="Library_Sort_Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Library_Sort_Title" xml:space="preserve"><value>Title</value></data>
+  <data name="Library_Sort_Key" xml:space="preserve"><value>Key</value></data>
+  <data name="Library_Take" xml:space="preserve"><value>Take</value></data>
+  <data name="Library_Source_Recording" xml:space="preserve"><value>Recording</value></data>
+  <data name="Library_Source_File" xml:space="preserve"><value>File</value></data>
+  <data name="Library_Source_YouTube" xml:space="preserve"><value>YouTube</value></data>
+  <data name="Library_Edited" xml:space="preserve"><value>edited</value></data>
+  <data name="Library_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Library_Duplicate" xml:space="preserve"><value>This song is already in the library</value></data>
+  <data name="Library_QuotaLeft" xml:space="preserve"><value>Free analyses left: {0}</value></data>
+  <data name="Library_QuotaDaily" xml:space="preserve"><value>Free: 1 analysis per day</value></data>
+  <data name="Library_NoMic" xml:space="preserve"><value>Microphone unavailable</value></data>
+  <data name="Record_Title" xml:space="preserve"><value>Recording</value></data>
+  <data name="Record_Hint" xml:space="preserve"><value>Play the song — stop when you’re done</value></data>
+  <data name="Record_Stop" xml:space="preserve"><value>Stop &amp; find chords</value></data>
+  <data name="Song_Soon" xml:space="preserve"><value>The song screen comes in the next step</value></data>
+  <data name="Library_Stage_Cancelling" xml:space="preserve"><value>Cancelling…</value></data>
+  <data name="YT_Hint" xml:space="preserve"><value>Open the song, then tap “Add”</value></data>
+  <data name="YT_Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Library_YT_Choice_Title" xml:space="preserve"><value>There’s a YouTube link in the clipboard</value></data>
+  <data name="Library_YT_UseLink" xml:space="preserve"><value>Add this link</value></data>
+  <data name="Library_YT_Browse" xml:space="preserve"><value>Open built-in YouTube</value></data>
+  <data name="Library_YT_Browse_Hint" xml:space="preserve"><value>Find the song yourself</value></data>
+  <data name="Library_Pin_Hint" xml:space="preserve"><value>★ — show on the Songs screen</value></data>
+  <data name="Launch_Loading" xml:space="preserve"><value>Tuning up…</value></data>
+  <data name="Launch_Models" xml:space="preserve"><value>Preparing recognition…</value></data>
+  <data name="Pro_Soon" xml:space="preserve"><value>Coming soon</value></data>
+  <data name="Pro_Soon_Badge" xml:space="preserve"><value>Soon</value></data>
+  <data name="Pro_Soon_Stems" xml:space="preserve"><value>Stems: solo, mute and your own track mix</value></data>
+  <data name="Pro_Soon_Stems_Hint" xml:space="preserve"><value>Drop the drums, keep the bass, or take your instrument out and play it yourself</value></data>
+  <data name="Pro_Soon_BassTabs" xml:space="preserve"><value>Bass tabs</value></data>
+  <data name="Pro_Soon_BassTabs_Hint" xml:space="preserve"><value>The bass line as notes and tabs, from the isolated bass track</value></data>
+  <data name="Pro_Soon_Karaoke" xml:space="preserve"><value>Karaoke / backing track</value></data>
+  <data name="Pro_Soon_Karaoke_Hint" xml:space="preserve"><value>Take the vocals out and sing or play over the original</value></data>
+  <data name="Settings_SkipWelcome" xml:space="preserve"><value>Skip the welcome screen</value></data>
 </root>

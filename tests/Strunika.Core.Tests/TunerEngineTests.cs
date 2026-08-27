@@ -85,6 +85,58 @@ public class TunerEngineTests
         Assert.That(Math.Abs(Cents(f!.Value, 329.63)), Is.LessThan(60), $"detected {f:F2} Hz");
     }
 
+    // Alternative tunings: the engine is tuning-agnostic, but the extremes
+    // deserve their own evidence — ukulele sits an octave above a guitar,
+    // a bass an octave below (E1 = 41 Hz is under four periods per window).
+    [TestCase(392.00)]  // ukulele G4 (re-entrant)
+    [TestCase(261.63)]  // ukulele C4
+    [TestCase(440.00)]  // ukulele A4
+    [TestCase(41.20)]   // bass E1
+    [TestCase(55.00)]   // bass A1
+    [TestCase(73.42)]   // bass D2
+    [TestCase(98.00)]   // bass G2
+    public void DetectFundamental_UkuleleAndBassPlucks_FindTheFundamental(double frequency)
+    {
+        var engine = new TunerEngine(TestSignals.SampleRate);
+        var samples = TestSignals.Pluck(frequency, 1.0);
+
+        var f = engine.DetectFundamental(samples.AsSpan(2646, 4096), out _);
+
+        Assert.That(f, Is.Not.Null);
+        Assert.That(Math.Abs(Cents(f!.Value, frequency)), Is.LessThan(60), $"detected {f:F2} Hz");
+    }
+
+    [TestCase(41.20)]
+    [TestCase(55.00)]
+    public void DetectFundamental_BassWeakFundamental_DoesNotJumpAnOctave(double frequency)
+    {
+        var engine = new TunerEngine(TestSignals.SampleRate);
+        var samples = WeakFundamental(frequency, 0.5);
+
+        var f = engine.DetectFundamental(samples.AsSpan(0, 4096), out _);
+
+        Assert.That(f, Is.Not.Null);
+        Assert.That(Math.Abs(Cents(f!.Value, frequency)), Is.LessThan(30), $"detected {f:F2} Hz");
+    }
+
+    [Test]
+    public void NearestString_Ukulele_ReentrantHighG()
+    {
+        int[] ukulele = { 67, 60, 64, 69 };   // G4 C4 E4 A4
+        Assert.That(TunerEngine.NearestString(67.1, ukulele), Is.EqualTo(0), "G4 → the high-G string, not E or A");
+        Assert.That(TunerEngine.NearestString(59.6, ukulele), Is.EqualTo(1), "flat C4 → C string");
+        Assert.That(TunerEngine.NearestString(66.4, ukulele), Is.EqualTo(0), "between E4 and G4, closer to G");
+    }
+
+    [Test]
+    public void NearestString_Bass_LowStrings()
+    {
+        int[] bass = { 28, 33, 38, 43 };   // E1 A1 D2 G2
+        Assert.That(TunerEngine.NearestString(28.3, bass), Is.EqualTo(0));
+        Assert.That(TunerEngine.NearestString(31.0, bass), Is.EqualTo(1), "fret 3 on E1 = G1 → the A string");
+        Assert.That(TunerEngine.FoldedSemitones(40.1, 28), Is.EqualTo(0.1).Within(1e-9), "E2 harmonic reads against E1");
+    }
+
     [Test]
     public void NearestString_FrettedNotesOnLowE_GoToTheNearestString()
     {

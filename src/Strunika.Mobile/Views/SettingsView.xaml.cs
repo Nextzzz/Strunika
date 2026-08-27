@@ -63,6 +63,6 @@ public partial class SettingsView : ContentView
     private void OnProTapped(object? sender, EventArgs e)
     {
         Strunika.Core.Diagnostics.FileLog.Info("Settings: Learn more tapped");
-        _ = PaywallSheet.ShowAsync(null);
+        _ = PaywallSheet.ShowAsync(null, push: true);
     }
 }

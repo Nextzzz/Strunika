@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.LaunchPage"
+             ios:Page.UseSafeArea="True"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" RowDefinitions="*,Auto">
+        <VerticalStackLayout Grid.Row="0" VerticalOptions="Center" Spacing="0" Padding="24,0">
+            <Image Source="strunika_mark.png" HeightRequest="138" WidthRequest="250" Aspect="AspectFit" HorizontalOptions="Center" />
+            <Label FontFamily="Display" FontSize="46" Text="Strunika" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
+        </VerticalStackLayout>
+        <Label Grid.Row="1" x:Name="Caption" Style="{StaticResource Footnote}" Text="{loc:Str Launch_Loading}" HorizontalTextAlignment="Center" Margin="0,0,0,48" />
+    </Grid>
+</ContentPage>

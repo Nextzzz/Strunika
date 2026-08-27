@@ -10,6 +10,11 @@ public sealed class WaveMark : GraphicsView, IDrawable
         BindableProperty.Create(nameof(Color), typeof(Color), typeof(WaveMark), Colors.Goldenrod,
             propertyChanged: (b, o, n) => ((WaveMark)b).Invalidate());
 
+    /// <summary>Stroke width in points (2.2 by default; the welcome wave uses 3.2 to match the lettering).</summary>
+    public static readonly BindableProperty ThicknessProperty =
+        BindableProperty.Create(nameof(Thickness), typeof(double), typeof(WaveMark), 2.2, propertyChanged: (b, _, _) => ((WaveMark)b).Invalidate());
+    public double Thickness { get => (double)GetValue(ThicknessProperty); set => SetValue(ThicknessProperty, value); }
+
     public static readonly BindableProperty GlowColorProperty =
         BindableProperty.Create(nameof(GlowColor), typeof(Color), typeof(WaveMark), Colors.Transparent,
             propertyChanged: (b, o, n) => ((WaveMark)b).Invalidate());
@@ -39,7 +44,7 @@ public sealed class WaveMark : GraphicsView, IDrawable
         if (GlowColor.Alpha > 0)
             canvas.SetShadow(new SizeF(0, 0), 10, GlowColor);
         canvas.StrokeColor = Color;
-        canvas.StrokeSize = 2.2f / k;
+        canvas.StrokeSize = (float)Thickness / k;
         canvas.StrokeLineCap = LineCap.Round;
         canvas.StrokeLineJoin = LineJoin.Round;
         canvas.DrawPath(Shape);

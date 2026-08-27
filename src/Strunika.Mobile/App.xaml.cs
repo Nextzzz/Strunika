@@ -21,10 +21,9 @@ public partial class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        Page first = AppSettings.WelcomeDone
-            ? _services.GetRequiredService<RootPage>()
-            : _services.GetRequiredService<WelcomePage>();
-        var window = new Window(new NavigationPage(first));
+        // The launch page unpacks models and warms the recognizer, then
+        // hands over to Welcome (first run) or the root tabs.
+        var window = new Window(new NavigationPage(_services.GetRequiredService<LaunchPage>()));
 #if WINDOWS
         // iPhone-shaped dev window, pinned to the top of the screen: Windows
         // cascades new windows downwards and a 900-pt window then hangs below

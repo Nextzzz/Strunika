@@ -8,21 +8,13 @@
              x:Class="Strunika.Mobile.Views.TunerView"
              x:DataType="vm:TunerViewModel">
 
-    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,*,120,Auto,Auto" RowSpacing="0">
+    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,Auto,*,120,Auto,Auto" RowSpacing="0">
 
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-            <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Tuner}" VerticalOptions="End" />
-            <!-- "Start again": top-right, big enough to hit, out of the pegs' way. -->
-            <Border Grid.Column="1" Style="{StaticResource Chip}" HeightRequest="36" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}"
-                    VerticalOptions="End" IsVisible="{Binding ShowStartAgainChip}">
-                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                    <controls:IconView Name="undo" Size="16" Color="{t:Theme OnFill}" VerticalOptions="Center" />
-                    <Label FontSize="14" FontAttributes="Bold" Text="{loc:Str Tuner_StartAgain}" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
-                </HorizontalStackLayout>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding StartAgainCommand}" />
-                </Border.GestureRecognizers>
-            </Border>
+        <Grid Grid.Row="0">
+            <HorizontalStackLayout Spacing="0" VerticalOptions="End">
+                <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Tuner}" VerticalOptions="End" />
+                <controls:ProSuffix IsVisible="{Binding IsPro}" />
+            </HorizontalStackLayout>
         </Grid>
 
         <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
@@ -49,7 +41,19 @@
         </HorizontalStackLayout>
 
         <!-- Hero: note + points while listening, an invitation while idle. -->
-        <Grid Grid.Row="2">
+        <!-- "Start again": under the tuning selector (user request 2026-08-27), big enough to hit. -->
+        <Border Grid.Row="2" Style="{StaticResource Chip}" HeightRequest="36" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}"
+            HorizontalOptions="Start" Margin="0,10,0,0" IsVisible="{Binding ShowStartAgainChip}">
+            <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                <controls:IconView Name="undo" Size="16" Color="{t:Theme OnFill}" VerticalOptions="Center" />
+                <Label FontSize="14" FontAttributes="Bold" Text="{loc:Str Tuner_StartAgain}" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding StartAgainCommand}" />
+            </Border.GestureRecognizers>
+        </Border>
+
+        <Grid Grid.Row="3">
             <VerticalStackLayout VerticalOptions="Center" Spacing="0" IsVisible="{Binding Listening}">
                 <HorizontalStackLayout Spacing="7" HorizontalOptions="Center">
                     <BoxView WidthRequest="8" HeightRequest="8" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" />
@@ -69,13 +73,13 @@
                    HorizontalTextAlignment="Center" VerticalOptions="Center" IsVisible="{Binding Listening, Converter={StaticResource Not}}" />
         </Grid>
 
-        <controls:TunerString x:Name="StringIndicator" Grid.Row="3"
+        <controls:TunerString x:Name="StringIndicator" Grid.Row="4"
                               Cents="{Binding Cents}" InTune="{Binding InTune}" HasSignal="{Binding HasSignal}"
                               StringColor="{t:Theme Accent2}" InTuneColor="{t:Theme Accent}" IdleColor="{t:Theme Separator}"
                               ZoneColor="{t:Theme Glow}" TickColor="{t:Theme Dim}" LabelColor="{t:Theme TextSec}"
                               BeadCoreColor="{t:Theme Bg}" />
 
-        <FlexLayout x:Name="PegRow" Grid.Row="4" JustifyContent="SpaceBetween" AlignItems="Center" Margin="6,26,6,0"
+        <FlexLayout x:Name="PegRow" Grid.Row="5" JustifyContent="SpaceBetween" AlignItems="Center" Margin="6,26,6,0"
                     BindableLayout.ItemsSource="{Binding Pegs}">
             <BindableLayout.ItemTemplate>
                 <DataTemplate x:DataType="vm:PegItem">
@@ -136,7 +140,7 @@
             </BindableLayout.ItemTemplate>
         </FlexLayout>
 
-        <Button Grid.Row="5" Command="{Binding ToggleCommand}" Margin="0,22,0,0" Text="{loc:Str Common_Listen}">
+        <Button Grid.Row="6" Command="{Binding ToggleCommand}" Margin="0,22,0,0" Text="{loc:Str Common_Listen}">
             <Button.Triggers>
                 <DataTrigger TargetType="Button" Binding="{Binding AllTuned}" Value="True">
                     <Setter Property="Text" Value="{loc:Str Tuner_StartAgain}" />
