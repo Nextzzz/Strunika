@@ -21,7 +21,32 @@
                 <BoxView x:Name="HeaderSpacer" HeightRequest="{t:Size 240, Min=44}" Color="Transparent" />
             </CollectionView.Header>
             <CollectionView.Footer>
-                <BoxView HeightRequest="{t:Size 104, Min=44}" Color="Transparent" />
+                <VerticalStackLayout Spacing="0">
+                    <!-- Ten songs to a page; the filters above still search the whole library. -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" Padding="20,10,20,0" ColumnSpacing="10" IsVisible="{Binding HasPages}">
+                        <Border Style="{StaticResource Chip}" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" Padding="0">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding CanPagePrevious}" Value="False">
+                                    <Setter Property="Opacity" Value="0.35" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <controls:IconView Name="chevL" Size="{t:Size 20}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding PreviousPageCommand}" /></Border.GestureRecognizers>
+                        </Border>
+                        <Label Grid.Column="1" Text="{Binding PageLabel}" Style="{StaticResource Footnote}"
+                               HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                        <Border Grid.Column="2" Style="{StaticResource Chip}" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" Padding="0">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding CanPageNext}" Value="False">
+                                    <Setter Property="Opacity" Value="0.35" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <controls:IconView Name="chevR" Size="{t:Size 20}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding NextPageCommand}" /></Border.GestureRecognizers>
+                        </Border>
+                    </Grid>
+                    <BoxView HeightRequest="{t:Size 104, Min=44}" Color="Transparent" />
+                </VerticalStackLayout>
             </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SongItem">
@@ -98,9 +123,10 @@
                                     <controls:IconView Name="trash" Size="{t:Size 12}" Color="{t:Theme Dim}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <!-- Star / cancel (Borders: a bare GraphicsView gets no taps on Windows) -->
-                                <Grid Grid.Column="2" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" VerticalOptions="Center">
-                                    <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="RoundRectangle 18" Padding="0" IsVisible="{Binding IsAnalyzing, Converter={StaticResource Not}}">
-                                        <controls:IconView Name="star" Size="{t:Size 20}" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center">
+                                <!-- The same star as on the add-song ways: 40 pt round well, Dim when off. -->
+                                <Grid Grid.Column="2" WidthRequest="{t:Size 40}" HeightRequest="{t:Size 40}" VerticalOptions="Center">
+                                    <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="{t:Round 40}" Padding="0" IsVisible="{Binding IsAnalyzing, Converter={StaticResource Not}}">
+                                        <controls:IconView Name="star" Size="{t:Size 20}" Color="{t:Theme Dim}" HorizontalOptions="Center" VerticalOptions="Center">
                                             <controls:IconView.Triggers>
                                                 <DataTrigger TargetType="controls:IconView" Binding="{Binding Favourite}" Value="True">
                                                     <Setter Property="Color" Value="{t:Theme AccentText}" />
@@ -112,7 +138,7 @@
                                             <TapGestureRecognizer Command="{Binding ToggleFavouriteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}" CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                     </Border>
-                                    <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="RoundRectangle 18" Padding="0" IsVisible="{Binding IsAnalyzing}">
+                                    <Border BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" StrokeShape="{t:Round 40}" Padding="0" IsVisible="{Binding IsAnalyzing}">
                                         <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextSec}" HorizontalOptions="Center" VerticalOptions="Center" />
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding CancelCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}" CommandParameter="{Binding .}" />

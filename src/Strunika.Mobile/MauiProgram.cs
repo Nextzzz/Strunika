@@ -35,26 +35,17 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISoundPlayer, Platforms.iOS.IosSoundPlayer>();
         builder.Services.AddTransient<IAudioPlayer, Platforms.iOS.IosAudioPlayer>();
         builder.Services.AddSingleton<IClickPlayer, Platforms.iOS.IosClickPlayer>();
+        builder.Services.AddSingleton<IChordAudio, Platforms.iOS.IosChordAudio>();
         // UISwitch's off track is a faint grey that vanishes on the warm surfaces:
         // paint it with the Separator token (rounded background under the track).
-        Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("OffTrack", (handler, _) =>
-        {
-            void Apply()
-            {
-                handler.PlatformView.BackgroundColor = Theme.Tokens.Current("Separator").ToPlatform();
-                handler.PlatformView.Layer.CornerRadius = 15.5f;
-                handler.PlatformView.ClipsToBounds = true;
-            }
-            Apply();
-            AppSettings.Changed += (_, key) => { if (key == nameof(AppSettings.Theme)) Apply(); };
-            if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, _) => Apply();
-        });
+        Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("OffTrack", (handler, _) => SwitchPaint.Track(handler.PlatformView));
 #elif WINDOWS
         builder.Services.AddSingleton<IMicrophoneSource, Platforms.Windows.WindowsMicrophoneSource>();
         builder.Services.AddSingleton<IAudioDecoder, Platforms.Windows.WindowsAudioDecoder>();
         builder.Services.AddSingleton<ISoundPlayer, Platforms.Windows.WindowsSoundPlayer>();
         builder.Services.AddTransient<IAudioPlayer, Platforms.Windows.WindowsAudioPlayer>();
         builder.Services.AddSingleton<IClickPlayer, Platforms.Windows.WindowsClickPlayer>();
+        builder.Services.AddSingleton<IChordAudio, Platforms.Windows.WindowsChordAudio>();
         // The YouTube embed is driven programmatically: WebView2 must allow play() without a gesture.
         Environment.SetEnvironmentVariable("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--autoplay-policy=no-user-gesture-required");
         // No Mica/acrylic backdrop: it bleeds a blurred desktop through any
@@ -79,40 +70,17 @@ public static class MauiProgram
         // the Normal state, only writable once the control is loaded) and the
         // application ThemeDictionaries in Platforms/Windows/App.xaml (read by
         // the PointerOver/Pressed storyboards at template load).
+        // The theme is watched once, for all switches at once, through weak
+        // references: a subscription per handler outlived its control, and
+        // repainting after the page had closed threw "PlatformView cannot be
+        // null here" (and kept every switch ever created in memory).
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("CompactWidth", (handler, _) =>
         {
-            handler.PlatformView.MinWidth = 0;
-            handler.PlatformView.OnContent = null;
-            handler.PlatformView.OffContent = null;
-            void PaintOffTrack()
-            {
-                var res = handler.PlatformView.Resources;
-                // WinUI quirk: the resting keys are Brushes, but the PointerOver /
-                // Pressed keys are plain Colors (the storyboards animate Fill with a
-                // Color) — a Brush under those keys renders as nothing.
-                foreach (var (key, token, isBrush) in new[]
-                {
-                    ("ToggleSwitchFillOff", "Separator", true), ("ToggleSwitchFillOffPointerOver", "Separator", false), ("ToggleSwitchFillOffPressed", "Separator", false),
-                    ("ToggleSwitchStrokeOff", "Dim", true), ("ToggleSwitchStrokeOffPointerOver", "Dim", false), ("ToggleSwitchStrokeOffPressed", "Dim", false),
-                })
-                {
-                    var colour = Theme.Tokens.Current(token).ToWindowsColor();
-                    try
-                    {
-                        if (isBrush && res.TryGetValue(key, out var existing) && existing is Microsoft.UI.Xaml.Media.SolidColorBrush brush)
-                            brush.Color = colour;
-                        else if (isBrush)
-                            res[key] = new Microsoft.UI.Xaml.Media.SolidColorBrush(colour);
-                        else
-                            res[key] = colour;
-                    }
-                    catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error($"switch resource {key}", ex); }
-                }
-            }
-            if (handler.PlatformView.IsLoaded) PaintOffTrack();
-            else handler.PlatformView.Loaded += (_, _) => PaintOffTrack();
-            AppSettings.Changed += (_, key) => { if (key == nameof(AppSettings.Theme)) PaintOffTrack(); };
-            if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, _) => PaintOffTrack();
+            var view = handler.PlatformView;
+            view.MinWidth = 0;
+            view.OnContent = null;
+            view.OffContent = null;
+            SwitchPaint.Track(view);
         });
 #endif
         builder.Services.AddSingleton<IHaptics>(Haptics.Default);

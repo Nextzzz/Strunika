@@ -197,6 +197,16 @@ public sealed class PillTabBar : GraphicsView, IDrawable
 
     public void Draw(ICanvas canvas, RectF rect)
     {
+        // The platform can still call Draw while the window is being torn
+        // down, on a canvas whose session is already gone; every call then
+        // throws inside Maui.Graphics. There is nothing left to draw for.
+        if (Handler == null) return;                                 // torn down: nothing to draw for
+        try { DrawCore(canvas, rect); }
+        catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
+    }
+
+    private void DrawCore(ICanvas canvas, RectF rect)
+    {
         float w = rect.Width - 2 * InsetX, h = rect.Height - InsetTop - InsetBottom;
         if (w <= 0 || h <= 0) return;
         canvas.Translate(InsetX, InsetTop);
@@ -226,7 +236,12 @@ public sealed class PillTabBar : GraphicsView, IDrawable
         canvas.FillColor = SelectorColor;
         canvas.FillRoundedRectangle(selX, Pad, itemW, selH, selH / 2);
 
-        // items
+        // items: the icon and its word are one block, centred together in the
+        // capsule — centring the icon alone left the word hanging below it.
+        const float iconSize = 24f, iconGap = 3f;
+        float labelSize = LabelFont(canvas, itemW);
+        float labelH = labelSize * 1.25f;
+        float blockTop = (h - (iconSize + iconGap + labelH)) / 2;
         for (int i = 0; i < n; i++)
         {
             float cx = Pad + itemW * (i + 0.5f);
@@ -237,16 +252,16 @@ public sealed class PillTabBar : GraphicsView, IDrawable
             if (glyph != null)
             {
                 canvas.SaveState();
-                canvas.Translate(cx - 12, Pad + 7);
+                canvas.Translate(cx - iconSize / 2, blockTop);
                 Icons.Draw(canvas, glyph, color, strokeSize: 2.2f);
                 canvas.RestoreState();
             }
 
             canvas.FontColor = color;
             canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
-            canvas.FontSize = LabelFont(canvas, itemW);
-            canvas.DrawString(Tabs[i].Label, cx - itemW / 2, Pad + 33, itemW, 14,
-                HorizontalAlignment.Center, VerticalAlignment.Top);
+            canvas.FontSize = labelSize;
+            canvas.DrawString(Tabs[i].Label, cx - itemW / 2, blockTop + iconSize + iconGap, itemW, labelH,
+                HorizontalAlignment.Center, VerticalAlignment.Center);
         }
     }
 

@@ -84,6 +84,12 @@ public partial class SettingsViewModel : ObservableObject
         set { AppSettings.BeatSnap = value; OnPropertyChanged(); }
     }
 
+    public bool SimpleChords
+    {
+        get => AppSettings.SimpleChords;
+        set { AppSettings.SimpleChords = value; OnPropertyChanged(); }
+    }
+
     public bool Expert
     {
         get => AppSettings.Expert;
@@ -93,6 +99,8 @@ public partial class SettingsViewModel : ObservableObject
     public bool DevProAvailable => DevProGate.IsAvailable;
 
     public bool DevWindowAvailable => DevWindow.IsAvailable;
+
+
     public string DevWindowName => DevWindow.Current.Name;
     public void RefreshDevWindow() => OnPropertyChanged(nameof(DevWindowName));
 

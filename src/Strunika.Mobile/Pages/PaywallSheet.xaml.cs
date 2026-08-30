@@ -66,15 +66,26 @@ public partial class PaywallSheet : ContentPage
     /// so scrolled content fades out under the header instead of being cut.</summary>
     private void ApplyShade()
     {
+        // The shade is the page background itself; only the ramp differs. The
+        // header keeps 68 pt opaque (its own height) and fades over the last
+        // 28 pt — the same fade the Songs header uses — so it no longer dims
+        // the first card before the list is even scrolled. The footer mirrors it.
         var bg = Theme.Tokens.Current("Bg");
         HeaderShade.Background = new LinearGradientBrush(
             new GradientStopCollection
             {
                 new GradientStop(bg, 0f),
-                new GradientStop(bg, 0.62f),
-                new GradientStop(bg.WithAlpha(0.85f), 0.78f),
-                new GradientStop(bg.WithAlpha(0.45f), 0.9f),
+                new GradientStop(bg, 0.71f),
+                new GradientStop(bg.WithAlpha(0.7f), 0.83f),
                 new GradientStop(bg.WithAlpha(0f), 1f),
+            },
+            new Point(0, 0), new Point(0, 1));
+        FooterShade.Background = new LinearGradientBrush(
+            new GradientStopCollection
+            {
+                new GradientStop(bg.WithAlpha(0f), 0f),
+                new GradientStop(bg.WithAlpha(0.7f), 0.6f),
+                new GradientStop(bg, 1f),
             },
             new Point(0, 0), new Point(0, 1));
     }

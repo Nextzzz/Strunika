@@ -25,8 +25,9 @@ public sealed class YouTubeEmbedView : WebView
     /// the owner, 153 = origin problem). Raised once per load.</summary>
     public event EventHandler<int>? PlayerError;
 
-    private bool _errorReported;
-    private int _probesLogged;
+    private bool _errorReported, _lastWant;
+    private int _probesLogged, _lastState = -99;
+    private double _lastPosition;
 
     public async Task LoadAsync(string videoId)
     {
@@ -102,9 +103,14 @@ public sealed class YouTubeEmbedView : WebView
                 PlayerError?.Invoke(this, e.GetInt32());
             }
             if (!r.GetProperty("ready").GetBoolean()) return null;
-            return new State(r.GetProperty("t").GetDouble(), r.GetProperty("d").GetDouble(), r.GetProperty("p").GetBoolean(),
-                             r.GetProperty("r").GetDouble(), r.TryGetProperty("s", out var st) ? st.GetInt32() : 1,
-                             r.TryGetProperty("w", out var w) && w.GetBoolean());
+            var state = new State(r.GetProperty("t").GetDouble(), r.GetProperty("d").GetDouble(), r.GetProperty("p").GetBoolean(),
+                                  r.GetProperty("r").GetDouble(), r.TryGetProperty("s", out var st) ? st.GetInt32() : 1,
+                                  r.TryGetProperty("w", out var w) && w.GetBoolean());
+            // Transitions only: a few lines per open, enough to replay a false start.
+            if (state.PlayerState != _lastState || state.WantPlay != _lastWant || (!state.Playing && Math.Abs(state.Position - _lastPosition) > 0.3))
+                FileLog.Info($"youtube state: s={state.PlayerState} t={state.Position:0.00} p={state.Playing} w={state.WantPlay}");
+            _lastState = state.PlayerState; _lastWant = state.WantPlay; _lastPosition = state.Position;
+            return state;
         }
         catch (Exception ex)
         {

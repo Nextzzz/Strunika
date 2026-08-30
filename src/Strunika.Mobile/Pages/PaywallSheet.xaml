@@ -94,7 +94,7 @@
         <!-- Pinned header: the page background fading out downwards (gradient set in
              code, theme-aware), so content scrolling underneath dissolves gradually
              like under the tab bar. -->
-        <Border x:Name="HeaderShade" Grid.Row="0" VerticalOptions="Start" HeightRequest="{t:Size 108, Min=44}" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+        <Border x:Name="HeaderShade" Grid.Row="0" VerticalOptions="Start" HeightRequest="{t:Size 96, Min=44}" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
         <Grid Grid.Row="0" VerticalOptions="Start" Padding="24,16,24,0" ColumnDefinitions="Auto,Auto,*,44" ColumnSpacing="0" HeightRequest="{t:Size 68, Min=44}">
             <Label Style="{StaticResource LargeTitle}" FontSize="{t:Size 32, Hero=True}" VerticalOptions="Center">
                 <Label.FormattedText>
@@ -112,7 +112,12 @@
             </Border>
         </Grid>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="12" Padding="24,12,24,0">
+        <!-- The footer is opaque and carries the same 28 pt fade above it as the
+             header does below itself: content dissolves into the background
+             instead of running under the buttons. -->
+        <Border x:Name="FooterShade" Grid.Row="1" VerticalOptions="Start" HeightRequest="{t:Size 28}" Margin="0,-28,0,0" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+
+        <VerticalStackLayout Grid.Row="1" Spacing="12" Padding="24,12,24,0" BackgroundColor="{t:Theme Bg}">
             <Button Text="{loc:Str Pro_Continue}" IsEnabled="False" />
             <HorizontalStackLayout Spacing="18" HorizontalOptions="Center">
                 <Label Text="{loc:Str Pro_Restore}" Style="{StaticResource Footnote}" TextColor="{t:Theme AccentText}" FontAttributes="Bold" />

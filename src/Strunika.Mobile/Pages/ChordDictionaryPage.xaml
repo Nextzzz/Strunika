@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
+             x:Class="Strunika.Mobile.Pages.ChordDictionaryPage"
+             x:DataType="vm:ChordDictionaryViewModel"
+             ios:Page.UseSafeArea="True"
+             NavigationPage.HasNavigationBar="False"
+             NavigationPage.HasBackButton="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="0,8,0,0" RowDefinitions="44,Auto,*" RowSpacing="0" Margin="{t:ContentInset}">
+
+        <!-- Header: back · title -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="8,0,20,0" ColumnSpacing="6">
+            <!-- The page title comes first; the parent name gives way when it must. -->
+            <HorizontalStackLayout Spacing="0" VerticalOptions="Center" MinimumHeightRequest="{t:Size 44, Min=44}" Padding="0,4" MaximumWidthRequest="{t:Size 140}">
+                <controls:IconView Name="chevL" Size="{t:Size 27}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                <Label Text="{loc:Str Tab_Settings}" FontSize="18" TextColor="{t:Theme AccentText}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                <HorizontalStackLayout.GestureRecognizers><TapGestureRecognizer Tapped="OnBackTapped" /></HorizontalStackLayout.GestureRecognizers>
+            </HorizontalStackLayout>
+            <Label Grid.Column="1" Text="{loc:Str Dictionary_Title}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}"
+                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" VerticalOptions="Center" />
+        </Grid>
+
+        <!-- Search · simple filter -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="20,10,20,10">
+            <Border Style="{StaticResource Chip}" Padding="12,0" HeightRequest="{t:Size 44, Min=44}">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <controls:IconView Name="search" Size="{t:Size 18}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <Entry Grid.Column="1" Text="{Binding Query}" Placeholder="{loc:Str Dictionary_Search}" ReturnType="Search"
+                           VerticalOptions="Center" MinimumHeightRequest="{t:Size 40}" HeightRequest="{t:Size 40}" FontSize="16" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource Chip}" HeightRequest="{t:Size 44, Min=44}" Padding="14,0">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding Simple}" Value="True">
+                        <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
+                        <Setter Property="Stroke" Value="{t:Theme Fill}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                    <controls:IconView Name="check" Size="{t:Size 15}" Color="{t:Theme OnFill}" VerticalOptions="Center" IsVisible="{Binding Simple}" />
+                    <Label Text="{loc:Str Song_Simple}" FontSize="14" TextColor="{t:Theme TextPri}" VerticalOptions="Center">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding Simple}" Value="True">
+                                <Setter Property="TextColor" Value="{t:Theme OnFill}" />
+                                <Setter Property="FontAttributes" Value="Bold" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnSimpleTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <Label Grid.Row="2" Text="{loc:Str Dictionary_Empty}" Style="{StaticResource Subhead}" HorizontalTextAlignment="Center"
+               Margin="24,40,24,0" IsVisible="{Binding IsEmpty}" />
+
+        <!-- Chords, grouped by root; the span follows the screen (OnSized) -->
+        <CollectionView Grid.Row="2" x:Name="List" ItemsSource="{Binding Groups}" IsGrouped="True" SelectionMode="None"
+                        VerticalScrollBarVisibility="Default" IsVisible="{Binding IsEmpty, Converter={StaticResource Not}}">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout x:Name="Layout" Orientation="Vertical" Span="3" HorizontalItemSpacing="10" VerticalItemSpacing="10" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.GroupHeaderTemplate>
+                <DataTemplate x:DataType="vm:ChordGroup">
+                    <Label Text="{Binding Root}" FontFamily="DisplayBold" FontSize="{t:Size 26, Hero=True}" TextColor="{t:Theme AccentText}"
+                           Margin="20,14,20,6" />
+                </DataTemplate>
+            </CollectionView.GroupHeaderTemplate>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChordEntry">
+                    <Border Style="{StaticResource Card}" Padding="6,10,6,6" Margin="0">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Label}" FontFamily="DisplayBold" FontSize="{t:Size 19, Hero=True}" TextColor="{t:Theme TextPri}"
+                                   HorizontalTextAlignment="Center" LineBreakMode="NoWrap" />
+                            <controls:ChordDiagram Shape="{Binding Shape}" ShowFrets="True" HeightRequest="{t:Size 104, Hero=True}"
+                                                   LineColor="{t:Theme TextPri}" DotColor="{t:Theme Accent}" MutedColor="{t:Theme Dim}"
+                                                   FretTextColor="{t:Theme TextSec}" />
+                        </VerticalStackLayout>
+                        <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnChordTapped" /></Border.GestureRecognizers>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.Footer>
+                <BoxView HeightRequest="{t:Size 40}" Color="Transparent" />
+            </CollectionView.Footer>
+        </CollectionView>
+    </Grid>
+</ContentPage>

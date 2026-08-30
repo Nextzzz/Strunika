@@ -50,6 +50,10 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public ObservableCollection<SongItem> Items { get; } = new();
 
+    /// <summary>Songs per page. Filters, search and sorting run over the whole
+    /// library first; only the slice on show is paged.</summary>
+    public const int PageSize = 10;
+
     [ObservableProperty] private string _query = "";
     [ObservableProperty] private int _filter = FilterAll;
     [ObservableProperty] private bool _isEmpty;
@@ -137,9 +141,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Something to tell the user (localised text).</summary>
     public event EventHandler<string>? Message;
 
-    partial void OnQueryChanged(string value) => Rebuild();
+    partial void OnQueryChanged(string value) { Page = 0; Rebuild(); }
 
-    partial void OnFilterChanged(int value) => Rebuild();
+    partial void OnFilterChanged(int value) { Page = 0; Rebuild(); }
 
     public async Task LoadAsync()
     {
@@ -184,9 +188,45 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void SetSort(string mode)
     {
         AppSettings.LibrarySort = mode;
+        Page = 0;
         OnPropertyChanged(nameof(SortLabel));
         Rebuild();
     }
+
+    /// <summary>Every song that passes the filters, in order — the page is a window on this.</summary>
+    private List<SongItem> _matching = new();
+
+    [ObservableProperty] private int _page;
+    [ObservableProperty] private int _pageCount = 1;
+    [ObservableProperty] private bool _hasPages;
+
+    public string PageLabel => string.Format(Loc.Get("Library_Page"), Page + 1, PageCount);
+    public bool CanPagePrevious => Page > 0;
+    public bool CanPageNext => Page + 1 < PageCount;
+
+    [RelayCommand]
+    private void PreviousPage() { if (CanPagePrevious) { Page--; ApplyPage(); PageChanged?.Invoke(this, EventArgs.Empty); } }
+
+    [RelayCommand]
+    private void NextPage() { if (CanPageNext) { Page++; ApplyPage(); PageChanged?.Invoke(this, EventArgs.Empty); } }
+
+    private void ApplyPage()
+    {
+        var page = _matching.Skip(Page * PageSize).Take(PageSize).ToList();
+        // Cheap diff: rebuild only when the page actually differs.
+        if (!page.SequenceEqual(Items))
+        {
+            Items.Clear();
+            foreach (var item in page) Items.Add(item);
+        }
+        OnPropertyChanged(nameof(PageLabel));
+        OnPropertyChanged(nameof(CanPagePrevious));
+        OnPropertyChanged(nameof(CanPageNext));
+    }
+
+    /// <summary>Raised only when the reader turns a page, so the view scrolls
+    /// back to the top; a rebuild behind their back never moves the list.</summary>
+    public event EventHandler? PageChanged;
 
     private void Rebuild()
     {
@@ -203,13 +243,11 @@ public sealed partial class LibraryViewModel : ObservableObject
             "key" => list.OrderBy(i => string.IsNullOrEmpty(i.Song.Key)).ThenBy(i => i.Song.Key).ThenByDescending(i => i.Song.CreatedAt),
             _ => list.OrderByDescending(i => i.Song.CreatedAt),
         };
-        var ordered = list.ToList();
-        // Cheap diff: rebuild only when the order actually differs.
-        if (!ordered.SequenceEqual(Items))
-        {
-            Items.Clear();
-            foreach (var item in ordered) Items.Add(item);
-        }
+        _matching = list.ToList();
+        PageCount = Math.Max(1, (_matching.Count + PageSize - 1) / PageSize);
+        HasPages = PageCount > 1;
+        if (Page >= PageCount) Page = PageCount - 1;             // a filter can shorten the list under us
+        ApplyPage();
         HasSongs = _all.Count > 0;
         IsEmpty = Loaded && _all.Count == 0;
     }

@@ -66,7 +66,8 @@
                 </Border.Shadow>
                 <Button Text="{loc:Str Common_Start}" HeightRequest="54" CornerRadius="15" Clicked="OnStartClicked" />
             </Border>
-            <Label Style="{StaticResource Caption}" Text="{loc:Str Welcome_MicNote}" HorizontalTextAlignment="Center" />
+            <!-- Only worth saying while the microphone has not been granted yet (OnAppearing). -->
+            <Label x:Name="MicNote" Style="{StaticResource Caption}" Text="{loc:Str Welcome_MicNote}" HorizontalTextAlignment="Center" IsVisible="False" />
         </VerticalStackLayout>
     </Grid>
     </ScrollView>

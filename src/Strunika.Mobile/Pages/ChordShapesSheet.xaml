@@ -10,11 +10,12 @@
              ios:Page.ModalPresentationStyle="FormSheet"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,24" RowDefinitions="Auto,Auto,*">
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,24" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
+
         <Grid ColumnDefinitions="*,44">
             <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
                 <Label x:Name="ChordLabel" FontFamily="DisplayBold" FontSize="{t:Size 34, Hero=True}" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
-                <Label Style="{StaticResource Title2}" Text="{loc:Str Song_Alt_Title}" VerticalOptions="Center" />
+                <Label Style="{StaticResource Title2}" Text="{loc:Str Song_Alt_Title}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
             </HorizontalStackLayout>
             <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
                 <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
@@ -24,8 +25,27 @@
 
         <Label Grid.Row="1" x:Name="Hint" Text="{loc:Str Song_Alt_Hint}" FontSize="13" TextColor="{t:Theme TextSec}" Margin="0,6,0,0" />
 
-        <ScrollView Grid.Row="2" Margin="0,14,0,0">
-            <FlexLayout x:Name="Options" Wrap="Wrap" JustifyContent="Start" AlignItems="Start" />
+        <!-- The position being looked at, large enough to read from the guitar,
+             with a strum so it can be heard before it is chosen -->
+        <Grid Grid.Row="2" RowDefinitions="*,Auto,Auto" RowSpacing="4" Margin="0,10,0,10">
+            <!-- The preview owns the free space: it fills the row and keeps its
+                 proportion, so a tall sheet shows a big chord instead of a gap. -->
+            <controls:ChordDiagram x:Name="Preview" ShowFrets="True" VerticalOptions="Fill" HorizontalOptions="Fill"
+                                   MinimumHeightRequest="{t:Size 190, Hero=True}"
+                                   LineColor="{t:Theme TextPri}" DotColor="{t:Theme Accent}" MutedColor="{t:Theme Dim}" FretTextColor="{t:Theme TextSec}" />
+            <Label Grid.Row="1" x:Name="PreviewCaption" Style="{StaticResource Footnote}" HorizontalTextAlignment="Center" />
+            <Border Grid.Row="2" WidthRequest="{t:Size 64, Min=44}" HeightRequest="{t:Size 64, Min=44}" StrokeShape="{t:Round 64, Min=44}" StrokeThickness="0"
+                    BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="Center" Margin="0,10,0,0">
+                <controls:IconView x:Name="StrumIcon" Name="play" Size="{t:Size 30}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" Margin="3,0,0,0" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnStrumTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- Every position, the one on show outlined -->
+        <ScrollView Grid.Row="3" Orientation="Horizontal" HorizontalScrollBarVisibility="Default" Margin="0,4,0,0">
+            <HorizontalStackLayout x:Name="Options" Spacing="10" />
         </ScrollView>
+
+        <Button Grid.Row="4" x:Name="PickButton" Text="{loc:Str Song_Alt_Choose}" Margin="0,16,0,0" Clicked="OnPickClicked" />
     </Grid>
 </ContentPage>

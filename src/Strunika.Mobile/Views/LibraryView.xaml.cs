@@ -26,6 +26,9 @@ public partial class LibraryView : ContentView
                 };
                 LayoutQuickRow(vm);
                 Header.SizeChanged += (_, _) => FitHeader();
+                // A page turn starts at the top of the list — header included, which
+                // ScrollTo(item) cannot express (Controls/ScrollHelper).
+                vm.PageChanged += (_, _) => Controls.ScrollHelper.ToTop(List);
                 ApplyShade();
                 Services.AppSettings.Changed += (_, key) => { if (key == nameof(Services.AppSettings.Theme)) ApplyShade(); };
                 if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, _) => ApplyShade();

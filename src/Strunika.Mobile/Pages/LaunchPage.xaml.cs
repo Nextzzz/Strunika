@@ -51,12 +51,7 @@ public partial class LaunchPage : ContentPage
         }
         await minimum;
 
-        bool welcome = !AppSettings.WelcomeDone || !AppSettings.SkipWelcome;
-#if WINDOWS
-        // Dev head only: STRUNIKA_WELCOME=1 forces the welcome screen (used by the
-        // screenshot harness); Visual Studio runs behave like a real install.
-        if (Environment.GetEnvironmentVariable("STRUNIKA_WELCOME") == "1") welcome = true;
-#endif
+        bool welcome = !AppSettings.SkipWelcome;
         Page next = welcome
             ? _services.GetRequiredService<WelcomePage>()
             : _services.GetRequiredService<RootPage>();

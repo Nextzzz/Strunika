@@ -89,6 +89,16 @@ public sealed class TunerString : GraphicsView, IDrawable
 
     public void Draw(ICanvas canvas, RectF rect)
     {
+        // The platform can still call Draw while the window is being torn
+        // down, on a canvas whose session is already gone; every call then
+        // throws inside Maui.Graphics. There is nothing left to draw for.
+        if (Handler == null) return;                                 // torn down: nothing to draw for
+        try { DrawCore(canvas, rect); }
+        catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
+    }
+
+    private void DrawCore(ICanvas canvas, RectF rect)
+    {
         float w = rect.Width, h = rect.Height;
         if (w <= 0) return;
         float cx = w / 2, y0 = h * 0.42f;

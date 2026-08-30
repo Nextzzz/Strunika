@@ -98,7 +98,8 @@ public sealed class Metrics : INotifyPropertyChanged
         double side = double.IsFinite(max) ? Math.Max(0, (width - max) / 2) : 0;
         ContentInset = new Thickness(side, 0);
         ContentInsetPlus = new Thickness(side + 20, 0);
-        Strunika.Core.Diagnostics.FileLog.Info($"metrics: {width:0}×{height:0} pt → {cls} (scale {scale}, hero {hero}, inset {side:0})");
+        int listeners = PropertyChanged?.GetInvocationList().Length ?? 0;
+        Strunika.Core.Diagnostics.FileLog.Info($"metrics: {width:0}×{height:0} pt → {cls} (scale {scale}, hero {hero}, inset {side:0}), listeners {listeners}");
         Raise(nameof(ShortestSide));
         Raise(nameof(Width));
         Raise(nameof(ContentInset));

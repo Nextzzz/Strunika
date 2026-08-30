@@ -211,4 +211,21 @@
   <data name="Song_Capo_Label" xml:space="preserve"><value>Capo</value></data>
   <data name="Settings_DevWindow" xml:space="preserve"><value>Window as device</value></data>
   <data name="Library_YT_Off" xml:space="preserve"><value>YouTube analysis is switched off for now. Files and recordings work as usual.</value></data>
+  <data name="Song_Capo_Suggest" xml:space="preserve"><value>Suggest {0}</value></data>
+  <data name="Song_Info_Title" xml:space="preserve"><value>About the song</value></data>
+  <data name="Song_Info_Chords" xml:space="preserve"><value>Chords in the song</value></data>
+  <data name="Song_Info_Source" xml:space="preserve"><value>Source</value></data>
+  <data name="Song_Info_Key" xml:space="preserve"><value>Key</value></data>
+  <data name="Song_Info_Tempo" xml:space="preserve"><value>Tempo</value></data>
+  <data name="Song_Info_Length" xml:space="preserve"><value>Length</value></data>
+  <data name="Song_Info_Added" xml:space="preserve"><value>Added</value></data>
+  <data name="Song_Info_Model" xml:space="preserve"><value>Model</value></data>
+  <data name="Song_Info_Transposed" xml:space="preserve"><value>Now playing in {0}</value></data>
+  <data name="Settings_Dictionary" xml:space="preserve"><value>Dictionary</value></data>
+  <data name="Dictionary_Search" xml:space="preserve"><value>Chord name</value></data>
+  <data name="Dictionary_Empty" xml:space="preserve"><value>No chord with that name.</value></data>
+  <data name="Song_Alt_Choose" xml:space="preserve"><value>Choose</value></data>
+  <data name="Dictionary_Title" xml:space="preserve"><value>Chord dictionary</value></data>
+  <data name="Library_Page" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Song_Alt_Open_Short" xml:space="preserve"><value>open</value></data>
 </root>

@@ -11,19 +11,14 @@ public static class AppSettings
 
     private static void Raise(string key) => Changed?.Invoke(null, key);
 
-    // ---- first launch ------------------------------------------------
+    // ---- welcome -----------------------------------------------------
 
-    public static bool WelcomeDone
-    {
-        get => Preferences.Default.Get("welcome_done", false);
-        set { Preferences.Default.Set("welcome_done", value); Raise(nameof(WelcomeDone)); }
-    }
-
-    /// <summary>Skip the welcome screen on later launches (the first launch
-    /// always shows it). Default on — user decision 2026-08-27.</summary>
+    /// <summary>Skip the welcome screen (default off — user decision 2026-08-28:
+    /// the greeting shows on every launch until it is turned off, first launch
+    /// included; there is no separate "seen it once" flag any more).</summary>
     public static bool SkipWelcome
     {
-        get => Preferences.Default.Get("skip_welcome", true);
+        get => Preferences.Default.Get("skip_welcome", false);
         set { Preferences.Default.Set("skip_welcome", value); Raise(nameof(SkipWelcome)); }
     }
 
@@ -93,6 +88,14 @@ public static class AppSettings
     }
 
     // ---- recognition -------------------------------------------------
+
+    /// <summary>Triads instead of sevenths everywhere (song page, live). The song
+    /// page offers it too, but there is one value for the whole app.</summary>
+    public static bool SimpleChords
+    {
+        get => Preferences.Default.Get("simple_chords", true);
+        set { Preferences.Default.Set("simple_chords", value); Raise(nameof(SimpleChords)); }
+    }
 
     public static bool BeatSnap
     {

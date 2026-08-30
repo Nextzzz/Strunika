@@ -124,6 +124,40 @@ public static class ChordShapes
         return list.OrderBy(s => s.BaseFret).ThenBy(s => s.MaxFret).ToList();
     }
 
+    /// <summary>
+    /// The capo that turns the most of these chords into open shapes — the
+    /// "smart capo" a player looks for. Chords are weighted by how often they
+    /// occur, an open shape scores 3 and a shape within the first three frets
+    /// scores 1; ties go to the lower capo, and capo 0 keeps a small edge so a
+    /// marginal gain does not send the player looking for a capo.
+    /// </summary>
+    public static int SuggestCapo(IEnumerable<string> labels, int maxCapo = 7)
+    {
+        var weights = new Dictionary<string, int>();
+        foreach (var label in labels)
+        {
+            if (string.IsNullOrEmpty(label) || label == "—") continue;
+            weights[label] = weights.TryGetValue(label, out var n) ? n + 1 : 1;
+        }
+        if (weights.Count == 0) return 0;
+
+        int best = 0;
+        double bestScore = double.MinValue;
+        for (int capo = 0; capo <= maxCapo; capo++)
+        {
+            double score = capo == 0 ? 0.5 : 0;
+            foreach (var (label, count) in weights)
+            {
+                var shape = For(label, capo);
+                if (shape == null) continue;
+                if (shape.BaseFret == 1 && shape.Barre == 0) score += 3.0 * count;
+                else if (shape.BaseFret <= 3) score += 1.0 * count;
+            }
+            if (score > bestScore) { bestScore = score; best = capo; }
+        }
+        return best;
+    }
+
     /// <summary>The preferred position (lowest on the neck).</summary>
     public static ChordShape? For(string pretty, int capo = 0) => Positions(pretty, capo).FirstOrDefault();
 

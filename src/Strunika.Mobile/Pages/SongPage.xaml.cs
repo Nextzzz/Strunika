@@ -18,12 +18,18 @@ public partial class SongPage : ContentPage
 {
     private readonly SongViewModel _vm;
     private readonly IServiceProvider _services;
-    private readonly IDispatcherTimer _scrubEnd;
     private readonly Stopwatch _clock = new();
-    private bool _sliderFromCode, _sliderScrubbing;
     /// <summary>A sheet is covering the page: it disappears, but it must keep
     /// its player — otherwise coming back reloads the song from the start.</summary>
-    private bool _sheetOpen, _attached;
+    private bool _sheetOpen, _attached, _unloaded, _windowHooked;
+    private Window? _hookedWindow;
+
+    private void OnWindowDestroying(object? sender, EventArgs e)
+    {
+        _unloaded = true;
+        StopFrames();
+        _vm.Dispose();
+    }
     private int _frame;
 
     public SongPage(Song song, IServiceProvider services)
@@ -40,14 +46,23 @@ public partial class SongPage : ContentPage
         Track.ScrubEnded += (_, t) => _ = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
 
-        // The Slider's DragCompleted does not fire for every input on every
-        // platform (a mouse wheel or a keyboard nudge on the dev head), so a
-        // short idle timer always finishes the scrub.
-        _scrubEnd = Dispatcher.CreateTimer();
-        _scrubEnd.Interval = TimeSpan.FromMilliseconds(280);
-        _scrubEnd.Tick += (_, _) => EndSliderScrub();
+        Seeker.DragStarted += (_, _) => _ = _vm.ScrubStartAsync();
+        Seeker.Dragging += (_, t) => _vm.Scrubbing(t);
+        Seeker.DragCompleted += (_, t) => _ = _vm.ScrubEndAsync(t);
 
         ApplyPanelSpacing(around: false);
+
+        // Leaving the tree: stop the ticker; release the player unless a sheet is
+        // merely covering the page (it comes back through OnAppearing).
+        Loaded += (_, _) => _unloaded = false;
+        Unloaded += (_, _) =>
+        {
+            _unloaded = true;
+            StopFrames();
+            if (_sheetOpen) return;                                  // a sheet is merely covering the page
+            _vm.Dispose();
+            if (_hookedWindow != null) { _hookedWindow.Destroying -= OnWindowDestroying; _hookedWindow = null; _windowHooked = false; }
+        };
 
         if (!string.IsNullOrEmpty(song.ThumbnailPath))
             Thumb.Source = Path.Combine(FileSystem.AppDataDirectory, song.ThumbnailPath);
@@ -65,6 +80,16 @@ public partial class SongPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        if (!_windowHooked && Window != null)
+        {
+            // Closing the window does not raise OnDisappearing/Unloaded early enough
+            // for the ticker: stop it here, before the native tree is torn down.
+            // Unhooked on Unloaded — the Window outlives every song page, and a
+            // lingering subscription would keep each page (and its canvases) alive.
+            _windowHooked = true;
+            _hookedWindow = Window;
+            Window.Destroying += OnWindowDestroying;
+        }
         if (_attached)
         {
             _sheetOpen = false;                                  // back from a sheet: keep playing where we stood
@@ -104,7 +129,6 @@ public partial class SongPage : ContentPage
     {
         base.OnDisappearing();
         this.AbortAnimation(FramesHandle);
-        _scrubEnd.Stop();
         _clock.Stop();
         if (_sheetOpen) return;                                  // only paused, not gone
         _attached = false;
@@ -119,26 +143,70 @@ public partial class SongPage : ContentPage
     /// </summary>
     private const string FramesHandle = "songFrames";
 
+    // A 16 ms animation restarted on every tick fired twice per vsync (120 calls
+    // a second on the dev head); a long one just rides the ticker.
     private void StartFrames() =>
-        new Animation(_ => OnFrame()).Commit(this, FramesHandle, length: 16, repeat: () => true);
+        new Animation(_ => OnFrame()).Commit(this, FramesHandle, length: 3_600_000, repeat: () => true);
+
+    private void StopFrames() => this.AbortAnimation(FramesHandle);
+
+    // ---- frame diagnostics: every hitch over 50 ms is logged with what coincided ----
+    private int _gc0Seen, _frames, _hitches, _lastSecond = -1;
+    private double _worst, _sumDt, _sinceReport;
+    private bool _secondTickedLastFrame, _sliderMovedLastFrame;
+    private long _allocatedSeen = -1;
+    /// <summary>Diagnostics: leave the conveyor still while the song plays, to tell
+    /// drawing from audio as the source of a stall (Settings → About, debug).</summary>
+
 
     private void OnFrame()
     {
+        // Closing the window skips OnDisappearing: once the page has left the
+        // tree the ticker must not touch views whose native side is gone.
+        // (Never test Handler here: on Windows the first frames run before it exists.)
+        if (_unloaded) { StopFrames(); return; }
         double dt = _clock.Elapsed.TotalSeconds;
         _clock.Restart();
+#if DEBUG
+        int gc0 = GC.CollectionCount(0);
+        bool collected = gc0 != _gc0Seen;
+        _gc0Seen = gc0;
+        _frames++;
+        _sumDt += dt;
+        _sinceReport += dt;
+        if (dt > _worst) _worst = dt;
+        if (dt > 0.05 && _frames > 5)
+        {
+            _hitches++;
+            var gc = GC.GetGCMemoryInfo(GCKind.Any);
+            double pause = 0;
+            foreach (var p in gc.PauseDurations) pause += p.TotalMilliseconds;
+            FileLog.Info($"frame hitch {dt * 1000:0} ms at {_vm.Position:0.00} s [{_vm.TransportKind}] gc {collected} last-gc gen{gc.Generation} pause {pause:0} ms compacted {gc.Compacted} concurrent {gc.Concurrent} promoted {gc.PromotedBytes / 1024} KB heap {gc.HeapSizeBytes / 1048576} MB loh {gc.GenerationInfo[3].SizeAfterBytes / 1048576} MB second-tick {_secondTickedLastFrame} probing {_vm.IsProbing} playing {_vm.IsPlaying}");
+        }
+        if (_sinceReport >= 5)
+        {
+            long allocated = GC.GetTotalAllocatedBytes(false);
+            if (_allocatedSeen < 0) _allocatedSeen = allocated;
+            FileLog.Info($"frames 5 s: {_frames} frames, avg {1000 * _sumDt / Math.Max(1, _frames):0.0} ms, worst {_worst * 1000:0} ms, hitches {_hitches}, gc0 {gc0}, gc1 {GC.CollectionCount(1)}, gc2 {GC.CollectionCount(2)}, allocated {(allocated - _allocatedSeen) / 1024} KB, managed {GC.GetTotalMemory(false) / 1048576} MB");
+            _allocatedSeen = allocated;
+            _sinceReport = 0; _frames = 0; _sumDt = 0; _worst = 0; _hitches = 0;
+        }
+#endif
         try
         {
             _vm.Frame(Math.Min(dt, 0.25));                       // a stalled frame must not jump the song
-            // The conveyor is driven directly, not through a binding: the
-            // binding machinery on every frame is exactly what made it stutter.
+            int second = (int)_vm.Position;
+            _secondTickedLastFrame = second != _lastSecond;
+            _lastSecond = second;
+            // The conveyor and the seek bar are driven directly, not through
+            // bindings, and both move by transforms: no drawing, no native
+            // control, no layout in the frame.
             if (Math.Abs(Track.Position - _vm.Position) > 0.002) Track.Position = _vm.Position;
-            // The slider is a native control — nudging it 60 times a second
-            // costs a WinUI layout pass each time and gains nothing.
-            if (!_sliderScrubbing && ++_frame % 6 == 0)
+            _sliderMovedLastFrame = false;
+            if (++_frame % 3 == 0)
             {
-                _sliderFromCode = true;
-                Seeker.Value = Math.Clamp(_vm.Position, 0, Seeker.Maximum);
-                _sliderFromCode = false;
+                Seeker.Position = _vm.Position;
+                _sliderMovedLastFrame = true;
             }
         }
         catch (Exception ex) { FileLog.Error("song frame", ex); }
@@ -150,36 +218,6 @@ public partial class SongPage : ContentPage
     {
         var open = await DisplayAlert(_vm.Title, string.Format(Loc.Get("Song_YT_Error"), code), Loc.Get("Song_YT_Open"), Loc.Get("Common_Cancel"));
         if (open) await Launcher.Default.OpenAsync($"https://www.youtube.com/watch?v={_vm.Song.SourceRef}");
-    }
-
-    // ---- slider -------------------------------------------------------
-
-    private void OnSeekerDragStarted(object? sender, EventArgs e) => BeginSliderScrub();
-
-    private void OnSeekerChanged(object? sender, ValueChangedEventArgs e)
-    {
-        if (_sliderFromCode) return;
-        BeginSliderScrub();
-        _vm.Scrubbing(e.NewValue);
-        _scrubEnd.Stop();
-        _scrubEnd.Start();
-    }
-
-    private void OnSeekerDragCompleted(object? sender, EventArgs e) => EndSliderScrub();
-
-    private void BeginSliderScrub()
-    {
-        if (_sliderScrubbing) return;
-        _sliderScrubbing = true;
-        _ = _vm.ScrubStartAsync();
-    }
-
-    private void EndSliderScrub()
-    {
-        _scrubEnd.Stop();
-        if (!_sliderScrubbing) return;
-        _sliderScrubbing = false;
-        _ = _vm.ScrubEndAsync(Seeker.Value);
     }
 
     /// <summary>
@@ -199,6 +237,12 @@ public partial class SongPage : ContentPage
 
     private async void OnBackTapped(object? sender, TappedEventArgs e) => await Navigation.PopAsync(animated: true);
 
+    private async void OnTitleTapped(object? sender, TappedEventArgs e)
+    {
+        _sheetOpen = true;
+        await SongInfoSheet.ShowAsync(_vm);
+    }
+
     private async void OnEditorTapped(object? sender, TappedEventArgs e) =>
         await DisplayAlert(Loc.Get("Song_Editor"), Loc.Get("Song_Editor_Soon"), "OK");
 
@@ -208,7 +252,7 @@ public partial class SongPage : ContentPage
         _ = _vm.PauseAsync();                                    // look at the neck without chasing the music
         _sheetOpen = true;
         var (positions, index) = _vm.ShapeChoices(chord);
-        return ChordShapesSheet.ShowAsync(chord, positions, index, _vm.LeftHanded, i => _vm.ChooseShape(chord, i));
+        return ChordShapesSheet.ShowAsync(chord, positions, index, _vm.LeftHanded, _vm.Capo, i => _vm.ChooseShape(chord, i));
     }
 
     private async void OnCurrentShapeTapped(object? sender, TappedEventArgs e) => await OnShapeTappedAsync(_vm.CurrentChord);

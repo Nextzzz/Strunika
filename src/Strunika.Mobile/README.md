@@ -110,9 +110,10 @@ from Swift — but that needs a Mac and is not planned.
   for 3 s so it can be seen — on iPhone it shows only as long as the work takes (≥0.5 s).
 - Buttons have `UseSystemFocusVisuals=false` on Windows: WinUI drew a dotted focus rectangle on the first button
   after every page navigation.
-- Dev launches: `STRUNIKA_RESET=1` wipes preferences (harness `-Reset`), `STRUNIKA_WELCOME=1` only forces the
-  welcome screen (harness only; not set for Visual Studio — F5 behaves like a real install: Welcome on the first
-  launch or when "Skip the welcome screen" is off).
+- Dev launches: `STRUNIKA_RESET=1` wipes preferences (harness `-Reset`). The welcome screen follows one setting only
+  — Settings ▸ "Skip the welcome screen", off by default, so a fresh install greets on every launch until it is
+  turned on (no first-launch flag, no forcing environment variable).
+
 - Paywall: from a locked control it is a modal sheet; from Settings → "Learn more" it is *pushed* (slides in from
   the right, swipe-back on iPhone) with `HasBackButton=False` so the WinUI title-bar arrow stays hidden.
 - Shadows: put them on a rounded `Border`, not on a `Button` (WinUI casts the button shadow from its rectangular
@@ -134,9 +135,9 @@ from Swift — but that needs a Mac and is not planned.
   escaped. `YouTubeEmbedView.Unwrap` undoes either form. (Symptom before the fix: every probe threw
   `JsonReaderException: '' is an invalid start of a property name`, the transport looked permanently unready and
   the conveyor snapped back to 0.)
-- The player page warms the video up muted right after `onReady` (play → first frame → pause → rewind → unmute) so
-  the user's first ▶ starts the song instead of a spinner; a real play cancels the warm-up. The song view-model
-  treats "playing but position unchanged between two probes" as buffering and holds the conveyor there. The Windows head needs
+- No warm-up of the YouTube player: a muted pre-roll either showed a frame moving (a "false start") or, paused at
+  buffering, dropped the player back to *unstarted* with a black frame. The player keeps its own poster until the
+  first ▶; the conveyor moves only on player state 1, so the first press costs a short buffer and nothing else. The Windows head needs
   `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--autoplay-policy=no-user-gesture-required` (set in `MauiProgram` before the
   first WebView2 is created) or `play()` from script is rejected. iOS: MAUI's `MauiWKWebView` builds its
   `WKWebViewConfiguration` with `AllowsInlineMediaPlayback = true` and `MediaTypesRequiringUserActionForPlayback = None`
@@ -146,10 +147,21 @@ from Swift — but that needs a Mac and is not planned.
   the page says so) and `Platforms/iOS/IosAudioPlayer` (AVAudioPlayer with `EnableRate`, Playback session) — the iOS
   one is unverified like the decoder. `IClickPlayer` mixes synthesized clicks (`Services/MetronomeClick.Render`) into
   a `MixingSampleProvider` on Windows / a second AVAudioPlayer on iOS.
-- `ChordTrack` gestures live on a transparent `BoxView` over the `GraphicsView` (same Windows limitation as
-  `IconView`); a mouse drag is the pan. It is redrawn every frame from a 16 ms dispatcher timer; the position is
-  predicted from the frame clock and reconciled with the transport every 200 ms, because polling NAudio (and
-  especially a WebView) at 60 Hz is what made the first version stutter.
+- **The song page stuttered ~100 ms once a second on the Windows head.** Cause (from the runtime GC events):
+  `gen2 InducedNotForced` collections on the UI thread — WinUI/CsWinRT induces full collections when native objects
+  churn (Win2D text layouts and brushes per redraw, a WinUI `Slider.Value` update ten times a second, MAUI creating a
+  transform object per `TranslationX` change), and with a ~20 MB managed heap the threshold is hit constantly. The
+  fix is architectural and is the design skill §7: `ChordTrack` renders its ribbon into wide canvases every few
+  seconds (double-buffered, two colourings clipped at the playhead) and only *translates* them per frame through
+  `NativeTransform` (one native `CompositeTransform`, updated in place); `SeekBar` replaces every per-frame `Slider`;
+  `PointerDrag` captures the pointer natively for drags. Position is predicted from the frame ticker
+  (`Animation.Commit`, vsync) and reconciled with the transport every 200 ms (40 ms while a start is pending).
+  Debug builds log `frames 5 s: …` and `frame hitch …` lines with GC data — read them before guessing.
+- MAUI's `PanGestureRecognizer` on Windows ends a drag released outside the element as *cancelled* and can report
+  the start offset on the way out; `PointerDrag` sidesteps it with `CapturePointer`. iOS uses the pan gesture.
+- A page's subscriptions to long-lived objects (`Window.Destroying`, `IProGate.Changed`) must be removed on
+  dispose — the first version leaked every opened song page, and the managed heap (hence every GC pause) grew
+  with each open.
 - The waveform behind the track is `Song.PeaksB64` — one byte per 25 ms from `Strunika.Core.Audio.Waveform`,
   written by `AnalysisService`. Songs analysed before it existed get their peaks computed on first open (local
   files only; YouTube audio is never kept, so those need a re-analysis to gain a waveform).

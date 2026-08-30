@@ -13,6 +13,56 @@ public partial class SettingsView : ContentView
         InitializeComponent();
     }
 
+    private double _proWaveWidth = -1;
+
+    /// <summary>Below this the wave is a stub, not a string.</summary>
+    private const double ProWaveMin = 26;
+
+    /// <summary>
+    /// The wave after "Pro" is decoration: it gets whatever the brand name and
+    /// the button leave, up to 120 pt, and disappears below <see cref="ProWaveMin"/>
+    /// rather than showing a clipped stub — on a 13 mini that is the difference
+    /// between a short string and nothing at all. The button is never squeezed.
+    /// </summary>
+    private void OnProRowSized(object? sender, EventArgs e)
+    {
+        double row = ProRow.Width;
+        if (row <= 0) return;
+        double title = ((IView)ProTitle).Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+        double button = ((IView)ProButton).Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+        // A narrower right gap when space is tight: the string may come closer to
+        // the button rather than vanish.
+        double gap = ProWave.Margin.HorizontalThickness;
+        double free = row - title - button - gap;
+        if (free < ProWaveMin + 8) free = row - title - button - ProWave.Margin.Left - 4;
+        double width = Math.Min(Theme.Metrics.Instance.Size(120), Math.Max(0, free));
+        bool show = width >= ProWaveMin;
+        if (ProWave.IsVisible != show) ProWave.IsVisible = show;
+        if (show && Math.Abs(_proWaveWidth - width) > 0.5)
+        {
+            _proWaveWidth = width;
+            ProWave.WidthRequest = width;
+        }
+    }
+
+    private async void OnDictionaryTapped(object? sender, TappedEventArgs e) => await ChordDictionaryPage.OpenAsync();
+
+    /// <summary>
+    /// The page title comes first: it is a large display face and truncating it
+    /// looks like a bug. If "Словник" will not fit beside it (a 13 mini), the chip
+    /// drops the word and stays an icon button; the tap target is unchanged.
+    /// </summary>
+    private void OnTitleRowSized(object? sender, EventArgs e)
+    {
+        double row = TitleRow.Width;
+        if (row <= 0) return;
+        double title = ((IView)SettingsTitle).Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+        double word = ((IView)DictionaryLabel).Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+        double iconChip = Theme.Metrics.Instance.Size(18) + 24;               // icon + chip padding
+        bool room = row - title - 10 >= iconChip + 6 + word;
+        if (DictionaryLabel.IsVisible != room) DictionaryLabel.IsVisible = room;
+    }
+
     private SettingsViewModel? Vm => BindingContext as SettingsViewModel;
 
     private static Page? Host => Application.Current?.Windows.FirstOrDefault()?.Page;

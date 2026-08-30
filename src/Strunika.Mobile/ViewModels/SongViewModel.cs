@@ -37,6 +37,18 @@ public sealed partial class SongViewModel : ObservableObject
     private int _nextBeat;
     private bool _scrubbing, _wasPlaying, _probing;
     private double _predicted, _sinceProbe, _lastProbe = -1;
+    // After a seek the transport keeps reporting the old time for a probe or two
+    // (YouTube seeks asynchronously; a probe in flight predates the seek). Until
+    // the player confirms the target, its position is not adopted.
+    private double _seekTarget = -1;
+    private long _seekSequence, _seekTicks;
+
+    private void NoteSeek(double target)
+    {
+        _seekTarget = target;
+        _seekTicks = Environment.TickCount64;
+        _seekSequence++;
+    }
     private int _lastSecond = -1, _currentIndex = -1;
     private long _lastPrevPress;
 
@@ -51,7 +63,7 @@ public sealed partial class SongViewModel : ObservableObject
         Peaks = song.Peaks;
         Duration = song.DurationSec;
         _click.Volume = ClickVolume;
-        _pro.Changed += (_, _) => OnPropertyChanged(nameof(IsPro));
+        _pro.Changed += OnProChanged;                            // unhooked in Dispose: the gate outlives every song
         Rebuild();
     }
 
@@ -66,15 +78,33 @@ public sealed partial class SongViewModel : ObservableObject
         : "—";
     public string TempoText => Song.Bpm > 0 ? $"♩ {Song.Bpm:0} · 4/4" : "";
 
-    /// <summary>"Файл · C · ♩ 99 · 4/4" under the title.</summary>
+    /// <summary>The key the song was analysed in, whatever the tools are set to.</summary>
+    public string OriginalKeyText => Song.Key is { Length: > 0 } key ? key : "—";
+    /// <summary>False when the song has no key at all — then there is nothing to show.</summary>
+    public bool HasKey => Song.Key is { Length: > 0 };
+
+    /// <summary>"Файл · C · ♩ 99 · 4/4" under the title — a fact about the song,
+    /// so it keeps the original key even while the chords are transposed.</summary>
     public string SubtitleText
     {
         get
         {
             var parts = new List<string> { Artist };
-            if (Song.Key is { Length: > 0 }) parts.Add(KeyText);
+            if (Song.Key is { Length: > 0 } key) parts.Add(key);
             if (TempoText.Length > 0) parts.Add(TempoText);
             return string.Join(" · ", parts);
+        }
+    }
+
+    /// <summary>Every chord in the song, in the order it first appears, as shown.</summary>
+    public IReadOnlyList<string> ChordList
+    {
+        get
+        {
+            var seen = new List<string>();
+            foreach (var seg in Segments)
+                if (seg.Label != "—" && !seen.Contains(seg.Label)) seen.Add(seg.Label);
+            return seen;
         }
     }
 
@@ -109,7 +139,7 @@ public sealed partial class SongViewModel : ObservableObject
     [ObservableProperty] private string _nextChord = "";
     [ObservableProperty] private ChordShape? _currentShape;
     [ObservableProperty] private ChordShape? _nextShape;
-    [ObservableProperty] private bool _simpleChords = true;
+    [ObservableProperty] private bool _simpleChords = AppSettings.SimpleChords;
     [ObservableProperty] private bool _metronome;
     [ObservableProperty] private int _capo;
     [ObservableProperty] private int _transposeSteps;
@@ -132,12 +162,22 @@ public sealed partial class SongViewModel : ObservableObject
     public string TransposeText => TransposeSteps == 0 ? "0" : $"{TransposeSteps:+0;-0}";
     public string CapoNumberText => Capo.ToString();
     public bool HasCapo => Capo > 0;
+    /// <summary>The capo that would turn the most chords into open shapes. It
+    /// follows the chords as they are shown — transposed and simplified — so the
+    /// advice matches what the player actually reads.</summary>
+    public int SuggestedCapo => ChordShapes.SuggestCapo(Segments.Select(s => s.Label));
+    public string CapoSuggestionText => string.Format(Loc.Get("Song_Capo_Suggest"), SuggestedCapo);
+    public bool HasCapoSuggestion => SuggestedCapo != Capo;
     public bool CapoLocked => !_pro.Has(Feature.TransposeCapo);
     public bool SpeedLocked => !_pro.Has(Feature.Speed);
     public bool LoopLocked => !_pro.Has(Feature.ABLoop);
     public bool HasNext => NextChord.Length > 0;
     /// <summary>The button reads "pause" from the moment play is asked for.</summary>
     public bool ShowPause => IsPlaying || Starting;
+
+    /// <summary>A transport probe is in flight (frame diagnostics).</summary>
+    public bool IsProbing => _probing;
+    public string TransportKind => _transport is YouTubeTransport ? "youtube" : _transport is FileTransport ? "file" : "none";
 
     public event EventHandler<Feature>? ProRequired;
     public event EventHandler<string>? Message;
@@ -181,16 +221,25 @@ public sealed partial class SongViewModel : ObservableObject
         _probing = true;
         try
         {
+            long sequence = _seekSequence;
             var (pos, dur, playing, pending) = await transport.PollAsync();
             if (_transport != transport) return;                 // the page moved on
             CanPlay = transport.IsReady;
             if (dur > 0 && Math.Abs(dur - Duration) > 0.5) Duration = dur;
+            if (sequence != _seekSequence) return;               // answered a question asked before a seek
             IsPlaying = playing;
             Starting = pending;
             if (_scrubbing) return;
+            if (_seekTarget >= 0)
+            {
+                bool confirmed = Math.Abs(pos - _seekTarget) < 0.5 || Environment.TickCount64 - _seekTicks > 1500;
+                if (!confirmed) return;                          // still the old time: keep the prediction
+                _seekTarget = -1;
+            }
             if (HasLoop && playing && pos >= LoopEnd)
             {
                 await transport.SeekAsync(LoopStart);
+                NoteSeek(LoopStart);
                 _predicted = LoopStart;
                 _nextBeat = NextBeatAfter(LoopStart);
                 return;
@@ -249,7 +298,7 @@ public sealed partial class SongViewModel : ObservableObject
         else
         {
             _nextBeat = NextBeatAfter(Position);
-            if (Duration > 0 && Position >= Duration - 0.2) { await transport.SeekAsync(0); _predicted = 0; }
+            if (Duration > 0 && Position >= Duration - 0.2) { await transport.SeekAsync(0); NoteSeek(0); _predicted = 0; }
             Starting = true;                                    // the conveyor waits for the player's word
             await transport.PlayAsync();
         }
@@ -299,6 +348,7 @@ public sealed partial class SongViewModel : ObservableObject
         if (transport == null) return;
         seconds = Math.Clamp(seconds, 0, Math.Max(0, Duration));
         await transport.SeekAsync(seconds);
+        NoteSeek(seconds);
         _predicted = seconds;
         _nextBeat = NextBeatAfter(seconds);
         SetPosition(seconds, fromTransport: false);
@@ -310,6 +360,7 @@ public sealed partial class SongViewModel : ObservableObject
         var transport = _transport;
         if (transport == null || _scrubbing) return;
         _scrubbing = true;
+        _seekSequence++;                                         // probes already in flight are about the old place
         _wasPlaying = IsPlaying;
         if (_wasPlaying) await transport.PauseAsync();
     }
@@ -322,6 +373,7 @@ public sealed partial class SongViewModel : ObservableObject
         if (transport == null) { _scrubbing = false; return; }
         seconds = Math.Clamp(seconds, 0, Math.Max(0, Duration));
         await transport.SeekAsync(seconds);
+        NoteSeek(seconds);
         _predicted = seconds;
         _nextBeat = NextBeatAfter(seconds);
         _scrubbing = false;
@@ -336,7 +388,12 @@ public sealed partial class SongViewModel : ObservableObject
 
     // ---- chords -------------------------------------------------------
 
-    partial void OnSimpleChordsChanged(bool value) { _shapeChoice.Clear(); Rebuild(); }
+    partial void OnSimpleChordsChanged(bool value)
+    {
+        AppSettings.SimpleChords = value;                        // one value for the whole app
+        _shapeChoice.Clear();
+        Rebuild();
+    }
     partial void OnTransposeStepsChanged(int value)
     {
         _shapeChoice.Clear();
@@ -351,6 +408,8 @@ public sealed partial class SongViewModel : ObservableObject
         OnPropertyChanged(nameof(CapoText));
         OnPropertyChanged(nameof(CapoNumberText));
         OnPropertyChanged(nameof(HasCapo));
+        OnPropertyChanged(nameof(CapoSuggestionText));
+        OnPropertyChanged(nameof(HasCapoSuggestion));
         RefreshShapes();
     }
     partial void OnSpeedChanged(double value) { OnPropertyChanged(nameof(SpeedText)); OnPropertyChanged(nameof(SelectedSpeed)); }
@@ -386,6 +445,10 @@ public sealed partial class SongViewModel : ObservableObject
         }).ToList();
         BeatTimes = _beats;
         _currentIndex = -1;
+        OnPropertyChanged(nameof(ChordList));
+        OnPropertyChanged(nameof(SuggestedCapo));                // the advice follows the transposition
+        OnPropertyChanged(nameof(CapoSuggestionText));
+        OnPropertyChanged(nameof(HasCapoSuggestion));
         UpdateChords(Position);
     }
 
@@ -486,6 +549,28 @@ public sealed partial class SongViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void CapoUp()
+    {
+        if (!RequestCapo()) return;
+        if (Capo < 11) Capo++;
+    }
+
+    [RelayCommand]
+    private void CapoDown()
+    {
+        if (!RequestCapo()) return;
+        if (Capo > 0) Capo--;
+    }
+
+    /// <summary>Take the suggested capo (the "smart capo").</summary>
+    [RelayCommand]
+    private void UseSuggestedCapo()
+    {
+        if (!RequestCapo()) return;
+        Capo = SuggestedCapo;
+    }
+
+    [RelayCommand]
     private void TransposeUp()
     {
         if (!RequestCapo()) return;
@@ -532,8 +617,11 @@ public sealed partial class SongViewModel : ObservableObject
         OnPropertyChanged(nameof(Song));
     }
 
+    private void OnProChanged(object? sender, EventArgs e) => OnPropertyChanged(nameof(IsPro));
+
     public void Dispose()
     {
+        _pro.Changed -= OnProChanged;
         try { _transport?.Dispose(); } catch (Exception ex) { FileLog.Error("song dispose", ex); }
         _transport = null;
     }

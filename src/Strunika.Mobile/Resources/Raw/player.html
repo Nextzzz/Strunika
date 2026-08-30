@@ -17,7 +17,7 @@
     var player = null, ready = false, err = 0;
     // What the app asked for before the player existed - YouTube silently drops
     // commands sent to an unready player, which looked like "play does nothing".
-    var wantPlay = false, wantSeek = null, wantRate = null, wantVolume = null, warming = false;
+    var wantPlay = false, wantSeek = null, wantRate = null, wantVolume = null;
 
     function param(name) {
       var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
@@ -34,26 +34,10 @@
             if (wantSeek !== null) player.seekTo(wantSeek, true);
             if (wantRate !== null) player.setPlaybackRate(wantRate);
             if (wantVolume !== null) player.setVolume(wantVolume);
-            if (wantPlay) { player.playVideo(); }
-            else {
-              // Buffer the first seconds silently, so pressing play starts the
-              // song instead of a spinner.
-              warming = true;
-              player.mute();
-              player.playVideo();
-            }
+            if (wantPlay) player.playVideo();
           },
           onError: function (e) { err = e && e.data ? e.data : 0; },
           onStateChange: function (e) {
-            if (warming) {
-              if (e.data === 1) {                   // it started: stop and rewind, silently
-                warming = false;
-                player.pauseVideo();
-                player.seekTo(wantSeek !== null ? wantSeek : 0, true);
-                player.unMute();
-              }
-              return;
-            }
             // The person used YouTube's own controls: keep our intent honest.
             if (e.data === 1) wantPlay = true;
             if (e.data === 2 || e.data === 0) wantPlay = false;
@@ -65,7 +49,6 @@
     function strState() {
       if (!player || !ready) return JSON.stringify({ t: 0, d: 0, p: false, w: wantPlay, r: 1, e: err, s: -9, ready: false });
       var st = player.getPlayerState();
-      if (warming) return JSON.stringify({ t: wantSeek || 0, d: player.getDuration() || 0, p: false, w: false, r: 1, e: err, s: 5, ready: true });
       return JSON.stringify({
         t: player.getCurrentTime() || 0,
         d: player.getDuration() || 0,
@@ -78,15 +61,11 @@
       });
     }
 
-    function strPlay() {
-      wantPlay = true;
-      warming = false;                          // a real play cancels the silent warm-up
-      if (player && ready) { player.unMute(); player.playVideo(); }
-    }
+    function strPlay() { wantPlay = true; if (player && ready) player.playVideo(); }
     function strPause() { wantPlay = false; if (player && ready) player.pauseVideo(); }
     function strSeek(t) { wantSeek = t; if (player && ready) player.seekTo(t, true); }
     function strRate(r) { wantRate = r; if (player && ready) player.setPlaybackRate(r); }
-    function strVolume(v) { wantVolume = v; if (player && ready && !warming) player.setVolume(v); }
+    function strVolume(v) { wantVolume = v; if (player && ready) player.setVolume(v); }
 
     var tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';

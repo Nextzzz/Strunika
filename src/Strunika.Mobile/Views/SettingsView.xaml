@@ -8,42 +8,33 @@
              x:Class="Strunika.Mobile.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
 
-    <ContentView.Resources>
-        <Style x:Key="Row" TargetType="Grid">
-            <Setter Property="HeightRequest" Value="44" />
-            <Setter Property="Padding" Value="14,0" />
-            <Setter Property="ColumnSpacing" Value="8" />
-        </Style>
-        <Style x:Key="RowLabel" TargetType="Label">
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="VerticalOptions" Value="Center" />
-        </Style>
-        <Style x:Key="RowValue" TargetType="Label">
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="TextColor" Value="{t:Theme TextSec}" />
-            <Setter Property="VerticalOptions" Value="Center" />
-        </Style>
-        <Style x:Key="Group" TargetType="Border">
-            <Setter Property="StrokeShape" Value="RoundRectangle 14" />
-            <Setter Property="StrokeThickness" Value="0" />
-            <Setter Property="BackgroundColor" Value="{t:Theme Surface1}" />
-            <Setter Property="Padding" Value="0" />
-        </Style>
-    </ContentView.Resources>
-
     <ScrollView>
         <!-- {t:ContentInset}: a 560 pt column centred on a tablet, full width on phones -->
         <VerticalStackLayout Padding="20,8,20,104" Spacing="12" Margin="{t:ContentInset}">
 
-            <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Settings}" HeightRequest="{t:Size 44, Min=44}" VerticalTextAlignment="End" />
+            <!-- title · chord dictionary. The button keeps its size; on a narrow
+                 screen the title truncates rather than the button being clipped. -->
+            <!-- The title is never cut: when the two do not fit, the chip gives up
+                 its word and keeps the icon (FitTitleRow). -->
+            <Grid x:Name="TitleRow" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" SizeChanged="OnTitleRowSized">
+                <Label x:Name="SettingsTitle" Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Settings}" HeightRequest="{t:Size 44, Min=44}" VerticalTextAlignment="End" />
+                <Border Grid.Column="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 40, Min=44}" Padding="12,0" VerticalOptions="End">
+                    <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                        <controls:IconView Name="songs" Size="{t:Size 18}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                        <Label x:Name="DictionaryLabel" Text="{loc:Str Settings_Dictionary}" FontSize="14" TextColor="{t:Theme AccentText}" VerticalOptions="Center" LineBreakMode="NoWrap" />
+                    </HorizontalStackLayout>
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnDictionaryTapped" /></Border.GestureRecognizers>
+                </Border>
+            </Grid>
 
             <!-- Pro -->
             <Border StrokeShape="RoundRectangle 16" StrokeThickness="1" Stroke="{t:Theme Separator}" BackgroundColor="{t:Theme Surface2}" Padding="14,14,14,12">
                 <VerticalStackLayout Spacing="8">
-                    <!-- title · wave (takes what is left, so the string stretches on a
-                         wide card and shortens on a compact one) · button -->
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="0">
-                        <Label Style="{StaticResource Title2}" FontSize="{t:Size 22, Hero=True}" VerticalOptions="Center">
+                    <!-- title · wave · button. The wave takes what is left between the
+                         name and the button (FitProRow), and steps aside entirely when
+                         there is not enough room for it to read as a string. -->
+                    <Grid x:Name="ProRow" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="0" SizeChanged="OnProRowSized">
+                        <Label x:Name="ProTitle" Style="{StaticResource Title2}" FontSize="{t:Size 22, Hero=True}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1">
                             <Label.FormattedText>
                                 <FormattedString>
                                     <Span Text="Strunika " FontFamily="Display" />
@@ -52,8 +43,8 @@
                             </Label.FormattedText>
                         </Label>
                         <!-- A tiny string-wave right after the word "Pro" (experimental, user request 2026-08-26). -->
-                        <controls:WaveMark Grid.Column="1" Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" MinimumWidthRequest="24" MaximumWidthRequest="{t:Size 120}" HeightRequest="{t:Size 20}" HorizontalOptions="Fill" VerticalOptions="Center" Margin="8,3,12,0" />
-                        <Button Grid.Column="2" Text="{loc:Str Pro_LearnMore}" FontSize="13" HeightRequest="{t:Size 32}" CornerRadius="16" Padding="12,0" MinimumWidthRequest="0" Clicked="OnProTapped" />
+                        <controls:WaveMark x:Name="ProWave" Grid.Column="1" Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="{t:Size 20}" HorizontalOptions="Start" VerticalOptions="Center" Margin="8,3,12,0" />
+                        <Button x:Name="ProButton" Grid.Column="2" Text="{loc:Str Pro_LearnMore}" FontSize="13" HeightRequest="{t:Size 32}" CornerRadius="16" Padding="12,0" MinimumWidthRequest="0" Clicked="OnProTapped" />
                     </Grid>
                     <Label Style="{StaticResource Footnote}" Text="{loc:Str Pro_Features}" LineBreakMode="WordWrap" />
                     <HorizontalStackLayout Spacing="16" Margin="0,2,0,0">
@@ -126,6 +117,11 @@
                 <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Settings_Recognition}" Margin="14,0,0,0" />
                 <Border Style="{StaticResource Group}">
                     <VerticalStackLayout>
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto">
+                            <Label Style="{StaticResource RowLabel}" Text="{loc:Str Song_Simple}" />
+                            <Switch Grid.Column="1" IsToggled="{Binding SimpleChords}" VerticalOptions="Center" />
+                        </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" />
                         <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto">
                             <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_BeatSnap}" />
                             <Switch Grid.Column="1" IsToggled="{Binding BeatSnap}" VerticalOptions="Center" />

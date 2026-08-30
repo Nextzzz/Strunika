@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.SongInfoSheet"
+             ios:Page.UseSafeArea="True"
+             ios:Page.ModalPresentationStyle="FormSheet"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,24" RowDefinitions="Auto,*" Margin="{t:ContentInset}">
+        <Grid ColumnDefinitions="*,44">
+            <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                <Label x:Name="TitleLabel" Style="{StaticResource Title2}" LineBreakMode="TailTruncation" MaxLines="2" />
+                <Label x:Name="ArtistLabel" Style="{StaticResource Subhead}" LineBreakMode="TailTruncation" MaxLines="1" />
+            </VerticalStackLayout>
+            <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <ScrollView Grid.Row="1" Margin="0,16,0,0">
+            <VerticalStackLayout Spacing="18">
+                <Border Style="{StaticResource Group}">
+                    <VerticalStackLayout x:Name="Facts" />
+                </Border>
+
+                <VerticalStackLayout Spacing="8">
+                    <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Song_Info_Chords}" Margin="4,0,0,0" />
+                    <FlexLayout x:Name="Chords" Wrap="Wrap" JustifyContent="Start" AlignItems="Center" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

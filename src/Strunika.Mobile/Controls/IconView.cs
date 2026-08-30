@@ -54,6 +54,16 @@ public sealed class IconView : GraphicsView, IDrawable
 
     public void Draw(ICanvas canvas, RectF rect)
     {
+        // The platform can still call Draw while the window is being torn
+        // down, on a canvas whose session is already gone; every call then
+        // throws inside Maui.Graphics. There is nothing left to draw for.
+        if (Handler == null) return;                                 // torn down: nothing to draw for
+        try { DrawCore(canvas, rect); }
+        catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
+    }
+
+    private void DrawCore(ICanvas canvas, RectF rect)
+    {
         float s = Math.Min(rect.Width, rect.Height);
         if (s <= 0) return;
         canvas.SaveState();

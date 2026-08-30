@@ -51,9 +51,19 @@ public partial class WelcomePage : ContentPage
             ThemePicker.SetLabels(Loc.Get("Theme_System"), Loc.Get("Theme_Dark"), Loc.Get("Theme_Light"));
     }
 
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        // "We will ask for the microphone…" is news only to someone who has not
+        // granted it yet; checking the status never prompts.
+        bool granted = false;
+        try { granted = await Permissions.CheckStatusAsync<Permissions.Microphone>() == PermissionStatus.Granted; }
+        catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("welcome: mic status", ex); }
+        MicNote.IsVisible = !granted;
+    }
+
     private async void OnStartClicked(object? sender, EventArgs e)
     {
-        AppSettings.WelcomeDone = true;
         var root = _services.GetRequiredService<RootPage>();
         // Slide the root in underneath and drop this page from the stack —
         // replacing Window.Page outright collapses the WinUI window.
