@@ -21,6 +21,15 @@ public sealed class IosChordAudio : IChordAudio
 
     public void Strum(IReadOnlyList<int> frets)
     {
+        // The tuner leaves the session in Record and the greeting in Ambient;
+        // without claiming Playback here the strum can come out silent.
+        try
+        {
+            AVAudioSession.SharedInstance().SetCategory(AVAudioSessionCategory.Playback);
+            AVAudioSession.SharedInstance().SetActive(true);
+        }
+        catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("chord audio session", ex); }
+
         var key = string.Join(",", frets);
         if (!_cache.TryGetValue(key, out var player))
         {

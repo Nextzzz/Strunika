@@ -1,0 +1,123 @@
+# Builds a signed iOS build on a macOS runner and sends it to TestFlight.
+#
+# Windows cannot do this alone: deploying to a device without a Mac needed Hot
+# Restart, which Visual Studio 2026 dropped and which never supported the
+# XCFrameworks we depend on (ONNX Runtime). So the Mac lives here.
+#
+# It is manual on purpose — macOS minutes bill at ten times the rate on a
+# private repository, and a phone build is not something every push needs.
+#
+# Secrets it expects (Settings ▸ Secrets and variables ▸ Actions):
+#   IOS_DIST_CERT_P12       base64 of the Apple Distribution .p12
+#   IOS_DIST_CERT_PASSWORD  the password that .p12 was exported with
+#   IOS_PROVISION_PROFILE   base64 of the App Store .mobileprovision
+#   APPSTORE_KEY_ID         App Store Connect API key id (10 characters)
+#   APPSTORE_ISSUER_ID      the issuer id (a UUID) shown above the key list
+#   APPSTORE_API_KEY        base64 of the AuthKey_XXXXXXXXXX.p8 file
+name: iOS · TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Send the build to TestFlight (off = just build and keep the .ipa)
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1                      # the history carries the models: shallow is much faster
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install the iOS workload
+        # The runner's .NET lives under /usr/local/share, which the workload
+        # installer may not be allowed to write to; sudo is the documented way
+        # out and harmless when the first attempt already worked.
+        run: |
+          dotnet workload restore src/Strunika.Mobile/Strunika.Mobile.csproj             || sudo "$(command -v dotnet)" workload restore src/Strunika.Mobile/Strunika.Mobile.csproj
+
+      - name: Import the signing certificate
+        env:
+          CERT: ${{ secrets.IOS_DIST_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # A throw-away keychain: the runner is destroyed with the job anyway,
+          # but this keeps the certificate out of the default login keychain.
+          KEYCHAIN=$RUNNER_TEMP/signing.keychain-db
+          PASSWORD=$(uuidgen)
+          security create-keychain -p "$PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$PASSWORD" "$KEYCHAIN"
+          echo "$CERT" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychain -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          # The name of the identity is what MSBuild wants; read it rather than
+          # asking for one more secret that can go stale.
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" | head -1 | sed -E 's/.*"(.*)"/\1/')
+          echo "Signing as: $IDENTITY"
+          echo "CODESIGN_KEY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Install the provisioning profile
+        env:
+          PROFILE: ${{ secrets.IOS_PROVISION_PROFILE }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFILE" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          NAME=$(security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" | plutil -extract Name raw -)
+          UUID=$(security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" | plutil -extract UUID raw -)
+          cp "$RUNNER_TEMP/profile.mobileprovision" ~/Library/MobileDevice/Provisioning\ Profiles/"$UUID".mobileprovision
+          echo "Profile: $NAME ($UUID)"
+          echo "PROVISION_NAME=$NAME" >> "$GITHUB_ENV"
+
+      - name: Publish
+        run: |
+          set -euo pipefail
+          dotnet publish src/Strunika.Mobile/Strunika.Mobile.csproj \
+            -f net9.0-ios -c Release -r ios-arm64 \
+            -p:ArchiveOnBuild=true \
+            -p:ApplicationVersion=${{ github.run_number }} \
+            -p:CodesignKey="$CODESIGN_KEY" \
+            -p:CodesignProvision="$PROVISION_NAME" \
+            -p:EnableCodeSigning=true
+
+      - name: Find the build
+        run: |
+          set -euo pipefail
+          IPA=$(find src/Strunika.Mobile/bin -name '*.ipa' | head -1)
+          test -n "$IPA" || { echo "No .ipa was produced"; exit 1; }
+          ls -lh "$IPA"
+          echo "IPA=$IPA" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strunika-ios
+          path: ${{ env.IPA }}
+          if-no-files-found: error
+
+      - name: Send to TestFlight
+        if: ${{ inputs.upload }}
+        env:
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          API_KEY: ${{ secrets.APPSTORE_API_KEY }}
+        run: |
+          set -euo pipefail
+          # altool looks for the key in one of a few fixed folders.
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$API_KEY" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
+          xcrun altool --validate-app -f "$IPA" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          xcrun altool --upload-app  -f "$IPA" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          rm -f ~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
