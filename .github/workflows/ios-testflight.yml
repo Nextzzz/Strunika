@@ -2,7 +2,7 @@
 #
 # Windows cannot do this alone: deploying to a device without a Mac needed Hot
 # Restart, which Visual Studio 2026 dropped and which never supported the
-# XCFrameworks we depend on (ONNX Runtime). So the Mac lives here.
+# XCFrameworks this app links (ONNX Runtime). So the Mac lives here.
 #
 # It is manual on purpose — macOS minutes bill at ten times the rate on a
 # private repository, and a phone build is not something every push needs.
@@ -26,10 +26,18 @@ on:
 
 jobs:
   build:
-    # macos-15 carries Xcode 16.4, and .NET for iOS 26.5 refuses to build with
-    # anything older than the Xcode it was made for.
-    runs-on: macos-26
+    # The project pins .NET 9 (src/Strunika.Mobile/global.json) and that iOS SDK
+    # is built for Xcode 16.x, which is what macos-15 carries. Moving the runner
+    # up means moving the whole toolchain with it.
+    runs-on: macos-15
     timeout-minutes: 60
+
+    defaults:
+      run:
+        # Every dotnet command runs where global.json lives. From the repository
+        # root that pin is invisible, the CLI picks .NET 10 instead, and its MAUI
+        # assemblies then break the .NET 9 trimmer (error MT2231).
+        working-directory: src/Strunika.Mobile
 
     steps:
       - uses: actions/checkout@v4
@@ -38,32 +46,31 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: src/Strunika.Mobile/global.json
 
       - name: Select Xcode
         run: |
           set -euo pipefail
-          # The workload pins the Xcode it was built against; the image default
-          # is usually a version ahead, so name the one we want and fall back to
-          # the newest installed if the image has moved on.
-          APP=/Applications/Xcode_26.5.app
-          [ -d "$APP" ] || APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          # .NET 9's iOS SDK wants Xcode 16.x. Name it rather than trusting the
+          # image default, which moves as the image is updated.
+          APP=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -n "$APP" ] || APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
           sudo xcode-select -s "$APP"
-          # DEVELOPER_DIR wins over xcode-select for every tool in the job, so
-          # the build cannot pick up a different Xcode than the one checked here.
+          # DEVELOPER_DIR wins over xcode-select for every tool in the job.
           echo "DEVELOPER_DIR=$APP/Contents/Developer" >> "$GITHUB_ENV"
           xcodebuild -version
-          # Fail here, loudly, rather than 300 lines into the build.
+          dotnet --version
+          # Fail here, loudly, rather than far into the build.
           case "$(xcodebuild -version | head -1)" in
-            "Xcode 1"[0-9].*) echo "::error::$APP is too old for .NET for iOS 26.5 — is this a macos-15 runner?"; exit 1 ;;
+            "Xcode 16."*) ;;
+            *) echo "::error::$APP does not match .NET 9's iOS SDK (Xcode 16.x expected)"; exit 1 ;;
           esac
 
       - name: Install the iOS workload
-        # The runner's .NET lives under /usr/local/share, which the workload
-        # installer may not be allowed to write to; sudo is the documented way
-        # out and harmless when the first attempt already worked.
+        # The runner's .NET may live somewhere the workload installer cannot
+        # write to; sudo is the documented way out and harmless otherwise.
         run: |
-          dotnet workload restore src/Strunika.Mobile/Strunika.Mobile.csproj             || sudo "$(command -v dotnet)" workload restore src/Strunika.Mobile/Strunika.Mobile.csproj
+          dotnet workload restore Strunika.Mobile.csproj || sudo "$(command -v dotnet)" workload restore Strunika.Mobile.csproj
 
       - name: Import the signing certificate
         env:
@@ -105,21 +112,15 @@ jobs:
       - name: Publish
         run: |
           set -euo pipefail
-          dotnet publish src/Strunika.Mobile/Strunika.Mobile.csproj \
-            -f net9.0-ios -c Release -r ios-arm64 \
-            -p:ArchiveOnBuild=true \
-            -p:ApplicationVersion=${{ github.run_number }} \
-            -p:CodesignKey="$CODESIGN_KEY" \
-            -p:CodesignProvision="$PROVISION_NAME" \
-            -p:EnableCodeSigning=true
+          dotnet publish Strunika.Mobile.csproj -f net9.0-ios -c Release -r ios-arm64 -p:ArchiveOnBuild=true -p:ApplicationVersion=${{ github.run_number }} -p:CodesignKey="$CODESIGN_KEY" -p:CodesignProvision="$PROVISION_NAME" -p:EnableCodeSigning=true
 
       - name: Find the build
         run: |
           set -euo pipefail
-          IPA=$(find src/Strunika.Mobile/bin -name '*.ipa' | head -1)
-          test -n "$IPA" || { echo "No .ipa was produced"; exit 1; }
+          IPA=$(find bin -name '*.ipa' | head -1)
+          test -n "$IPA" || { echo "::error::No .ipa was produced"; exit 1; }
           ls -lh "$IPA"
-          echo "IPA=$IPA" >> "$GITHUB_ENV"
+          echo "IPA=src/Strunika.Mobile/$IPA" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -138,6 +139,7 @@ jobs:
           # altool looks for the key in one of a few fixed folders.
           mkdir -p ~/.appstoreconnect/private_keys
           echo "$API_KEY" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
-          xcrun altool --validate-app -f "$IPA" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
-          xcrun altool --upload-app  -f "$IPA" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          IPA_PATH="$GITHUB_WORKSPACE/$IPA"
+          xcrun altool --validate-app -f "$IPA_PATH" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          xcrun altool --upload-app  -f "$IPA_PATH" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
           rm -f ~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
