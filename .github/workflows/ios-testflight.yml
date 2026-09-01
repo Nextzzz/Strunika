@@ -49,7 +49,14 @@ jobs:
           APP=/Applications/Xcode_26.5.app
           [ -d "$APP" ] || APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
           sudo xcode-select -s "$APP"
+          # DEVELOPER_DIR wins over xcode-select for every tool in the job, so
+          # the build cannot pick up a different Xcode than the one checked here.
+          echo "DEVELOPER_DIR=$APP/Contents/Developer" >> "$GITHUB_ENV"
           xcodebuild -version
+          # Fail here, loudly, rather than 300 lines into the build.
+          case "$(xcodebuild -version | head -1)" in
+            "Xcode 1"[0-9].*) echo "::error::$APP is too old for .NET for iOS 26.5 — is this a macos-15 runner?"; exit 1 ;;
+          esac
 
       - name: Install the iOS workload
         # The runner's .NET lives under /usr/local/share, which the workload
