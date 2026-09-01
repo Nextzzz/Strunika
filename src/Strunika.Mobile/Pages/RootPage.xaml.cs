@@ -38,6 +38,12 @@ public partial class RootPage : ContentPage
         if (Application.Current != null)
             Application.Current.RequestedThemeChanged += (_, _) => ApplyShade();
 
+        // A hidden tab is in the tree but has never been measured or realised by
+        // the platform; the first switch pays for that and feels slow. While the
+        // tuner is on screen the others are brought up one at a time, invisible,
+        // so by the time a tab is tapped there is nothing left to build.
+        Loaded += (_, _) => _ = WarmTabsAsync();
+
         Loc.Instance.PropertyChanged += (_, _) =>
         {
             TabBar.Tabs[0].Label = Loc.Get("Tab_Tuner");
@@ -46,6 +52,31 @@ public partial class RootPage : ContentPage
             TabBar.Tabs[3].Label = Loc.Get("Tab_Settings");
             TabBar.Refresh();
         };
+    }
+
+    private readonly HashSet<int> _warmed = new();
+
+    private async Task WarmTabsAsync()
+    {
+        // One per turn, after a breath, so the tuner's own first frames are not
+        // competing with this.
+        for (int i = 1; i < _tabs.Length; i++)
+        {
+            await Task.Delay(400);
+            if (_current == i || _warmed.Contains(i)) continue;
+            var view = _tabs[i];
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            view.Opacity = 0;
+            view.InputTransparent = true;
+            view.IsVisible = true;
+            await Task.Yield();                                   // let a layout pass happen
+            await Task.Delay(60);
+            view.IsVisible = false;
+            view.InputTransparent = false;
+            view.Opacity = 1;
+            _warmed.Add(i);
+            Strunika.Core.Diagnostics.FileLog.Info($"tab warm-up {i}: {clock.ElapsedMilliseconds} ms");
+        }
     }
 
     /// <summary>Content dims and slips under the floating bar: a plain XAML
@@ -78,6 +109,7 @@ public partial class RootPage : ContentPage
         if (index == _current || index < 0 || index >= _tabs.Length) return;
         var from = _tabs[_current];
         var to = _tabs[index];
+        var clock = _warmed.Contains(index) ? null : System.Diagnostics.Stopwatch.StartNew();
         // Leaving a tab that listens releases the microphone.
         if (_current == 0) (Tuner.BindingContext as TunerViewModel)?.StopListening();
         if (_current == 1) (Live.BindingContext as LiveViewModel)?.StopListening();
@@ -88,5 +120,12 @@ public partial class RootPage : ContentPage
         await Task.WhenAll(from.FadeTo(0, 90, Easing.CubicIn), to.FadeTo(1, 140, Easing.CubicOut));
         from.IsVisible = false;
         from.Opacity = 1;
+        if (clock != null)
+        {
+            // The first time a tab is shown it is also built; the number says whether
+            // the warm-up did its job (see WarmTabsAsync).
+            _warmed.Add(index);
+            Strunika.Core.Diagnostics.FileLog.Info($"tab {index} first shown: {clock.ElapsedMilliseconds} ms (fade 230 ms of it)");
+        }
     }
 }

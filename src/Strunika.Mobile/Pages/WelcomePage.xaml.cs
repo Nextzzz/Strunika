@@ -55,11 +55,13 @@ public partial class WelcomePage : ContentPage
     {
         base.OnAppearing();
         // "We will ask for the microphone…" is news only to someone who has not
-        // granted it yet; checking the status never prompts.
+        // granted it yet (checking the status never prompts); once they have,
+        // the useful thing to say is that this screen can be turned off.
         bool granted = false;
         try { granted = await Permissions.CheckStatusAsync<Permissions.Microphone>() == PermissionStatus.Granted; }
         catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("welcome: mic status", ex); }
-        MicNote.IsVisible = !granted;
+        MicNote.Text = Loc.Get(granted ? "Welcome_SkipNote" : "Welcome_MicNote");
+        MicNote.IsVisible = true;
     }
 
     private async void OnStartClicked(object? sender, EventArgs e)

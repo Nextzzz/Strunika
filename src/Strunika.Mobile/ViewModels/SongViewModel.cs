@@ -76,7 +76,10 @@ public sealed partial class SongViewModel : ObservableObject
     public string KeyText => Song.Key is { Length: > 0 } key
         ? (TransposeSteps == 0 ? key : ChordLabels.Transpose(key, TransposeSteps))
         : "—";
-    public string TempoText => Song.Bpm > 0 ? $"♩ {Song.Bpm:0} · 4/4" : "";
+    public string TempoText => Song.Bpm > 0 ? $"♩ {Song.Bpm:0} · {BeatsPerBar}/4" : "";
+    /// <summary>Beats in a bar. The analysis only reports 4/4 so far; the beat
+    /// grid breaks its rows on this, so it is a property, not a literal.</summary>
+    public int BeatsPerBar => 4;
 
     /// <summary>The key the song was analysed in, whatever the tools are set to.</summary>
     public string OriginalKeyText => Song.Key is { Length: > 0 } key ? key : "—";

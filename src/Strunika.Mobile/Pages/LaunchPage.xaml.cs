@@ -36,6 +36,18 @@ public partial class LaunchPage : ContentPage
         if (_done) return;
         _done = true;
 
+        // The library is read while the models unpack: by the time the tabs
+        // appear the first page of songs is already in memory.
+        _ = _services.GetRequiredService<ViewModels.LibraryViewModel>().PreloadAsync();
+
+        // Build the tabs here rather than at the end: parsing four views' XAML and
+        // creating their objects is the bulk of the wait, and it needs no window —
+        // only the platform's own measuring waits for the tree (RootPage warms that
+        // up once it is shown). The launch screen is exactly where this belongs.
+        var buildClock = System.Diagnostics.Stopwatch.StartNew();
+        _ = _services.GetRequiredService<RootPage>();
+        FileLog.Info($"launch: tabs built in {buildClock.ElapsedMilliseconds} ms");
+
         bool unpacking = Models.Any(m => !File.Exists(Path.Combine(FileSystem.CacheDirectory, "models", m + ".onnx")));
         if (unpacking) Caption.Text = Loc.Get("Launch_Models");
         _ = BreatheAsync();

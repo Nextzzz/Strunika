@@ -52,6 +52,10 @@ public partial class SongPage : ContentPage
 
         ApplyPanelSpacing(around: false);
 
+        BeatsView.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
+        BeatsView.ActiveMoved += OnActiveBeatMoved;
+        ApplyViewMode(AppSettings.SongGridView && _vm.BeatTimes.Length > 0, save: false);
+
         // Leaving the tree: stop the ticker; release the player unless a sheet is
         // merely covering the page (it comes back through OnAppearing).
         Loaded += (_, _) => _unloaded = false;
@@ -202,6 +206,7 @@ public partial class SongPage : ContentPage
             // bindings, and both move by transforms: no drawing, no native
             // control, no layout in the frame.
             if (Math.Abs(Track.Position - _vm.Position) > 0.002) Track.Position = _vm.Position;
+            if (_gridView) BeatsView.Position = _vm.Position;    // a comparison unless the beat changed
             _sliderMovedLastFrame = false;
             if (++_frame % 3 == 0)
             {
@@ -234,6 +239,73 @@ public partial class SongPage : ContentPage
     }
 
     // ---- taps ---------------------------------------------------------
+
+    // ---- conveyor | beat grid ------------------------------------------
+
+    private bool _gridView;
+
+    private void OnConveyorModeTapped(object? sender, TappedEventArgs e) => ApplyViewMode(false, save: true);
+
+    private void OnGridModeTapped(object? sender, TappedEventArgs e)
+    {
+        if (_vm.BeatTimes.Length == 0) return;                   // nothing to grid without beats
+        ApplyViewMode(true, save: true);
+    }
+
+    /// <summary>One of two views of the same rows: the moving conveyor, or the
+    /// song laid out as beats. The transport, slider and player stay put.</summary>
+    private void ApplyViewMode(bool grid, bool save)
+    {
+        _gridView = grid;
+        if (save) AppSettings.SongGridView = grid;
+        Panel.IsVisible = !grid;
+        Track.IsVisible = !grid;
+        GridHost.IsVisible = grid;
+        GridShade.IsVisible = grid;
+        if (grid) ApplyGridShade();
+        ModeRow.IsVisible = _vm.BeatTimes.Length > 0;            // nothing to grid without beats
+        var on = Theme.Tokens.Current("Fill");
+        var onIcon = Theme.Tokens.Current("OnFill");
+        var off = Theme.Tokens.Current("TextSec");
+        ConveyorSeg.BackgroundColor = grid ? Colors.Transparent : on;
+        GridSeg.BackgroundColor = grid ? on : Colors.Transparent;
+        ConveyorIcon.Color = grid ? off : onIcon;
+        GridIcon.Color = grid ? onIcon : off;
+        if (grid) BeatsView.Position = _vm.Position;
+    }
+
+    /// <summary>The fade over the last rows: the page background at alpha 0
+    /// rising to opaque, so the grid slips under the player rather than being
+    /// sliced by it.</summary>
+    private void ApplyGridShade()
+    {
+        var bg = Theme.Tokens.Current("Bg");
+        GridShade.Background = new LinearGradientBrush(
+            new GradientStopCollection
+            {
+                new GradientStop(bg.WithAlpha(0f), 0f),
+                new GradientStop(bg.WithAlpha(0.75f), 0.55f),
+                new GradientStop(bg, 1f),
+            },
+            new Point(0, 0), new Point(0, 1));
+    }
+
+    /// <summary>
+    /// Follow the song by whole rows: the offset is always a multiple of the row
+    /// pitch, so the top row is never half cut — and a row the reader scrolled to
+    /// crookedly is squared up again the moment the song moves on.
+    /// </summary>
+    private async void OnActiveBeatMoved(object? sender, (int Row, double Step) at)
+    {
+        if (!_gridView || _unloaded || at.Step <= 0) return;
+        // The row being played is the second from the top: one row of history
+        // above it, everything that is coming below. At the start of the song
+        // there is nothing above, so it simply stays at the top.
+        double target = Math.Max(0, (at.Row - 1) * at.Step);
+        if (Math.Abs(GridHost.ScrollY - target) < 1) return;
+        try { await GridHost.ScrollToAsync(0, target, animated: true); }
+        catch (Exception) { }                                    // torn down mid-scroll
+    }
 
     private async void OnBackTapped(object? sender, TappedEventArgs e) => await Navigation.PopAsync(animated: true);
 

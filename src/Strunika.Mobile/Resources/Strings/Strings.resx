@@ -228,4 +228,6 @@
   <data name="Dictionary_Title" xml:space="preserve"><value>Chord dictionary</value></data>
   <data name="Library_Page" xml:space="preserve"><value>Page {0} of {1}</value></data>
   <data name="Song_Alt_Open_Short" xml:space="preserve"><value>open</value></data>
+  <data name="Song_View" xml:space="preserve"><value>View</value></data>
+  <data name="Welcome_SkipNote" xml:space="preserve"><value>This screen can be turned off in Settings</value></data>
 </root>

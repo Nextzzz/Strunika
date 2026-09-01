@@ -145,6 +145,27 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     partial void OnFilterChanged(int value) { Page = 0; Rebuild(); }
 
+    /// <summary>
+    /// The first page, fetched while the launch screen is still up, so opening
+    /// the Songs tab paints straight away. The full list follows in
+    /// <see cref="LoadAsync"/>; whatever it finds replaces this.
+    /// </summary>
+    public async Task PreloadAsync()
+    {
+        if (Loaded || _all.Count > 0) return;
+        try
+        {
+            var songs = await _songs.GetRecentAsync(PageSize);
+            if (Loaded || _all.Count > 0) return;                 // the full load won the race
+            foreach (var song in songs) _all.Add(new SongItem(song));
+            Rebuild();
+        }
+        catch (Exception ex)
+        {
+            FileLog.Error("library preload", ex);                // the full load will try again
+        }
+    }
+
     public async Task LoadAsync()
     {
         try

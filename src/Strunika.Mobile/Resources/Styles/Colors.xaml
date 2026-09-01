@@ -29,6 +29,7 @@
     <Color x:Key="DarkAccent2">#AE6F32</Color>
     <Color x:Key="DarkFill">#D9AC4C</Color>
     <Color x:Key="DarkOnFill">#16110B</Color>
+    <Color x:Key="DarkOnAccent">#16110B</Color>
     <Color x:Key="DarkGlow">#73D9AC4C</Color>
     <Color x:Key="DarkError">#C4533A</Color>
 
@@ -45,6 +46,7 @@
     <Color x:Key="LightAccent2">#D9AC4C</Color>
     <Color x:Key="LightFill">#D9AC4C</Color>
     <Color x:Key="LightOnFill">#16110B</Color>
+    <Color x:Key="LightOnAccent">#FFF8EC</Color>
     <Color x:Key="LightGlow">#4DAE6F32</Color>
     <Color x:Key="LightError">#A8402C</Color>
 

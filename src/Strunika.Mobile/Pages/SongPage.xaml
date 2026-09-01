@@ -89,12 +89,26 @@
             <controls:YouTubeEmbedView x:Name="Player" />
         </Border>
 
+        <!-- The beat grid (the other view of the same rows: chords by beat, tap to jump) -->
+        <ScrollView Grid.Row="3" Grid.RowSpan="2" x:Name="GridHost" IsVisible="False" Padding="20,0" VerticalScrollBarVisibility="Default"
+                    Margin="{t:ContentInset Top=18, Bottom=16}">
+            <controls:BeatGrid x:Name="BeatsView"
+                               Beats="{Binding BeatTimes}" Segments="{Binding Segments}" BeatsPerBar="{Binding BeatsPerBar}"
+                               Accent="{t:Theme Accent}" OnAccent="{t:Theme OnAccent}" CellColor="{t:Theme Surface1}"
+                               ChordCellColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}" />
+        </ScrollView>
+
+        <!-- The grid dissolves into the background above the player instead of
+             being cut off by it (the same 34 pt fade the tab bar uses). -->
+        <Border Grid.Row="4" x:Name="GridShade" VerticalOptions="End" HeightRequest="{t:Size 34}" IsVisible="False"
+                InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+
         <!-- The conveyor -->
         <controls:ChordTrack Grid.Row="4" x:Name="Track" Margin="0,8,0,14" MinimumHeightRequest="{t:Size 110, Min=44}"
                              Segments="{Binding Segments}" Beats="{Binding BeatTimes}" Peaks="{Binding Peaks}"
                              Duration="{Binding Duration}"
                              LoopStart="{Binding LoopStart}" LoopEnd="{Binding LoopEnd}"
-                             Accent="{t:Theme Accent}" OnAccent="{t:Theme OnFill}" WaveColor="{t:Theme Surface2}"
+                             Accent="{t:Theme Accent}" OnAccent="{t:Theme OnAccent}" WaveColor="{t:Theme Surface2}"
                              PillColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}"
                              PinnedColor="{t:Theme Surface1}" PinnedTextColor="{t:Theme TextSec}" LineColor="{t:Theme Dim}" />
 
@@ -169,6 +183,22 @@
             <Border.Shadow><Shadow Brush="#40000000" Radius="22" Opacity="0.6" Offset="0,-6" /></Border.Shadow>
             <VerticalStackLayout Spacing="4">
                 <BoxView WidthRequest="{t:Size 40}" HeightRequest="{t:Size 5}" CornerRadius="3" Color="{t:Theme Separator}" HorizontalOptions="Center" Margin="0,0,0,8" />
+
+                <!-- How the song is shown: the moving conveyor, or its beats as a
+                     grid. It comes before the tools: it changes the whole page. -->
+                <Border x:Name="ModeRow" StrokeShape="{t:Round 44}" StrokeThickness="1" Stroke="{t:Theme Separator}" BackgroundColor="{t:Theme Surface2}"
+                        Padding="5" HorizontalOptions="Center" Margin="0,2,0,10">
+                    <HorizontalStackLayout Spacing="6">
+                        <Border x:Name="ConveyorSeg" WidthRequest="{t:Size 72, Min=56}" HeightRequest="{t:Size 46, Min=44}" StrokeShape="{t:Round 36}" StrokeThickness="0" Padding="0">
+                            <controls:IconView x:Name="ConveyorIcon" Name="conveyor" Size="{t:Size 30}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnConveyorModeTapped" /></Border.GestureRecognizers>
+                        </Border>
+                        <Border x:Name="GridSeg" WidthRequest="{t:Size 72, Min=56}" HeightRequest="{t:Size 46, Min=44}" StrokeShape="{t:Round 36}" StrokeThickness="0" Padding="0">
+                            <controls:IconView x:Name="GridIcon" Name="grid4" Size="{t:Size 28}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnGridModeTapped" /></Border.GestureRecognizers>
+                        </Border>
+                    </HorizontalStackLayout>
+                </Border>
 
                 <!-- Key: semitones from the original -->
                 <Grid ColumnDefinitions="*,Auto" HeightRequest="{t:Size 52, Min=44}">

@@ -97,6 +97,13 @@ public static class AppSettings
         set { Preferences.Default.Set("simple_chords", value); Raise(nameof(SimpleChords)); }
     }
 
+    /// <summary>The song page shows the beat grid instead of the conveyor.</summary>
+    public static bool SongGridView
+    {
+        get => Preferences.Default.Get("song_grid_view", false);
+        set { Preferences.Default.Set("song_grid_view", value); Raise(nameof(SongGridView)); }
+    }
+
     public static bool BeatSnap
     {
         get => Preferences.Default.Get("beat_snap", true);

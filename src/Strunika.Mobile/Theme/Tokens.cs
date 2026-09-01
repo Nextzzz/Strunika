@@ -27,6 +27,9 @@ public static class Tokens
         ["Accent2"] = (Color.FromArgb("#D9AC4C"), Color.FromArgb("#AE6F32")),
         ["Fill"] = (Color.FromArgb("#D9AC4C"), Color.FromArgb("#D9AC4C")),
         ["OnFill"] = (Color.FromArgb("#16110B"), Color.FromArgb("#16110B")),
+        // Fill is the same gold in both themes, so OnFill can be ink in both. Accent
+        // is not: in the light theme it is a dark brown, and ink on it is unreadable.
+        ["OnAccent"] = (Color.FromArgb("#FFF8EC"), Color.FromArgb("#16110B")),
         ["Glow"] = (Color.FromArgb("#4DAE6F32"), Color.FromArgb("#73D9AC4C")),
         ["Error"] = (Color.FromArgb("#A8402C"), Color.FromArgb("#C4533A")),
     };

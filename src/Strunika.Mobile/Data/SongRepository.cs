@@ -6,6 +6,8 @@ namespace Strunika.Mobile.Data;
 public interface ISongRepository
 {
     Task<List<Song>> GetAllAsync();
+    /// <summary>The newest songs only — what the Songs tab shows first.</summary>
+    Task<List<Song>> GetRecentAsync(int count);
     Task<Song?> GetAsync(int id);
     Task<int> InsertAsync(Song song);
     Task UpdateAsync(Song song);
@@ -36,6 +38,12 @@ public sealed class SongRepository : ISongRepository
     {
         await _ready;
         return await _db.Table<Song>().OrderByDescending(s => s.CreatedAt).ToListAsync();
+    }
+
+    public async Task<List<Song>> GetRecentAsync(int count)
+    {
+        await _ready;
+        return await _db.Table<Song>().OrderByDescending(s => s.CreatedAt).Take(count).ToListAsync();
     }
 
     public async Task<Song?> GetAsync(int id)
