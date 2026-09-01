@@ -3,7 +3,12 @@
 	<PropertyGroup>
 		<!-- iOS is the product target; the Windows head exists so UI and
 		     view-models iterate on the PC without a phone attached. -->
-		<TargetFrameworks>net9.0-ios</TargetFrameworks>
+		<!-- iOS is on net10.0 while Windows stays on net9.0: YoutubeExplode 6.6 has
+		     no net9.0 asset, and the net7.0 one it falls back to carries .NET 10
+		     polyfills that the .NET 9 trimmer cannot process (MT2231). The .NET 10
+		     asset is clean and the .NET 10 linker understands it, so the iOS head
+		     moved up; the Windows head kept MAUI 9 so the daily loop did not change. -->
+		<TargetFrameworks>net10.0-ios</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 
 		<OutputType>Exe</OutputType>
@@ -22,18 +27,6 @@
 		<ApplicationVersion>1</ApplicationVersion>
 
 		<WindowsPackageType>None</WindowsPackageType>
-
-		<!-- The iOS build is not trimmed. YoutubeExplode 6.6 has no net9.0 asset,
-		     so a net9.0 project gets the net7.0 one, which carries file-local .NET
-		     10 polyfills that the .NET 9 linker dies on (MT2231, "Collect Unmarked
-		     Members"). Staying on 6.5 is not an option — 6.6 is what made YouTube
-		     extraction work again (229941f) — and partial trimming does not help,
-		     because the failing step walks every assembly regardless. The app is
-		     bigger for it; the real fix is moving the project to net10.0, which is
-		     a toolchain decision of its own. -->
-		<PublishTrimmed Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">false</PublishTrimmed>
-
-
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
