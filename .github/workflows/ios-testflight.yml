@@ -27,7 +27,7 @@ on:
 jobs:
   build:
     # The SDK comes from src/Strunika.Mobile/global.json (.NET 10); its iOS
-    # workload is 26.x and wants Xcode 26.5, which only macos-26 carries.
+    # workload is 26.x and wants a matching Xcode, which only macos-26 carries.
     runs-on: macos-26
     timeout-minutes: 60
 
@@ -49,10 +49,11 @@ jobs:
       - name: Select Xcode
         run: |
           set -euo pipefail
-          # The iOS workload names the Xcode it was built against (26.5 today).
-          # Prefer that exact one, then any 26.x, then whatever is newest.
-          APP=/Applications/Xcode_26.5.app
-          [ -d "$APP" ] || APP=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          # The iOS workload refuses an Xcode older than the one it was built
+          # against (26.5 wanted 26.5, 26.5.10315 wants 26.6) but tolerates a
+          # newer one, so the newest 26.x on the image is the safe pick — never
+          # a hard-coded number, which is what broke the last two runs.
+          APP=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
           [ -n "$APP" ] || APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
           sudo xcode-select -s "$APP"
           # DEVELOPER_DIR wins over xcode-select for every tool in the job.
