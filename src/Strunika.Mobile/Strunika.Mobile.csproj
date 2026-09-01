@@ -23,6 +23,13 @@
 
 		<WindowsPackageType>None</WindowsPackageType>
 
+		<!-- YoutubeExplode ships file-local polyfills for .NET 10 APIs, and the
+		     .NET 9 trimmer dies on them ("MT2231: Collect Unmarked Members failed
+		     processing MemberPolyfills_Net100_CollectionExtensions"). Partial mode
+		     leaves assemblies that are not marked trimmable alone, so MAUI and the
+		     BCL are still trimmed and the package is simply copied. -->
+		<TrimMode Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">partial</TrimMode>
+
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
