@@ -26,10 +26,10 @@ on:
 
 jobs:
   build:
-    # The project pins .NET 9 (src/Strunika.Mobile/global.json) and that iOS SDK
-    # is built for Xcode 16.x, which is what macos-15 carries. Moving the runner
-    # up means moving the whole toolchain with it.
-    runs-on: macos-15
+    # .NET 9 pins the SDK band (src/Strunika.Mobile/global.json), not the iOS
+    # workload: that one is 26.x now and wants Xcode 26.5, which only macos-26
+    # carries.
+    runs-on: macos-26
     timeout-minutes: 60
 
     defaults:
@@ -51,9 +51,10 @@ jobs:
       - name: Select Xcode
         run: |
           set -euo pipefail
-          # .NET 9's iOS SDK wants Xcode 16.x. Name it rather than trusting the
-          # image default, which moves as the image is updated.
-          APP=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1 || true)
+          # The iOS workload names the Xcode it was built against (26.5 today).
+          # Prefer that exact one, then any 26.x, then whatever is newest.
+          APP=/Applications/Xcode_26.5.app
+          [ -d "$APP" ] || APP=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
           [ -n "$APP" ] || APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
           sudo xcode-select -s "$APP"
           # DEVELOPER_DIR wins over xcode-select for every tool in the job.
@@ -62,8 +63,8 @@ jobs:
           dotnet --version
           # Fail here, loudly, rather than far into the build.
           case "$(xcodebuild -version | head -1)" in
-            "Xcode 16."*) ;;
-            *) echo "::error::$APP does not match .NET 9's iOS SDK (Xcode 16.x expected)"; exit 1 ;;
+            "Xcode 26."*) ;;
+            *) echo "::error::$APP is older than the iOS workload expects (Xcode 26.x)"; exit 1 ;;
           esac
 
       - name: Install the iOS workload
