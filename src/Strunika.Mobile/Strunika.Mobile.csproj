@@ -23,12 +23,16 @@
 
 		<WindowsPackageType>None</WindowsPackageType>
 
-		<!-- YoutubeExplode ships file-local polyfills for .NET 10 APIs, and the
-		     .NET 9 trimmer dies on them ("MT2231: Collect Unmarked Members failed
-		     processing MemberPolyfills_Net100_CollectionExtensions"). Partial mode
-		     leaves assemblies that are not marked trimmable alone, so MAUI and the
-		     BCL are still trimmed and the package is simply copied. -->
-		<TrimMode Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">partial</TrimMode>
+		<!-- The iOS build is not trimmed. YoutubeExplode 6.6 has no net9.0 asset,
+		     so a net9.0 project gets the net7.0 one, which carries file-local .NET
+		     10 polyfills that the .NET 9 linker dies on (MT2231, "Collect Unmarked
+		     Members"). Staying on 6.5 is not an option — 6.6 is what made YouTube
+		     extraction work again (229941f) — and partial trimming does not help,
+		     because the failing step walks every assembly regardless. The app is
+		     bigger for it; the real fix is moving the project to net10.0, which is
+		     a toolchain decision of its own. -->
+		<PublishTrimmed Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">false</PublishTrimmed>
+
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
