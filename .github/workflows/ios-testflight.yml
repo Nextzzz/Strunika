@@ -26,7 +26,9 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    # macos-15 carries Xcode 16.4, and .NET for iOS 26.5 refuses to build with
+    # anything older than the Xcode it was made for.
+    runs-on: macos-26
     timeout-minutes: 60
 
     steps:
@@ -37,6 +39,17 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          # The workload pins the Xcode it was built against; the image default
+          # is usually a version ahead, so name the one we want and fall back to
+          # the newest installed if the image has moved on.
+          APP=/Applications/Xcode_26.5.app
+          [ -d "$APP" ] || APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$APP"
+          xcodebuild -version
 
       - name: Install the iOS workload
         # The runner's .NET lives under /usr/local/share, which the workload
