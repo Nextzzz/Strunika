@@ -27,6 +27,18 @@
 		<ApplicationVersion>1</ApplicationVersion>
 
 		<WindowsPackageType>None</WindowsPackageType>
+
+		<!-- iOS is published without trimming, for now. The iOS workload's own
+		     pre-mark linker step, "Collect Unmarked Members", dies on nested types
+		     (MT2231: first YoutubeExplode's polyfill on .NET 9, then the compiler's
+		     <PrivateImplementationDetails>/__StaticArrayInitTypeSize=82 on .NET 10);
+		     it runs before MarkStep and records every type it sees through
+		     Dictionary.Add, with no public report of the bug yet (workload
+		     26.5.10315). The SDK's targets register that step only when TrimMode is
+		     full/partial/link — MtouchLink=None makes it copy, so the step never
+		     loads. The app is bigger for it; re-enable trimming when the workload
+		     fixes the step (docs/ios-testflight.md has the trail). -->
+		<MtouchLink Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">None</MtouchLink>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
