@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- YoutubeExplode 6.6.2 (MIT, Oleksii Holub), compiled here instead of taken
+       from NuGet. The NuGet package is built by merging its dependencies into
+       one assembly, and since 6.6.1 that merge leaves ~194 duplicate type
+       definitions in the file — invalid metadata that the iOS linker (and UWP's
+       .NET Native) choke on. Compiled the ordinary way, with the dependencies as
+       plain package references, the assembly is clean and the app can be trimmed
+       again. See VENDORED.md for the update procedure. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>YoutubeExplode</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Upstream builds with warnings as errors against its own analyzer set;
+         here the source is taken as is. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The same versions upstream pins in Directory.Packages.props at 6.6.2. -->
+    <PackageReference Include="AngleSharp" Version="1.7.0" />
+    <PackageReference Include="Deorcify" Version="2.0.1" />
+    <PackageReference Include="JsonExtensions" Version="1.2.3" />
+    <PackageReference Include="PowerKit" Version="2.3.1" />
+    <!-- Source-time helpers: the polyfill generator (a no-op on net10.0) and the
+         [Lazy] weaver, both build-only. -->
+    <PackageReference Include="PolyShim" Version="2.12.2" PrivateAssets="all" />
+    <PackageReference Include="Lazy.Fody" Version="1.11.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="LICENSE-YoutubeExplode.txt" />
+    <None Include="VENDORED.md" />
+  </ItemGroup>
+
+</Project>
