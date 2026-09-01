@@ -95,3 +95,25 @@ Guideline 5.2.3 makes on-device YouTube extraction the risky part of review.
 Internal TestFlight builds are not reviewed, so this route does not test that
 question either way. `Services/RemoteFlags` still exists to turn the YouTube
 path off remotely.
+
+## Why the iOS head is on .NET 10, and why Hot Restart is not the plan
+
+The SDK 9 pin (74fc5a6, 24 Aug 2026) existed for one reason: Visual Studio
+2022's Hot Restart, the only way to push a build to an iPhone from Windows
+without a Mac. That path is closed on two independent counts, neither of which
+the .NET 10 move created:
+
+- Hot Restart **never supported XCFrameworks**, and this app links
+  `onnxruntime.xcframework` for the tuner and chord recognition. It would have
+  failed on this project on any .NET version.
+- Visual Studio 2026 (the version on the workstation now) **dropped Hot
+  Restart** altogether; VS 2022 is not installed.
+
+So "F5 from Windows to the phone" was not traded away — it was never available
+here. What the .NET 10 move bought is a working trimmer with YoutubeExplode 6.6
+(the release that made YouTube import work again), and with it a small app.
+
+Deployment on a device is therefore the macOS runner and TestFlight described
+above. The Windows head stays on net9.0 / MAUI 9 so the daily loop on the PC is
+unchanged; Core and Neural are net9.0 libraries, which a net10.0 app consumes
+without issue.
