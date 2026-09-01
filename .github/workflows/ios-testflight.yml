@@ -49,22 +49,32 @@ jobs:
       - name: Select Xcode
         run: |
           set -euo pipefail
-          # The iOS workload refuses an Xcode older than the one it was built
-          # against (26.5 wanted 26.5, 26.5.10315 wants 26.6) but tolerates a
-          # newer one, so the newest 26.x on the image is the safe pick — never
-          # a hard-coded number, which is what broke the last two runs.
-          APP=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
-          [ -n "$APP" ] || APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
-          sudo xcode-select -s "$APP"
+          # The workload refuses an Xcode older than the one it was built against
+          # and tolerates a newer one, so any 26.x will do — but not every 26.x on
+          # the image is whole: Xcode_26.6.0.app shipped without a macOS SDK, and
+          # the iOS build locates actool through that SDK ("unable to find utility
+          # actool"). So each candidate is tried for real, image default first,
+          # then the rest newest-first, and the first one that has an SDK and an
+          # actool wins. No version is hard-coded: that broke two runs already.
+          DEFAULT=$(dirname "$(dirname "$(xcode-select -p)")")
+          PICK=""
+          for APP in "$DEFAULT" $(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -Vr); do
+            [ -d "$APP" ] || continue
+            DEV="$APP/Contents/Developer"
+            VER=$(DEVELOPER_DIR="$DEV" xcodebuild -version 2>/dev/null | head -1 || true)
+            case "$VER" in "Xcode 26."*) ;; *) echo "skip $APP: $VER"; continue ;; esac
+            DEVELOPER_DIR="$DEV" xcrun --sdk macosx --show-sdk-path >/dev/null 2>&1 || { echo "skip $APP: no macOS SDK"; continue; }
+            DEVELOPER_DIR="$DEV" xcrun --sdk iphoneos --find actool >/dev/null 2>&1 || { echo "skip $APP: no actool"; continue; }
+            PICK="$APP"
+            break
+          done
+          [ -n "$PICK" ] || { echo "::error::No Xcode 26.x on this image has both a macOS SDK and actool"; exit 1; }
+          sudo xcode-select -s "$PICK"
           # DEVELOPER_DIR wins over xcode-select for every tool in the job.
-          echo "DEVELOPER_DIR=$APP/Contents/Developer" >> "$GITHUB_ENV"
+          echo "DEVELOPER_DIR=$PICK/Contents/Developer" >> "$GITHUB_ENV"
+          echo "Using $PICK"
           xcodebuild -version
           dotnet --version
-          # Fail here, loudly, rather than far into the build.
-          case "$(xcodebuild -version | head -1)" in
-            "Xcode 26."*) ;;
-            *) echo "::error::$APP is older than the iOS workload expects (Xcode 26.x)"; exit 1 ;;
-          esac
 
       - name: Install the iOS workload
         # The runner's .NET may live somewhere the workload installer cannot
