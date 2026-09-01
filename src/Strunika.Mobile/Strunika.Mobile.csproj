@@ -27,6 +27,14 @@
 		<ApplicationVersion>1</ApplicationVersion>
 
 		<WindowsPackageType>None</WindowsPackageType>
+		<!-- Visual Studio's launch runs the Windows App SDK MSIX-layout chain even for
+		     this unpackaged app, and one of its steps (_EnsurePdbCmfExeFullPath)
+		     enumerates $(VsInstallRoot)\VC\Tools\MSVC to find mspdbcmf.exe for a
+		     symbol package. Without the C++ workload that throws DirectoryNotFound
+		     and the project will not start. A placeholder path skips that lookup,
+		     and the symbol-package step skips itself because the file does not
+		     exist. dotnet build never enters this chain (VsInstallRoot is empty). -->
+		<MsPdbCmfExeFullpath Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">$(MSBuildProjectDirectory)\/obj/no-mspdbcmf.exe</MsPdbCmfExeFullpath>
 		<!-- Fast iOS builds (-p:StrunikaFastIos=true, the CI default): with no
 		     trimming, AOT-compiling every method of every assembly took a 3-core
 		     runner past an hour. Only our own assemblies are AOT-compiled; MAUI,
