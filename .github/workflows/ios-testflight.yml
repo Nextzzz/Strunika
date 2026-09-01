@@ -23,6 +23,10 @@ on:
         description: Send the build to TestFlight (off = just build and keep the .ipa)
         type: boolean
         default: true
+      fast:
+        description: Fast build — interpret MAUI/BCL/packages, AOT only our code (off = full AOT, takes hours untrimmed)
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -122,7 +126,7 @@ jobs:
       - name: Publish
         run: |
           set -euo pipefail
-          dotnet publish Strunika.Mobile.csproj -f net10.0-ios -c Release -r ios-arm64 -p:ArchiveOnBuild=true -p:ApplicationVersion=${{ github.run_number }} -p:CodesignKey="$CODESIGN_KEY" -p:CodesignProvision="$PROVISION_NAME" -p:EnableCodeSigning=true
+          dotnet publish Strunika.Mobile.csproj -f net10.0-ios -c Release -r ios-arm64 -p:ArchiveOnBuild=true -p:ApplicationVersion=${{ github.run_number }} -p:CodesignKey="$CODESIGN_KEY" -p:CodesignProvision="$PROVISION_NAME" -p:EnableCodeSigning=true -p:StrunikaFastIos=${{ inputs.fast }}
 
       - name: Find the build
         run: |

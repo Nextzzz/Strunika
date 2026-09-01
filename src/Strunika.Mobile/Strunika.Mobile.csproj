@@ -39,6 +39,15 @@
 		     loads. The app is bigger for it; re-enable trimming when the workload
 		     fixes the step (docs/ios-testflight.md has the trail). -->
 		<MtouchLink Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">None</MtouchLink>
+
+		<!-- Fast iOS builds (-p:StrunikaFastIos=true, the CI default): with no
+		     trimming, AOT-compiling every method of every assembly took a 3-core
+		     runner past an hour. Only our own assemblies are AOT-compiled; MAUI,
+		     the BCL and the packages run in the Mono interpreter, and LLVM is off.
+		     Allowed on the App Store, slower at runtime — meant for TestFlight
+		     rounds, not the release build. -->
+		<MtouchInterpreter Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And '$(StrunikaFastIos)' == 'true'">all,-Strunika.Mobile,-Strunika.Core,-Strunika.Neural</MtouchInterpreter>
+		<MtouchUseLlvm Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And '$(StrunikaFastIos)' == 'true'">false</MtouchUseLlvm>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
