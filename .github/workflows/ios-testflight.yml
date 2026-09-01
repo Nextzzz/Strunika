@@ -150,9 +150,17 @@ jobs:
           API_KEY: ${{ secrets.APPSTORE_API_KEY }}
         run: |
           set -euo pipefail
-          # altool looks for the key in one of a few fixed folders.
+          # altool looks for the key in one of a few fixed folders. The secret may
+          # hold the .p8 as base64 or as the PEM text itself; both are accepted,
+          # and the key is checked before altool gets to complain about it.
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$API_KEY" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
+          KEYFILE=~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
+          if echo "$API_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+            echo "$API_KEY" > "$KEYFILE"
+          else
+            echo "$API_KEY" | tr -d '[:space:]' | base64 --decode > "$KEYFILE"
+          fi
+          openssl pkey -in "$KEYFILE" -noout 2>/dev/null || { echo "::error::APPSTORE_API_KEY is not a valid .p8 key: paste the one-line base64 of the file, or its full PEM text"; exit 1; }
           IPA_PATH="$GITHUB_WORKSPACE/$IPA"
           xcrun altool --validate-app -f "$IPA_PATH" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
           xcrun altool --upload-app  -f "$IPA_PATH" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"

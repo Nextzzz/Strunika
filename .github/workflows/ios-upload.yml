@@ -1,0 +1,54 @@
+# Sends an already-built .ipa to TestFlight — the artifact of an earlier
+# "iOS · TestFlight" run — without building again. A failed upload (a bad
+# secret, an App Store Connect hiccup) then costs seconds, not another twenty
+# minutes of macOS time.
+#
+# Run it with the run id of the build whose artifact to send: the number at
+# the end of the run's URL (…/actions/runs/<run id>).
+name: iOS · Upload to TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Run id of the "iOS · TestFlight" build whose strunika-ios artifact to upload
+        required: true
+        type: string
+
+jobs:
+  upload:
+    runs-on: macos-26
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: strunika-ios
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ipa
+
+      - name: Send to TestFlight
+        env:
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          API_KEY: ${{ secrets.APPSTORE_API_KEY }}
+        run: |
+          set -euo pipefail
+          IPA=$(find ipa -name '*.ipa' | head -1)
+          test -n "$IPA" || { echo "::error::No .ipa in the artifact of run ${{ inputs.run_id }}"; exit 1; }
+          ls -lh "$IPA"
+          # altool looks for the key in one of a few fixed folders. The secret may
+          # hold the .p8 as base64 or as the PEM text itself; both are accepted,
+          # and the key is checked before altool gets to complain about it.
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEYFILE=~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
+          if echo "$API_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+            echo "$API_KEY" > "$KEYFILE"
+          else
+            echo "$API_KEY" | tr -d '[:space:]' | base64 --decode > "$KEYFILE"
+          fi
+          openssl pkey -in "$KEYFILE" -noout 2>/dev/null || { echo "::error::APPSTORE_API_KEY is not a valid .p8 key: paste the one-line base64 of the file, or its full PEM text"; exit 1; }
+          xcrun altool --validate-app -f "$IPA" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          xcrun altool --upload-app  -f "$IPA" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          rm -f "$KEYFILE"
