@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1024 1024">
-<defs><radialGradient id="bgGlow" gradientUnits="userSpaceOnUse" cx="512" cy="512" r="700"><stop offset="0%" stop-color="#2E2314"/><stop offset="100%" stop-color="#16110B"/></radialGradient><radialGradient id="halo" gradientUnits="userSpaceOnUse" cx="512" cy="512" r="560"><stop offset="0%" stop-color="#D9AC4C" stop-opacity="0.20"/><stop offset="40%" stop-color="#D9AC4C" stop-opacity="0.10"/><stop offset="75%" stop-color="#D9AC4C" stop-opacity="0.03"/><stop offset="100%" stop-color="#D9AC4C" stop-opacity="0"/></radialGradient></defs>
-<rect width="1024" height="1024" fill="url(#bgGlow)"/><circle cx="512" cy="512" r="560" fill="url(#halo)"/>
+<defs><radialGradient id="bgGlow" gradientUnits="userSpaceOnUse" cx="512" cy="512" r="700"><stop offset="0%" stop-color="#2E2314"/><stop offset="100%" stop-color="#16110B"/></radialGradient><radialGradient id="halo" gradientUnits="userSpaceOnUse" cx="512" cy="512" r="520"><stop offset="0%" stop-color="#D9AC4C" stop-opacity="0.12"/><stop offset="15%" stop-color="#D9AC4C" stop-opacity="0.105"/><stop offset="30%" stop-color="#D9AC4C" stop-opacity="0.08"/><stop offset="45%" stop-color="#D9AC4C" stop-opacity="0.052"/><stop offset="60%" stop-color="#D9AC4C" stop-opacity="0.028"/><stop offset="75%" stop-color="#D9AC4C" stop-opacity="0.012"/><stop offset="88%" stop-color="#D9AC4C" stop-opacity="0.004"/><stop offset="100%" stop-color="#D9AC4C" stop-opacity="0.0"/></radialGradient></defs>
+<rect width="1024" height="1024" fill="url(#bgGlow)"/><circle cx="512" cy="512" r="520" fill="url(#halo)"/>
 <g transform="translate(512 512) scale(1.15) translate(-512 -512)">
 
 <g stroke-width="2.00" fill="none" stroke-linecap="butt">
