@@ -50,7 +50,7 @@ public partial class LaunchPage : ContentPage
 
         bool unpacking = Models.Any(m => !File.Exists(Path.Combine(FileSystem.CacheDirectory, "models", m + ".onnx")));
         if (unpacking) Caption.Text = Loc.Get("Launch_Models");
-        _ = BreatheAsync();
+        _ = RevealAsync();
 
         var minimum = Task.Delay(MinimumMs);
         try
@@ -73,9 +73,12 @@ public partial class LaunchPage : ContentPage
         await Navigation.PopAsync(animated: !welcome && !Motion.Reduced);
     }
 
-    private async Task BreatheAsync()
+    /// <summary>The mark is already on screen (it is the static launch image);
+    /// the wordmark and the caption come up around it, then the caption breathes.</summary>
+    private async Task RevealAsync()
     {
-        if (Motion.Reduced) return;
+        if (Motion.Reduced) { Title.Opacity = 1; Caption.Opacity = 1; return; }
+        await Task.WhenAll(Title.FadeTo(1, 400, Easing.CubicOut), Caption.FadeTo(1, 400, Easing.CubicOut));
         while (Navigation.NavigationStack.Contains(this))
         {
             await Caption.FadeTo(0.35, 900, Easing.SinInOut);

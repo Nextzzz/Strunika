@@ -6,14 +6,21 @@
              xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
              xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
              x:Class="Strunika.Mobile.Pages.LaunchPage"
-             ios:Page.UseSafeArea="True"
+             ios:Page.UseSafeArea="False"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid BackgroundColor="{t:Theme Bg}" RowDefinitions="*,Auto">
-        <VerticalStackLayout Grid.Row="0" VerticalOptions="Center" Spacing="0" Padding="24,0">
-            <Image Source="{AppThemeBinding Light=strunika_mark_light.png, Dark=strunika_mark.png}" HeightRequest="138" WidthRequest="250" Aspect="AspectFit" HorizontalOptions="Center" />
-            <Label FontFamily="Display" FontSize="46" Text="Strunika" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
-        </VerticalStackLayout>
-        <Label Grid.Row="1" x:Name="Caption" Style="{StaticResource Footnote}" Text="{loc:Str Launch_Loading}" HorizontalTextAlignment="Center" Margin="0,0,0,48" />
+    <!-- iOS shows its static launch screen (the mark, 256×142 pt, dead centre of
+         the whole screen on the dark ground) before any of our code runs; it
+         cannot be skipped. So this page puts the very same mark in the very same
+         place — full-screen centre, safe area ignored, fixed points on purpose —
+         and only the wordmark and the caption fade in around it: the two screens
+         read as one. -->
+    <Grid BackgroundColor="{t:Theme Bg}">
+        <Image Source="{AppThemeBinding Light=strunika_mark_light.png, Dark=strunika_mark.png}" HeightRequest="142" WidthRequest="256" Aspect="AspectFit"
+               HorizontalOptions="Center" VerticalOptions="Center" />
+        <Label x:Name="Title" FontFamily="Display" FontSize="46" Text="Strunika" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center"
+               HorizontalOptions="Center" VerticalOptions="Center" TranslationY="112" Opacity="0" />
+        <Label x:Name="Caption" Style="{StaticResource Footnote}" Text="{loc:Str Launch_Loading}" HorizontalTextAlignment="Center"
+               VerticalOptions="End" Margin="24,0,24,64" Opacity="0" />
     </Grid>
 </ContentPage>
