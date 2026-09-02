@@ -15,7 +15,7 @@
          place — full-screen centre, safe area ignored, fixed points on purpose —
          and only the wordmark and the caption fade in around it: the two screens
          read as one. -->
-    <Grid BackgroundColor="{t:Theme Bg}">
+    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}">
         <Image Source="{AppThemeBinding Light=strunika_mark_light.png, Dark=strunika_mark.png}" HeightRequest="142" WidthRequest="256" Aspect="AspectFit"
                HorizontalOptions="Center" VerticalOptions="Center" />
         <Label x:Name="Title" FontFamily="Display" FontSize="46" Text="Strunika" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center"

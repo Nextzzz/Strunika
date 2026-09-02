@@ -11,7 +11,7 @@ namespace Strunika.Mobile.Platforms.iOS;
 /// </summary>
 public sealed class IosSoundPlayer : ISoundPlayer
 {
-    private AVAudioPlayer? _player;   // kept alive until playback ends, released after its callback
+    private AVAudioPlayer? _player;   // the last one played; the next play releases it, never its own callback
 
     public async Task PlayAsync(string asset, double volume = 1.0)
     {
@@ -22,24 +22,25 @@ public sealed class IosSoundPlayer : ISoundPlayer
         {
             AVAudioSession.SharedInstance().SetCategory(AVAudioSessionCategory.Ambient, AVAudioSessionCategoryOptions.MixWithOthers);
             AVAudioSession.SharedInstance().SetActive(true);
-            _player = AVAudioPlayer.FromUrl(NSUrl.FromFilename(path), out NSError? error);
-            if (error != null || _player == null)
+            // The previous player is released here, before the next one starts,
+            // and nowhere else. Disposing it inside its own FinishedPlaying aborts
+            // the process ("the player object was Dispose()d during the callback"),
+            // and MainThread.BeginInvokeOnMainThread runs its action synchronously
+            // when already on the main thread — which the callback is — so
+            // deferring through it changed nothing (build 13 crashed the same way).
+            if (_player is { } previous)
+            {
+                _player = null;
+                try { previous.Stop(); previous.Dispose(); } catch { /* already gone */ }
+            }
+            var player = AVAudioPlayer.FromUrl(NSUrl.FromFilename(path), out NSError? error);
+            if (error != null || player == null)
             {
                 Strunika.Core.Diagnostics.FileLog.Error("sound play: " + error?.LocalizedDescription);
                 return;
             }
-            _player.Volume = (float)Math.Clamp(volume, 0, 1);
-            // Never dispose the player inside its own FinishedPlaying: the runtime
-            // treats a delegate whose player vanished mid-callback as a corrupted
-            // state and aborts the process — this took the app down five seconds
-            // after launch, as the greeting ended. Release it on the next turn of
-            // the main loop instead, once the callback has returned.
-            var player = _player;
-            player.FinishedPlaying += (_, _) => MainThread.BeginInvokeOnMainThread(() =>
-            {
-                if (ReferenceEquals(_player, player)) _player = null;
-                player.Dispose();
-            });
+            player.Volume = (float)Math.Clamp(volume, 0, 1);
+            _player = player;
             player.PrepareToPlay();
             player.Play();
         }

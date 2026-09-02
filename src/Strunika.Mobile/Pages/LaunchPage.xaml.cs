@@ -27,6 +27,12 @@ public partial class LaunchPage : ContentPage
     {
         InitializeComponent();
         _services = services;
+#if IOS
+        // MAUI 10 pads a page's content by the safe area on its own and no longer
+        // reads UseSafeArea; with that padding the mark sat a few points below
+        // the static launch image (build 13). Edge to edge, like the storyboard.
+        Root.SafeAreaEdges = SafeAreaEdges.None;
+#endif
     }
 
     protected override async void OnAppearing()
