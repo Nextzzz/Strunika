@@ -11,7 +11,7 @@
 
     <Grid BackgroundColor="{t:Theme Bg}" RowDefinitions="*,Auto">
         <VerticalStackLayout Grid.Row="0" VerticalOptions="Center" Spacing="0" Padding="24,0">
-            <Image Source="strunika_mark.png" HeightRequest="138" WidthRequest="250" Aspect="AspectFit" HorizontalOptions="Center" />
+            <Image Source="{AppThemeBinding Light=strunika_mark_light.png, Dark=strunika_mark.png}" HeightRequest="138" WidthRequest="250" Aspect="AspectFit" HorizontalOptions="Center" />
             <Label FontFamily="Display" FontSize="46" Text="Strunika" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center" Margin="0,10,0,0" />
         </VerticalStackLayout>
         <Label Grid.Row="1" x:Name="Caption" Style="{StaticResource Footnote}" Text="{loc:Str Launch_Loading}" HorizontalTextAlignment="Center" Margin="0,0,0,48" />
