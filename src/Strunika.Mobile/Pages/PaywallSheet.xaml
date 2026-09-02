@@ -105,7 +105,7 @@
                 </Label.FormattedText>
             </Label>
             <!-- The string-wave after "Pro", scaled with the title (54×20 at Title2 → 78×29 at 32 pt). -->
-            <controls:WaveMark Grid.Column="1" Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" WidthRequest="{t:Size 78, Min=44}" HeightRequest="{t:Size 29}" VerticalOptions="Center" Margin="10,2,0,0" />
+            <controls:WaveMark Grid.Column="1" Color="{t:Theme AccentText}" GlowColor="{t:Theme Glow}" WidthRequest="{t:Size 78, Min=44}" HeightRequest="{t:Size 29}" VerticalOptions="Center" Margin="10,2,0,0" />
             <Border Grid.Column="3" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Center">
                 <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>

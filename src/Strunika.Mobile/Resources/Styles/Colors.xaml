@@ -42,10 +42,10 @@
     <Color x:Key="LightTextSec">#66522F</Color>
     <Color x:Key="LightDim">#A08A5C</Color>
     <Color x:Key="LightAccent">#AE6F32</Color>
-    <Color x:Key="LightAccentText">#8A5424</Color>
+    <Color x:Key="LightAccentText">#AE6F32</Color>
     <Color x:Key="LightAccent2">#D9AC4C</Color>
-    <Color x:Key="LightFill">#D9AC4C</Color>
-    <Color x:Key="LightOnFill">#16110B</Color>
+    <Color x:Key="LightFill">#AE6F32</Color>
+    <Color x:Key="LightOnFill">#FFF8EC</Color>
     <Color x:Key="LightOnAccent">#FFF8EC</Color>
     <Color x:Key="LightGlow">#4DAE6F32</Color>
     <Color x:Key="LightError">#A8402C</Color>

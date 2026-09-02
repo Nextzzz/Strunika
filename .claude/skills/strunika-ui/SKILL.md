@@ -39,8 +39,8 @@ Separator #3A2E1C                   Separator #D9C6A0
 TextPri   #E9D3A2  (Cream)          TextPri   #16110B  (DarkBase)
 TextSec   #A48F66                   TextSec   #66522F
 Accent    #D9AC4C  (Gold)           Accent    #AE6F32  (Copper: strokes/icons/large text)
-AccentTxt #D9AC4C                   AccentTxt #8A5424  (small copper text on cream — #AE6F32 is only 3.4:1)
-Fill      #D9AC4C / on-fill #16110B  Fill      #D9AC4C / on-fill #16110B  (selected chips, current chord bead, primary buttons — Gold with dark text in BOTH themes; cream-on-copper is 3.7:1, fails)
+AccentTxt #D9AC4C                   AccentTxt #AE6F32  (the guitar colour, same as Accent: "Pro" and the string beside it are one colour by rule; small copper text on cream is 3.4:1 — keep such text ≥ 14 pt bold or use TextSec)
+Fill      #D9AC4C / on-fill #16110B  Fill      #AE6F32 / on-fill #FFF8EC  (selected chips, current chord bead, primary buttons — the GUITAR colour in each theme: Gold+ink on dark, Copper+cream on light; rule of 2026-09-02, replaces the old gold-in-both)
 Dim       #7A6543                   Dim       #A08A5C  (past chords — decorative only)
 Accent2   #AE6F32                   Accent2   #D9AC4C
 ```

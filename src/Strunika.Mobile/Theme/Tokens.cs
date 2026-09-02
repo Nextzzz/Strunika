@@ -23,12 +23,14 @@ public static class Tokens
         ["TextSec"] = (Color.FromArgb("#66522F"), Color.FromArgb("#A48F66")),
         ["Dim"] = (Color.FromArgb("#A08A5C"), Color.FromArgb("#7A6543")),
         ["Accent"] = (Color.FromArgb("#AE6F32"), Color.FromArgb("#D9AC4C")),
-        ["AccentText"] = (Color.FromArgb("#8A5424"), Color.FromArgb("#D9AC4C")),
+        ["AccentText"] = (Color.FromArgb("#AE6F32"), Color.FromArgb("#D9AC4C")),
         ["Accent2"] = (Color.FromArgb("#D9AC4C"), Color.FromArgb("#AE6F32")),
-        ["Fill"] = (Color.FromArgb("#D9AC4C"), Color.FromArgb("#D9AC4C")),
-        ["OnFill"] = (Color.FromArgb("#16110B"), Color.FromArgb("#16110B")),
-        // Fill is the same gold in both themes, so OnFill can be ink in both. Accent
-        // is not: in the light theme it is a dark brown, and ink on it is unreadable.
+        ["Fill"] = (Color.FromArgb("#AE6F32"), Color.FromArgb("#D9AC4C")),
+        ["OnFill"] = (Color.FromArgb("#FFF8EC"), Color.FromArgb("#16110B")),
+        // One rule for both themes (2026-09-02): the guitar's colour is the accent —
+        // Gold on dark, Copper on light — and everything the guitar's colour paints
+        // on dark (Pro, the string, filled buttons) takes the guitar's colour on light
+        // too. Text on that fill is ink on gold, cream on copper.
         ["OnAccent"] = (Color.FromArgb("#FFF8EC"), Color.FromArgb("#16110B")),
         ["Glow"] = (Color.FromArgb("#4DAE6F32"), Color.FromArgb("#73D9AC4C")),
         ["Error"] = (Color.FromArgb("#A8402C"), Color.FromArgb("#C4533A")),
