@@ -68,7 +68,8 @@ public sealed class Metrics : INotifyPropertyChanged
 
     public void Update(double width, double height)
     {
-        if (width <= 0 || height <= 0)
+        // iOS reports NaN bounds before the window is laid out; NaN slips past <= 0.
+        if (width <= 0 || height <= 0 || double.IsNaN(width) || double.IsNaN(height))
         {
             // Mobile heads may not report window bounds: fall back to the display.
             var d = DeviceDisplay.Current.MainDisplayInfo;
