@@ -93,7 +93,7 @@ if yes, change the structure, not only the colours.
 
 ## 4. Assets
 
-- App icon: `Resources/AppIcon/appicon.svg` — **Gold** guitar (`#D9AC4C`) + **Cream** waveform (`#F6E6BF`) with dark keylines on the dark radial base and a soft gold halo; the artwork sits at `scale(1.15)` (≈65 pt side margins on the 1024 canvas). Copper on the dark base read as mud at icon size and the old `scale(0.92)` left a strip a third of the height tall (2026-09-02). Resizetizer caches renders: after editing the SVG delete `obj/**/resizetizer` or the old icon ships. Formerly `strunika_guitar_bg.svg` (copper guitar + gold waveform on dark
+- App icon: `Resources/AppIcon/appicon.svg` — **Gold** guitar (`#D9AC4C`) + **Cream** waveform (`#F6E6BF`) with dark keylines on the dark radial base and a soft gold halo; the artwork sits at `scale(1.15)` (≈65 pt side margins on the 1024 canvas). Copper on the dark base read as mud at icon size and the old `scale(0.92)` left a strip a third of the height tall (2026-09-02). Resizetizer caches renders: after editing the SVG delete `obj/**/resizetizer` or the old icon ships. **One icon for both themes** — the app icon does not follow the theme (decided 2026-09-02; iOS 18 appearance variants and `SetAlternateIconName` were considered and rejected — the latter pops a system alert on every switch). Formerly `strunika_guitar_bg.svg` (copper guitar + gold waveform on dark
   radial gradient). For iOS the icon must be a **full-bleed square with no
   transparency** — iOS applies its own superellipse mask; strip the baked-in
   rounded rect before using it as `MauiIcon`.
