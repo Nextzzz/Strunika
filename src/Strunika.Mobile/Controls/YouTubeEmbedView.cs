@@ -12,7 +12,7 @@ namespace Strunika.Mobile.Controls;
 /// <c>youtube.com/embed/…</c> (or loading HTML with no base URL) leaves the
 /// player without an origin or referrer and it answers "video player
 /// configuration error 153". Windows gets the origin from a WebView2 virtual
-/// host mapping, iOS from the base URL of <c>LoadHtmlString</c>.
+/// host mapping, iOS from the base URL handed straight to WKWebView.
 /// </para>
 /// </summary>
 public sealed class YouTubeEmbedView : WebView
@@ -39,9 +39,18 @@ public sealed class YouTubeEmbedView : WebView
             await MapHostAsync();
             Source = new UrlWebViewSource { Url = $"https://{Host}/player.html?v={Uri.EscapeDataString(videoId)}" };
 #else
-            // WKWebView honours the base URL, so the page really is on our origin.
-            var html = await ReadPlayerAsync();
-            Source = new HtmlWebViewSource { Html = html.Replace("location.search", $"'?v={videoId}'"), BaseUrl = $"https://{Host}/" };
+            // Not HtmlWebViewSource.BaseUrl: MAUI's iOS handler builds the base
+            // with NSUrl(path, isDir: true), a *file* URL, so the page came up as
+            // file:///https:/strunika.local/ with no origin and no Referer, and the
+            // player answered 153 on the phone. WKWebView itself takes a real URL,
+            // and a page loaded that way is on that origin for every purpose
+            // (this is how the maintained Swift players do it).
+            var html = (await ReadPlayerAsync()).Replace("location.search", $"'?v={videoId}'");
+            for (int i = 0; i < 40 && Handler?.PlatformView == null; i++) await Task.Delay(25);
+            if (Handler?.PlatformView is WebKit.WKWebView webview)
+                webview.LoadHtmlString(html, new Foundation.NSUrl($"https://{Host}/"));
+            else
+                FileLog.Error("youtube load: no WKWebView to load into");
 #endif
         }
         catch (Exception ex) { FileLog.Error("youtube load", ex); }

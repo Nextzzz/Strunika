@@ -27,7 +27,8 @@
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
         videoId: param('v'),
-        playerVars: { playsinline: 1, rel: 0, controls: 1, modestbranding: 1, origin: location.origin },
+        // widget_referrer: the page's own address, said twice — YouTube checks the embedder's identity and a web view is stingy with headers.
+        playerVars: { playsinline: 1, rel: 0, controls: 1, modestbranding: 1, origin: location.origin, widget_referrer: location.origin + '/' },
         events: {
           onReady: function () {
             ready = true;
