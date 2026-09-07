@@ -15,12 +15,24 @@ namespace Strunika.Core.Analysis;
 /// Strings are then chosen by real pitch distance (fret 3 on the low E is a
 /// G2 and belongs to the A string), while the cents readout folds octaves so
 /// a decaying note's harmonics keep reading against the chosen string.
+/// <para>
+/// Noise is the other enemy. Room noise is pink: most of its energy sits
+/// low, and YIN reads long-lag correlations in it as a 35–55 Hz "pitch" with
+/// a clarity of 0.9 — with the sub-harmonic search then happily descending
+/// to it. So the search floor follows the tuning (a few semitones under its
+/// lowest string: nothing below can be a string), the evidence for a
+/// sub-harmonic is what stands above the local spectral background rather
+/// than raw amplitude, and <see cref="HarmonicRatio"/> says how much of the
+/// window's energy the pitch actually explains, for the caller to gate on.
+/// </para>
 /// </summary>
 public sealed class TunerEngine
 {
-    private readonly PitchDetector _yin;
+    private PitchDetector _yin;
     private readonly int _sampleRate;
     private float[]? _hann;
+    private double _minFrequency;
+    private double[]? _re, _im;
 
     /// <summary>Evidence (sum of amplitudes at the sub-fundamental and its
     /// odd-relative harmonics, relative to the amplitude at YIN's pitch)
@@ -28,12 +40,25 @@ public sealed class TunerEngine
     /// and noise sit around 0.05; a weak real fundamental around 0.2–0.4.</summary>
     public double SubharmonicThreshold { get; init; } = 0.2;
 
-    public double MinFrequency { get; init; } = 35.0;
+    /// <summary>Lowest pitch worth finding, for YIN and for the sub-harmonic
+    /// search alike. Set it from the tuning: a few semitones under the lowest
+    /// string keeps the low-frequency rumble of a room out of the reading.</summary>
+    public double MinFrequency
+    {
+        get => _minFrequency;
+        set
+        {
+            if (Math.Abs(value - _minFrequency) < 0.01) return;
+            _minFrequency = value;
+            _yin = new PitchDetector { MinFrequency = value };
+        }
+    }
 
-    public TunerEngine(int sampleRate)
+    public TunerEngine(int sampleRate, double minFrequency = 35.0)
     {
         _sampleRate = sampleRate;
-        _yin = new PitchDetector { MinFrequency = 35.0 };
+        _minFrequency = minFrequency;
+        _yin = new PitchDetector { MinFrequency = minFrequency };
     }
 
     /// <summary>Raw YIN pitch with the octave corrected, or null when the
@@ -81,7 +106,16 @@ public sealed class TunerEngine
                     if (m % divisor == 0) continue;               // explained by the base already
                     double freq = candidate * m;
                     if (freq * 2 > _sampleRate) break;
-                    evidence += Math.Sqrt(Goertzel(window, freq, hann)) / reference;
+                    // Only what rises above the spectrum around it counts: noise
+                    // has energy at every frequency, a partial is a peak. The
+                    // background is read halfway to the base's own partials on
+                    // either side (they sit one candidate away) — unless that
+                    // is inside a Hann main lobe, as on a bass string in a short
+                    // window, where the spectrum is too crowded to read one.
+                    double aside = candidate / 2;
+                    double background = aside < 2.5 * _sampleRate / window.Length ? 0
+                        : 0.5 * (Math.Sqrt(Goertzel(window, freq - aside, hann)) + Math.Sqrt(Goertzel(window, freq + aside, hann)));
+                    evidence += Math.Max(0, Math.Sqrt(Goertzel(window, freq, hann)) - background) / reference;
                 }
                 if (evidence > SubharmonicThreshold)
                 {
@@ -94,6 +128,40 @@ public sealed class TunerEngine
                 break;
         }
         return baseFrequency;
+    }
+
+    /// <summary>
+    /// The share of the window's energy (Hann-windowed) that
+    /// sits within ±2 bins of the first twelve harmonics of
+    /// <paramref name="frequency"/>. A plucked string explains 0.3–0.9 of it;
+    /// a pitch YIN found in noise explains far less. Near the floor of the
+    /// search range harmonics crowd the bins, so the figure is only meaningful
+    /// for guitar pitches — which is what the floor is there to guarantee.
+    /// </summary>
+    public double HarmonicRatio(ReadOnlySpan<float> window, double frequency)
+    {
+        int n = window.Length;
+        if (n < 16 || frequency <= 0) return 0;
+        if (_re == null || _re.Length != n) { _re = new double[n]; _im = new double[n]; }
+        var re = _re; var im = _im!;
+        var hann = HannFor(n);
+        for (int i = 0; i < n; i++) { re[i] = window[i] * hann[i]; im[i] = 0; }
+        Dsp.Fft.Forward(re, im);
+        int half = n / 2;
+        double total = 0;
+        for (int k = 1; k < half; k++) total += re[k] * re[k] + im[k] * im[k];
+        if (total <= 0) return 0;
+        double binHz = (double)_sampleRate / n, harmonic = 0;
+        int last = 0;
+        for (int h = 1; h <= 12; h++)
+        {
+            int centre = (int)Math.Round(frequency * h / binHz);
+            if (centre + 2 >= half) break;
+            for (int k = Math.Max(Math.Max(1, last + 1), centre - 2); k <= centre + 2; k++)
+                harmonic += re[k] * re[k] + im[k] * im[k];
+            last = centre + 2;                                   // never count a bin twice
+        }
+        return harmonic / total;
     }
 
     /// <summary>MIDI note number (fractional) of a frequency against A4.</summary>

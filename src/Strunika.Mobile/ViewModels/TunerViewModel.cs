@@ -40,6 +40,13 @@ public partial class TunerViewModel : ObservableObject
     private const int MedianTaps = 5;
     private const int PickFrames = 3;                 // frames voted on before choosing a string
     private const double MinClarity = 0.8;             // YIN confidence gate
+    /// <summary>How much of the window's energy the pitch must explain: a
+    /// plucked string explains 0.3–0.9, a pitch YIN dug out of room noise far
+    /// less. Like clarity it is stricter for a note to appear than to stay.</summary>
+    private const double MinHarmonic = 0.2, KeepHarmonic = 0.1;
+    /// <summary>Level over the noise floor for a note to appear (8 dB) and to
+    /// stay (3.5 dB): a note has to stand out of the room to start a reading.</summary>
+    private const double AppearOverFloor = 2.5, KeepOverFloor = 1.5;
     private static readonly TimeSpan Hold = TimeSpan.FromMilliseconds(1500);
     private static readonly TimeSpan AttackSettle = TimeSpan.FromMilliseconds(160);
     private static readonly TimeSpan TunedAfter = TimeSpan.FromMilliseconds(1200);
@@ -155,6 +162,10 @@ public partial class TunerViewModel : ObservableObject
     private void ApplyTuning(Tuning next)
     {
         Tuning = next;
+        // Nothing below the lowest string can be a string: the search floor sits
+        // a few semitones under it, which keeps a room's low rumble — where YIN
+        // otherwise finds a confident 40 Hz "pitch" — out of the reading.
+        _engine.MinFrequency = Notes.FrequencyFromMidi(next.Midi.Min()) * 0.8;
         TuningName = next.Name;
         LockedIndex = -1;
         Pegs.Clear();
@@ -253,7 +264,7 @@ public partial class TunerViewModel : ObservableObject
             fast = Math.Max(fast, Math.Sqrt(sum / Math.Max(1, end - start)));
         }
         var now = DateTime.Now;
-        if (fast > 0.008 && fast > 1.6 * _envelope && now - _onsetAt > TimeSpan.FromMilliseconds(120))
+        if (fast > Math.Max(0.008, AppearOverFloor * _noiseFloor) && fast > 1.6 * _envelope && now - _onsetAt > TimeSpan.FromMilliseconds(120))
         {
             _onsetAt = now;
             _reseedAfterAttack = true;
@@ -326,13 +337,18 @@ public partial class TunerViewModel : ObservableObject
 
         // Muted string (sudden drop) or real silence: clear at once, long
         // before YIN stops finding a pitch in the residual.
-        bool silent = _dropChunks >= 3 || _envelope < Math.Max(0.001, 1.5 * _noiseFloor);
+        // Hysteresis throughout: a note has to be louder, clearer and more
+        // harmonic to appear than to stay — a decaying string wavers on all
+        // three while it is still clearly sounding, and room noise must not
+        // start a reading at all.
+        double overFloor = _hasReading ? KeepOverFloor : AppearOverFloor;
+        bool silent = _dropChunks >= 3 || _envelope < Math.Max(0.001, overFloor * _noiseFloor);
         double clarity = 0;
         double? fundamental = silent ? null : _engine.DetectFundamental(window, out clarity);
-        // Hysteresis: a note needs clarity 0.8 to appear, only 0.6 to stay —
-        // a decaying string's clarity wavers while it is still clearly sounding.
         double minClarity = _hasReading ? MinClarity - 0.2 : MinClarity;
-        if (fundamental == null || clarity < minClarity)
+        bool harmonic = fundamental != null && clarity >= minClarity
+                        && _engine.HarmonicRatio(window, fundamental.Value) >= (_hasReading ? KeepHarmonic : MinHarmonic);
+        if (fundamental == null || clarity < minClarity || !harmonic)
         {
             if (silent && _hasReading)
                 ResetReading();          // muted: clear right away, no hold
