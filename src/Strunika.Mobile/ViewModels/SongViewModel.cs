@@ -440,7 +440,9 @@ public sealed partial class SongViewModel : ObservableObject
     partial void OnVolumeChanged(double value)
     {
 #if IOS
-        if (DeviceVolume) { Platforms.iOS.SystemVolume.Set(value); return; }
+        // The buttons report through the same property; setting the level it
+        // already has is a no-op for the device, so no loop.
+        if (DeviceVolume) { if (Math.Abs(Platforms.iOS.SystemVolume.Get() - value) > 0.005) Platforms.iOS.SystemVolume.Set(value); return; }
 #endif
         AppSettings.SongVolume = value;
         _ = (_transport?.SetVolumeAsync(value) ?? Task.CompletedTask);

@@ -13,11 +13,19 @@ namespace Strunika.Mobile.Platforms.iOS;
 /// screen here. Everything else the app plays goes through the same output,
 /// so the metronome follows along; that is what the slider means for such a
 /// song.
+/// <para>
+/// While an MPVolumeView is in the window iOS hides its own volume overlay,
+/// so the view is only there while our slider is on screen (<see cref="Attach"/>
+/// … <see cref="Detach"/>): elsewhere the volume buttons show the system's
+/// overlay as usual, and while our slider shows, the buttons move it instead.
+/// </para>
 /// </summary>
 public static class SystemVolume
 {
     private static MPVolumeView? _view;
     private static UISlider? _slider;
+    private static IDisposable? _observer;
+    private static Action<double>? _changed;
 
     public static double Get()
     {
@@ -35,6 +43,45 @@ public static class SystemVolume
             _slider.SendActionForControlEvents(UIControlEvent.TouchUpInside);
         }
         catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("system volume", ex); }
+    }
+
+    /// <summary>Our slider is on screen: take over the overlay, and report the
+    /// buttons' changes through <paramref name="changed"/> (main thread).</summary>
+    public static void Attach(Action<double> changed)
+    {
+        _changed = changed;
+        try
+        {
+            Ensure();
+            if (_observer != null) return;
+            var session = AVAudioSession.SharedInstance();
+            session.SetActive(true);                              // outputVolume only reports while a session is active
+            _observer = session.AddObserver("outputVolume", Foundation.NSKeyValueObservingOptions.New, change =>
+            {
+                if (change.NewValue is Foundation.NSNumber n)
+                {
+                    double v = n.DoubleValue;
+                    MainThread.BeginInvokeOnMainThread(() => _changed?.Invoke(v));
+                }
+            });
+        }
+        catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("system volume attach", ex); }
+    }
+
+    /// <summary>Our slider is gone: give the overlay back to the system.</summary>
+    public static void Detach()
+    {
+        _changed = null;
+        try
+        {
+            _observer?.Dispose();
+            _observer = null;
+            _view?.RemoveFromSuperview();
+            _view?.Dispose();
+            _view = null;
+            _slider = null;
+        }
+        catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("system volume detach", ex); }
     }
 
     private static void Ensure()

@@ -78,6 +78,9 @@ public partial class SongPage : ContentPage
         {
             _unloaded = true;
             StopFrames();
+#if IOS
+            Platforms.iOS.SystemVolume.Detach();
+#endif
             if (_sheetOpen) return;                                  // a sheet is merely covering the page
             _vm.Dispose();
             if (_hookedWindow != null) { _hookedWindow.Destroying -= OnWindowDestroying; _hookedWindow = null; _windowHooked = false; }
@@ -380,11 +383,20 @@ public partial class SongPage : ContentPage
         MoreScrim.InputTransparent = !opening;
         if (opening)
         {
+#if IOS
+            // A YouTube song's slider is the device volume: while it shows, the
+            // buttons move it (and the system's overlay stays away); the moment
+            // the sheet closes the overlay is the system's again.
+            if (_vm.IsYouTube) Platforms.iOS.SystemVolume.Attach(v => _vm.Volume = v);
+#endif
             _ = MoreScrim.FadeTo(0.45, 180);
             await MoreSheet.TranslateTo(0, 0, 260, Easing.CubicOut);
         }
         else
         {
+#if IOS
+            Platforms.iOS.SystemVolume.Detach();
+#endif
             _ = MoreScrim.FadeTo(0, 160);
             await MoreSheet.TranslateTo(0, MoreSheet.Height + 40, 220, Easing.CubicIn);
         }
