@@ -161,6 +161,8 @@
   <data name="Library_NoMic" xml:space="preserve"><value>Microphone unavailable</value></data>
   <data name="Record_Title" xml:space="preserve"><value>Recording</value></data>
   <data name="Record_Hint" xml:space="preserve"><value>Play the song — stop when you’re done</value></data>
+  <data name="Record_Start" xml:space="preserve"><value>Start recording</value></data>
+  <data name="Record_Ready" xml:space="preserve"><value>Tap Start when you are ready</value></data>
   <data name="Record_Stop" xml:space="preserve"><value>Stop &amp; find chords</value></data>
   <data name="Song_Soon" xml:space="preserve"><value>The song screen comes in the next step</value></data>
   <data name="Library_Stage_Cancelling" xml:space="preserve"><value>Cancelling…</value></data>
@@ -186,7 +188,6 @@
   <data name="Song_Capo" xml:space="preserve"><value>Capo {0}</value></data>
   <data name="Song_Simple" xml:space="preserve"><value>Simple chords</value></data>
   <data name="Song_Next" xml:space="preserve"><value>next ·</value></data>
-  <data name="Song_VolumeDevice" xml:space="preserve"><value>On iPhone the YouTube volume follows the device's buttons.</value></data>
   <data name="Song_Click" xml:space="preserve"><value>Metronome</value></data>
   <data name="Song_Editor" xml:space="preserve"><value>Chord Editor</value></data>
   <data name="Song_NoBeats" xml:space="preserve"><value>No beat grid for this song yet — re-analyse it to get the click.</value></data>

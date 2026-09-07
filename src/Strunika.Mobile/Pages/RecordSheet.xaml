@@ -26,10 +26,10 @@
             </HorizontalStackLayout>
             <Label x:Name="Timer" Text="0:00" FontFamily="DisplayBold" FontSize="{t:Size 72, Hero=True}" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center" />
             <controls:LevelMeter x:Name="Meter" HeightRequest="{t:Size 72, Min=44}" Color="{t:Theme Accent}" DimColor="{t:Theme Surface2}" />
-            <Label Text="{loc:Str Record_Hint}" Style="{StaticResource Subhead}" HorizontalTextAlignment="Center" />
+            <Label x:Name="Hint" Text="{loc:Str Record_Ready}" Style="{StaticResource Subhead}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
 
         <Label Grid.Row="2" x:Name="ErrorLabel" Style="{StaticResource Footnote}" TextColor="{t:Theme Error}" HorizontalTextAlignment="Center" IsVisible="False" Margin="0,0,0,12" />
-        <Button Grid.Row="3" x:Name="StopButton" Text="{loc:Str Record_Stop}" Clicked="OnStopTapped" />
+        <Button Grid.Row="3" x:Name="StopButton" Text="{loc:Str Record_Start}" Clicked="OnMainTapped" />
     </Grid>
 </ContentPage>

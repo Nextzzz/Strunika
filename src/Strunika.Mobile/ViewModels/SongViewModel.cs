@@ -71,14 +71,15 @@ public sealed partial class SongViewModel : ObservableObject
     public bool IsPro => _pro.IsPro;
     public bool IsYouTube => Song.Source == SongSource.YouTube;
 
-    /// <summary>Whether the song's volume can be set from the page. A YouTube
-    /// player on iOS ignores setVolume — Apple leaves media volume to the
-    /// hardware buttons — so the slider gives way to a note there.</summary>
-    public bool VolumeAdjustable =>
+    /// <summary>A YouTube player on iOS ignores setVolume (Apple leaves media
+    /// volume to the person), so for such a song the slider moves the device's
+    /// own volume — as the other chord apps do — and is not remembered as the
+    /// song volume.</summary>
+    private bool DeviceVolume =>
 #if IOS
-        !IsYouTube;
+        IsYouTube;
 #else
-        true;
+        false;
 #endif
     public string Title => Song.Title;
     public string Artist => string.IsNullOrWhiteSpace(Song.Artist) ? Loc.Get(Song.Source == SongSource.Recording ? "Library_Source_Recording" : "Library_Source_File") : Song.Artist;
@@ -203,6 +204,9 @@ public sealed partial class SongViewModel : ObservableObject
         _transport = transport;
         _predicted = Position;
         CanPlay = transport.IsReady;                             // YouTube: off until its page answers
+#if IOS
+        if (DeviceVolume) { Volume = Platforms.iOS.SystemVolume.Get(); return; }   // the slider shows the device's level
+#endif
         _ = transport.SetVolumeAsync(Volume);
     }
 
@@ -435,6 +439,9 @@ public sealed partial class SongViewModel : ObservableObject
 
     partial void OnVolumeChanged(double value)
     {
+#if IOS
+        if (DeviceVolume) { Platforms.iOS.SystemVolume.Set(value); return; }
+#endif
         AppSettings.SongVolume = value;
         _ = (_transport?.SetVolumeAsync(value) ?? Task.CompletedTask);
     }

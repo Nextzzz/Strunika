@@ -161,6 +161,8 @@
   <data name="Library_NoMic" xml:space="preserve"><value>Мікрофон недоступний</value></data>
   <data name="Record_Title" xml:space="preserve"><value>Запис</value></data>
   <data name="Record_Hint" xml:space="preserve"><value>Зіграй пісню — зупини, коли закінчиш</value></data>
+  <data name="Record_Start" xml:space="preserve"><value>Почати запис</value></data>
+  <data name="Record_Ready" xml:space="preserve"><value>Натисни «Почати запис», коли будеш готовий</value></data>
   <data name="Record_Stop" xml:space="preserve"><value>Зупинити й знайти акорди</value></data>
   <data name="Song_Soon" xml:space="preserve"><value>Екран пісні — на наступному кроці</value></data>
   <data name="Library_Stage_Cancelling" xml:space="preserve"><value>Скасовую…</value></data>
@@ -186,7 +188,6 @@
   <data name="Song_Capo" xml:space="preserve"><value>Капо {0}</value></data>
   <data name="Song_Simple" xml:space="preserve"><value>Прості акорди</value></data>
   <data name="Song_Next" xml:space="preserve"><value>далі ·</value></data>
-  <data name="Song_VolumeDevice" xml:space="preserve"><value>Гучність YouTube на iPhone регулюється кнопками пристрою.</value></data>
   <data name="Song_Click" xml:space="preserve"><value>Метроном</value></data>
   <data name="Song_Editor" xml:space="preserve"><value>Редактор акордів</value></data>
   <data name="Song_NoBeats" xml:space="preserve"><value>Для цієї пісні ще немає сітки бітів — переаналізуй її, щоб з'явився клік.</value></data>

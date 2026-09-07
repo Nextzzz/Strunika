@@ -38,20 +38,15 @@ public partial class RecordSheet : ContentPage
         finally { _open = false; }
     }
 
-    protected override async void OnAppearing()
+    private bool _started;
+
+    /// <summary>The sheet opens armed, not recording: the person starts the
+    /// take when they are ready (user decision 2026-09-07).</summary>
+    protected override void OnAppearing()
     {
         base.OnAppearing();
         _recorder.Level += OnLevel;
-        if (!await _recorder.StartAsync())
-        {
-            ErrorLabel.Text = Loc.Get("Library_NoMic");
-            ErrorLabel.IsVisible = true;
-            StopButton.IsEnabled = false;
-            return;
-        }
-        _timer.Start();
-        if (!Motion.Reduced)
-            _ = PulseAsync();
+        Dot.Opacity = 0.35;
     }
 
     protected override void OnDisappearing()
@@ -59,7 +54,25 @@ public partial class RecordSheet : ContentPage
         base.OnDisappearing();
         _timer.Stop();
         _recorder.Level -= OnLevel;
-        if (!_done) _recorder.Cancel();
+        if (_started && !_done) _recorder.Cancel();
+    }
+
+    private async Task StartAsync()
+    {
+        if (!await _recorder.StartAsync())
+        {
+            ErrorLabel.Text = Loc.Get("Library_NoMic");
+            ErrorLabel.IsVisible = true;
+            StopButton.IsEnabled = false;
+            return;
+        }
+        _started = true;
+        Dot.Opacity = 1;
+        Hint.Text = Loc.Get("Record_Hint");
+        StopButton.Text = Loc.Get("Record_Stop");
+        _timer.Start();
+        if (!Motion.Reduced)
+            _ = PulseAsync();
     }
 
     private async Task PulseAsync()
@@ -73,9 +86,10 @@ public partial class RecordSheet : ContentPage
 
     private void OnLevel(float peak) => MainThread.BeginInvokeOnMainThread(() => Meter.Push(peak));
 
-    private async void OnStopTapped(object? sender, EventArgs e)
+    private async void OnMainTapped(object? sender, EventArgs e)
     {
         if (_done) return;
+        if (!_started) { await StartAsync(); return; }
         _done = true;
         _timer.Stop();
         var take = _recorder.Stop();
@@ -87,7 +101,7 @@ public partial class RecordSheet : ContentPage
     private async void OnCancelTapped(object? sender, TappedEventArgs e)
     {
         _done = true;
-        _recorder.Cancel();
+        if (_started) _recorder.Cancel();
         await Navigation.PopModalAsync(animated: true);
     }
 }
