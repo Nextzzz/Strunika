@@ -78,18 +78,26 @@ public static class SwitchPaint
     {
         Watch();
         Live.Add(new WeakReference<UIKit.UISwitch>(view));
-        Paint(view);
+        Paint(view, animated: false);
     }
 
-    /// <summary>UISwitch's off track is a faint grey that vanishes on the warm
-    /// surfaces: tint it with the Separator token. TintColor is the off-state
-    /// track colour (iOS 13+), so the switch animates it itself. A background
-    /// painted behind the control, as before, showed through the moment the
-    /// on colour started to fade and the turn-off looked like a jump.</summary>
-    private static void Paint(UIKit.UISwitch view)
+    private static void Paint(UIKit.UISwitch view) => Paint(view, animated: false);
+
+    /// <summary>The track is the view UISwitch keeps under its knob (MAUI paints
+    /// the same one). Off it wears the Separator token: the system's faint grey
+    /// vanished on the warm surfaces and left the knob floating on nothing, on
+    /// the light theme in particular. On it wears the on colour, like the
+    /// switch's own tint layer that animates over it. A toggle animates the
+    /// colour rather than snapping it, in step with the knob.</summary>
+    public static void Paint(UIKit.UISwitch view, bool animated)
     {
-        view.TintColor = Theme.Tokens.Current("Separator").ToPlatform();
-        view.BackgroundColor = UIKit.UIColor.Clear;
+        var track = view.Subviews.FirstOrDefault()?.Subviews.FirstOrDefault();
+        if (track == null) return;
+        var target = view.On
+            ? view.OnTintColor ?? Theme.Tokens.Current("Fill").ToPlatform()
+            : Theme.Tokens.Current("Separator").ToPlatform();
+        if (animated) UIKit.UIView.Animate(0.25, () => track.BackgroundColor = target);
+        else track.BackgroundColor = target;
     }
 #endif
 }
