@@ -48,6 +48,9 @@ public static class MauiProgram
             SwitchPaint.Paint(handler.PlatformView, animated: true);
         });
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping(nameof(ISwitch.TrackColor), (handler, _) => SwitchPaint.Paint(handler.PlatformView, animated: false));
+        // The knob keeps the system's own look: a tinted knob took its colour
+        // only at the end of the turn-on animation and snapped there.
+        Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping(nameof(ISwitch.ThumbColor), (handler, _) => handler.PlatformView.ThumbTintColor = null);
         // Lists run edge to edge under the floating bar; UIKit would otherwise
         // add the home-indicator inset to their content on top of the footer
         // that already clears the bar.

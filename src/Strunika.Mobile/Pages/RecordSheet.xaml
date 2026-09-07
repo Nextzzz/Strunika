@@ -20,7 +20,7 @@
         </Grid>
 
         <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" Spacing="18">
-            <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+            <HorizontalStackLayout x:Name="RecordingBadge" HorizontalOptions="Center" Spacing="8" IsVisible="False">
                 <Ellipse x:Name="Dot" WidthRequest="{t:Size 10}" HeightRequest="{t:Size 10}" Fill="{t:Theme Error, Brush=True}" VerticalOptions="Center" />
                 <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Record_Title}" TextColor="{t:Theme Error}" VerticalOptions="Center" />
             </HorizontalStackLayout>

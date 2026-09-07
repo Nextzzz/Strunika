@@ -46,7 +46,6 @@ public partial class RecordSheet : ContentPage
     {
         base.OnAppearing();
         _recorder.Level += OnLevel;
-        Dot.Opacity = 0.35;
     }
 
     protected override void OnDisappearing()
@@ -67,7 +66,7 @@ public partial class RecordSheet : ContentPage
             return;
         }
         _started = true;
-        Dot.Opacity = 1;
+        RecordingBadge.IsVisible = true;                        // the red "Recording" means it: only from here
         Hint.Text = Loc.Get("Record_Hint");
         StopButton.Text = Loc.Get("Record_Stop");
         _timer.Start();
