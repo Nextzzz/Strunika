@@ -68,9 +68,10 @@ public partial class LibraryView : ContentView
                 ApplyShade();
                 Services.AppSettings.Changed += (_, key) => { if (key == nameof(Services.AppSettings.Theme)) ApplyShade(); };
                 if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, _) => ApplyShade();
-                // Width is known only after the first layout; labels change with the language.
+                // Width is known only after the first layout; labels change with the
+                // language and sizes with the size class (Theme.Refit covers both).
                 QuickRow.SizeChanged += (_, _) => LayoutQuickRow(vm);
-                Localization.Loc.Instance.PropertyChanged += (_, _) => Dispatcher.Dispatch(() => LayoutQuickRow(vm));
+                Theme.Refit.Watch(this, () => { LayoutQuickRow(vm); FitHeader(); });
             }
         };
     }

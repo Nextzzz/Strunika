@@ -11,14 +11,13 @@ public partial class SettingsView : ContentView
     public SettingsView()
     {
         InitializeComponent();
-        // The rows fit themselves when they are resized; a language change
-        // or a new size class changes the words and the sizes without moving
-        // the rows, so they are asked again, once the bindings have applied.
-        Loc.Instance.PropertyChanged += (_, _) => Dispatcher.Dispatch(Refit);
-        Theme.Metrics.Instance.PropertyChanged += (_, _) => Dispatcher.Dispatch(Refit);
+        // The rows fit themselves when they are resized; a language change or
+        // a new size class changes the words and the sizes without moving the
+        // rows (Theme.Refit runs the fit again after either).
+        Theme.Refit.Watch(this, RefitRows);
     }
 
-    private void Refit()
+    private void RefitRows()
     {
         _proWaveWidth = -1;                                      // measure afresh, whatever it was
         OnTitleRowSized(null, EventArgs.Empty);
