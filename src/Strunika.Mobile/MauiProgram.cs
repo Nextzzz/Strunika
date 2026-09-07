@@ -48,6 +48,26 @@ public static class MauiProgram
             SwitchPaint.Paint(handler.PlatformView, animated: true);
         });
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping(nameof(ISwitch.TrackColor), (handler, _) => SwitchPaint.Paint(handler.PlatformView, animated: false));
+        // A song card's swipe and the list's scroll are one or the other, decided
+        // by the first movement: MAUI lets its pan recognise together with the
+        // scroll view's, so a vertical scroll with a little sideways drift started
+        // a swipe and a swipe drifting up or down scrolled the list and lost the
+        // card. The swipe's pan now begins only for a mostly sideways movement,
+        // and never alongside another recogniser; once it has begun it follows the
+        // finger wherever it goes, as a pan does.
+        Microsoft.Maui.Handlers.SwipeViewHandler.Mapper.AppendToMapping("OneGesture", (handler, _) =>
+        {
+            var view = handler.PlatformView;
+            foreach (var pan in view.GestureRecognizers?.OfType<UIKit.UIPanGestureRecognizer>() ?? Array.Empty<UIKit.UIPanGestureRecognizer>())
+            {
+                pan.ShouldRecognizeSimultaneously = (_, _) => false;
+                pan.ShouldBegin = g =>
+                {
+                    var t = ((UIKit.UIPanGestureRecognizer)g).TranslationInView(view);
+                    return Math.Abs(t.X) > Math.Abs(t.Y) * 1.5;
+                };
+            }
+        });
         // The knob keeps the system's own look: a tinted knob took its colour
         // only at the end of the turn-on animation and snapped there.
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping(nameof(ISwitch.ThumbColor), (handler, _) => handler.PlatformView.ThumbTintColor = null);

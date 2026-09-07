@@ -210,7 +210,10 @@ public partial class YouTubeBrowserPage : ContentPage
                 await Navigation.PopModalAsync(animated: true);
                 return;
             }
+            // Said here, over the browser, where the person is — a toast on the
+            // library underneath went unseen and the song seemed to vanish.
             await DisplayAlert("YouTube", Loc.Get(error), "OK");
+            if (error == "Library_Duplicate") await Navigation.PopModalAsync(animated: true);
         }
         finally
         {

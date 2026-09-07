@@ -327,7 +327,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
     }
 
-    /// <summary>Returns null on success or a Library_Err_* key.</summary>
+    /// <summary>Returns null on success or a message key: Library_Err_* for a
+    /// failure, Library_Duplicate when the song is in the library already (a
+    /// failed one is retried on the way).</summary>
     public async Task<string?> AddYouTubeAsync(string url)
     {
         if (!RemoteFlags.YouTubeAnalysis) return "Library_YT_Off";
@@ -336,9 +338,8 @@ public sealed partial class LibraryViewModel : ObservableObject
         var existing = _all.FirstOrDefault(i => i.Song.Source == SongSource.YouTube && i.Song.SourceRef == id);
         if (existing != null)
         {
-            Message?.Invoke(this, Loc.Get("Library_Duplicate"));
             if (existing.IsFailed) await RetryAsync(existing);
-            return null;
+            return "Library_Duplicate";
         }
 
         YouTubeInfo info;

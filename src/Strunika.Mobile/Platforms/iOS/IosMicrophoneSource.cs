@@ -28,6 +28,7 @@ public sealed class IosMicrophoneSource : IMicrophoneSource
         var session = AVAudioSession.SharedInstance();
         session.SetCategory(AVAudioSessionCategory.Record);
         session.SetActive(true);
+        AudioSessions.Changed();
 
         var permission = new TaskCompletionSource<bool>();
         session.RequestRecordPermission(granted => permission.TrySetResult(granted));

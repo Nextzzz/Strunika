@@ -22,6 +22,7 @@ public sealed class IosSoundPlayer : ISoundPlayer
         {
             AVAudioSession.SharedInstance().SetCategory(AVAudioSessionCategory.Ambient, AVAudioSessionCategoryOptions.MixWithOthers);
             AVAudioSession.SharedInstance().SetActive(true);
+            AudioSessions.Changed();
             // The previous player is released here, before the next one starts,
             // and nowhere else. Disposing it inside its own FinishedPlaying aborts
             // the process ("the player object was Dispose()d during the callback"),

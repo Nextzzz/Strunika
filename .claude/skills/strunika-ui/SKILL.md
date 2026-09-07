@@ -175,6 +175,9 @@ if yes, change the structure, not only the colours.
 - Storage: SQLite (sqlite-net-pcl), chord timeline as JSON per song; song metadata from YouTube (title/author/thumbnail) or ID3/filename.
 - Light theme: Copper for text/icons, Gold for fills/glows only (contrast).
 
+### Canvas text (iOS Core Text rule, 2026-09-07)
+Text drawn on a `GraphicsView` goes through Core Text on iOS, which lays a line **only into a box the whole line fits** and draws nothing otherwise (DirectWrite on Windows draws and clips, so the Windows head never shows this). Every `DrawString` box must be at least the line: **1.3 × size for Vollkorn (Display/DisplayBold), 1.25 × size for the system face** — `Theme.CanvasFonts.DisplayLine` / `SystemLine`. Size the text from its box (`size = box / line`), never the box from the text, and never let the box poke past the control's edge (the tops of the letters go with it). Canvas font names must be the real ones (`CanvasFonts.Named("DisplayBold")` → Vollkorn-Bold), not MAUI's aliases.
+
 ## 6. Adaptive sizing (rule since 2026-08-27 — applies to every page, control and agent)
 
 The app must look right from iPhone SE (375×667 pt) to iPad Pro 13" (1024×1366 pt). Points are a physical unit, so a hard-coded 60 pt button is 60 pt everywhere: too big on a compact phone, and on a tablet the whole chrome would either look lost or — if scaled linearly — turn into saucers. The design is therefore **class-based, not proportional**:

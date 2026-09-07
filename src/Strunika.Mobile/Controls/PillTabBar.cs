@@ -240,7 +240,7 @@ public sealed class PillTabBar : GraphicsView, IDrawable
         // capsule — centring the icon alone left the word hanging below it.
         const float iconSize = 24f, iconGap = 3f;
         float labelSize = LabelFont(canvas, itemW);
-        float labelH = labelSize * 1.25f;
+        float labelH = labelSize * 1.4f;                          // past the system face's line (CanvasFonts.SystemLine)
         float blockTop = (h - (iconSize + iconGap + labelH)) / 2;
         for (int i = 0; i < n; i++)
         {

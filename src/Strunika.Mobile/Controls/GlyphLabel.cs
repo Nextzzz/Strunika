@@ -52,7 +52,12 @@ public sealed class GlyphLabel : GraphicsView, IDrawable
         canvas.Font = font;
         canvas.FontSize = size;
         canvas.FontColor = TextColor;
-        canvas.DrawString(text, rect, HorizontalAlignment.Center, VerticalAlignment.Center);
+        // The box is the line's height at least, centred on the control: the
+        // control is sized to the glyph (that is its point), which is shorter
+        // than the face's line, and Core Text draws nothing into a box the
+        // line does not fit. The glyph itself stays inside the control.
+        float line = Math.Max(rect.Height, size * Theme.CanvasFonts.DisplayLine);
+        canvas.DrawString(text, rect.X, rect.Y + (rect.Height - line) / 2, rect.Width, line, HorizontalAlignment.Center, VerticalAlignment.Center);
         canvas.Font = Microsoft.Maui.Graphics.Font.Default;
     }
 

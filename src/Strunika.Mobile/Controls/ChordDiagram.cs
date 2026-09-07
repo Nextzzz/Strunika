@@ -73,27 +73,29 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
         float fitH = Math.Min(rect.Height, rect.Width / ratio);
         rect = new RectF(rect.Center.X - fitW / 2, rect.Center.Y - fitH / 2, fitW, fitH);
         string title = Title ?? "";
-        // The name gets the top 22 %; with no shape there is no box to sit above,
+        // The name gets the top 26 %; with no shape there is no box to sit above,
         // so the same-sized name is centred in the whole control instead.
-        float titleRow = title.Length == 0 ? 0f : rect.Height * 0.22f;
+        float titleRow = title.Length == 0 ? 0f : rect.Height * 0.26f;
         float titleBox = shape == null ? rect.Height : titleRow;
         if (titleRow > 0)
         {
             // Centred over the fret box, which is itself centred in the control.
             float boxLeft = rect.Left + rect.Width * Gutter, boxRight = rect.Right - rect.Width * Gutter;
             var font = Theme.CanvasFonts.Named("DisplayBold");
-            float size = titleRow * 0.92f;
+            // The size comes from the row through the face's own line height:
+            // Vollkorn's line is 1.3× its size, and the whole line has to sit
+            // inside the row — Core Text lays a line only where it fits, and
+            // a line poking past the control's top edge lost the tops of the
+            // letters. So the row is the text's box, and the text fits the row,
+            // whatever the control's size (it scales with the screen).
+            float size = titleRow / Theme.CanvasFonts.DisplayLine;
             float max = (boxRight - boxLeft) * 1.05f;
             float w = canvas.GetStringSize(title, font, size).Width;
             if (w > max) size *= max / w;
             canvas.Font = font;
             canvas.FontSize = size;
             canvas.FontColor = TitleColor;
-            // The box is taller than the name's row, centred on it: Core Text
-            // lays a line only where the whole line fits, and a 0.92-row name
-            // has a 1.2-row line — the names drew as nothing on the phone.
-            float tall = Math.Max(titleBox, size * 1.6f);
-            canvas.DrawString(title, boxLeft - 24f, rect.Top + (titleBox - tall) / 2, boxRight - boxLeft + 48f, tall, HorizontalAlignment.Center, VerticalAlignment.Center);
+            canvas.DrawString(title, boxLeft - 24f, rect.Top, boxRight - boxLeft + 48f, titleBox, HorizontalAlignment.Center, VerticalAlignment.Center);
             canvas.Font = Microsoft.Maui.Graphics.Font.Default;
         }
         if (shape == null) return;

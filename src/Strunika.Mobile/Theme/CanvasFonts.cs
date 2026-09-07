@@ -13,6 +13,16 @@ public static class CanvasFonts
 {
     private static readonly Dictionary<string, string> Names = new();
 
+    /// <summary>
+    /// Line height over font size, the number a canvas box must be sized by.
+    /// Core Text (iOS) lays a line only into a box the whole line fits, and
+    /// draws nothing otherwise, while DirectWrite (Windows) draws and clips —
+    /// so every DrawString box has to be at least the line: 1.3 × size for
+    /// Vollkorn (the display face, tall ascenders), 1.25 × size for the system
+    /// face. Size text from its box with these, never the box from the text.
+    /// </summary>
+    public const float DisplayLine = 1.3f, SystemLine = 1.25f;
+
     public static Microsoft.Maui.Graphics.Font Named(string alias)
     {
         if (!Names.TryGetValue(alias, out var name))

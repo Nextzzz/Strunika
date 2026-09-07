@@ -14,8 +14,7 @@ public sealed class IosAudioPlayer : IAudioPlayer
     public Task LoadAsync(string path)
     {
         Dispose();
-        AVAudioSession.SharedInstance().SetCategory(AVAudioSessionCategory.Playback);
-        AVAudioSession.SharedInstance().SetActive(true);
+        AudioSessions.ForPlayback();
         _player = AVAudioPlayer.FromUrl(NSUrl.FromFilename(path), out NSError? error);
         if (error != null || _player == null)
             throw new IOException(error?.LocalizedDescription ?? "cannot open audio");
@@ -91,6 +90,9 @@ public sealed class IosClickPlayer : IClickPlayer
 
     public void Click(bool accent)
     {
+        // A tick activates the session on its own (AVAudioPlayer does): make
+        // sure it is the mixable one, or the video under it pauses.
+        AudioSessions.ForPlayback();
         var pool = accent ? _accents : _ticks;
         var p = pool[_next++ % pool.Length];
         p.Volume = (float)Math.Clamp(Volume, 0, 1);

@@ -54,8 +54,10 @@ public static class SystemVolume
         {
             Ensure();
             if (_observer != null) return;
+            // outputVolume only reports while a session is active — the mixable
+            // one: activating any other pauses the video this slider sits over.
+            AudioSessions.ForPlayback();
             var session = AVAudioSession.SharedInstance();
-            session.SetActive(true);                              // outputVolume only reports while a session is active
             _observer = session.AddObserver("outputVolume", Foundation.NSKeyValueObservingOptions.New, change =>
             {
                 if (change.NewValue is Foundation.NSNumber n)

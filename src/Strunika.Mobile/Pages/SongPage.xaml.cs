@@ -387,7 +387,11 @@ public partial class SongPage : ContentPage
             // A YouTube song's slider is the device volume: while it shows, the
             // buttons move it (and the system's overlay stays away); the moment
             // the sheet closes the overlay is the system's again.
-            if (_vm.IsYouTube) Platforms.iOS.SystemVolume.Attach(v => _vm.Volume = v);
+            if (_vm.IsYouTube)
+            {
+                Platforms.iOS.SystemVolume.Attach(v => _vm.Volume = v);
+                _vm.Volume = Platforms.iOS.SystemVolume.Get();     // where the buttons left it since the song opened
+            }
 #endif
             _ = MoreScrim.FadeTo(0.45, 180);
             await MoreSheet.TranslateTo(0, 0, 260, Easing.CubicOut);
