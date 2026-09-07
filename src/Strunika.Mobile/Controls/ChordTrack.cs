@@ -520,7 +520,8 @@ public sealed class ChordTrack : Grid
                     float x = X(beats[i]);
                     canvas.DrawLine(x, waveBottom + 5, x, waveBottom + 14);
                     if (!t._clocks.TryGetValue(i, out var label)) t._clocks[i] = label = Clock(beats[i]);
-                    canvas.DrawString(label, x - 22f, waveBottom + 16f, 44f, 14f, HorizontalAlignment.Center, VerticalAlignment.Center);
+                    // Box taller than the line (Core Text draws nothing into a box the line does not fit).
+                    canvas.DrawString(label, x - 22f, waveBottom + 13f, 44f, 20f, HorizontalAlignment.Center, VerticalAlignment.Center);
                 }
             }
 

@@ -118,9 +118,10 @@ public sealed class TunerString : GraphicsView, IDrawable
         canvas.FontColor = LabelColor;
         canvas.FontSize = 11;
         canvas.Font = Microsoft.Maui.Graphics.Font.Default;
-        canvas.DrawString("−50", cx - span - 16, h - 12, 32, 12, HorizontalAlignment.Center, VerticalAlignment.Center);
-        canvas.DrawString("0", cx - 16, h - 12, 32, 12, HorizontalAlignment.Center, VerticalAlignment.Center);
-        canvas.DrawString("+50", cx + span - 16, h - 12, 32, 12, HorizontalAlignment.Center, VerticalAlignment.Center);
+        // Boxes taller than the line (Core Text draws nothing into a box the line does not fit).
+        canvas.DrawString("−50", cx - span - 16, h - 15, 32, 18, HorizontalAlignment.Center, VerticalAlignment.Center);
+        canvas.DrawString("0", cx - 16, h - 15, 32, 18, HorizontalAlignment.Center, VerticalAlignment.Center);
+        canvas.DrawString("+50", cx + span - 16, h - 15, 32, 18, HorizontalAlignment.Center, VerticalAlignment.Center);
 
         // in-tune zone
         float zoneW = 6f * ppc * 2;

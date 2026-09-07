@@ -89,7 +89,11 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
             canvas.Font = font;
             canvas.FontSize = size;
             canvas.FontColor = TitleColor;
-            canvas.DrawString(title, boxLeft - 24f, rect.Top, boxRight - boxLeft + 48f, titleBox, HorizontalAlignment.Center, VerticalAlignment.Center);
+            // The box is taller than the name's row, centred on it: Core Text
+            // lays a line only where the whole line fits, and a 0.92-row name
+            // has a 1.2-row line — the names drew as nothing on the phone.
+            float tall = Math.Max(titleBox, size * 1.6f);
+            canvas.DrawString(title, boxLeft - 24f, rect.Top + (titleBox - tall) / 2, boxRight - boxLeft + 48f, tall, HorizontalAlignment.Center, VerticalAlignment.Center);
             canvas.Font = Microsoft.Maui.Graphics.Font.Default;
         }
         if (shape == null) return;
