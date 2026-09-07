@@ -32,16 +32,19 @@ public partial class SettingsView : ContentView
         double button = ((IView)ProButton).Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
         // A narrower right gap when space is tight: the string may come closer to
         // the button rather than vanish.
-        double gap = ProWave.Margin.HorizontalThickness;
-        double free = row - title - button - gap;
-        if (free < ProWaveMin + 8) free = row - title - button - ProWave.Margin.Left - 4;
+        // The wave's box carries the glow's bleed on both sides; its margins are
+        // pulled in by as much, so the room the string itself takes is the box
+        // less twice the bleed. The old 8 pt gap before it and 12 pt after it hold.
+        const double bleed = Controls.WaveMark.Glow, before = 8, after = 12;
+        double free = row - title - button - before - after;
+        if (free < ProWaveMin + 8) free = row - title - button - before - 4;
         double width = Math.Min(Theme.Metrics.Instance.Size(120), Math.Max(0, free));
         bool show = width >= ProWaveMin;
         if (ProWave.IsVisible != show) ProWave.IsVisible = show;
         if (show && Math.Abs(_proWaveWidth - width) > 0.5)
         {
             _proWaveWidth = width;
-            ProWave.WidthRequest = width;
+            ProWave.WidthRequest = width + 2 * bleed;
         }
     }
 

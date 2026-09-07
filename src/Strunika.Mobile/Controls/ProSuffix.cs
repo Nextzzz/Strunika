@@ -28,7 +28,7 @@ public sealed class ProSuffix : HorizontalStackLayout
             VerticalOptions = LayoutOptions.End,
         };
         _label.SetAppThemeColor(Label.TextColorProperty, Tokens.Light("AccentText"), Tokens.Dark("AccentText"));
-        _wave = new WaveMark { VerticalOptions = LayoutOptions.Center };
+        _wave = new WaveMark { VerticalOptions = LayoutOptions.Center, Bleed = WaveMark.Glow };
         _wave.SetAppThemeColor(WaveMark.ColorProperty, Tokens.Light("Accent"), Tokens.Dark("Accent"));
         _wave.SetAppThemeColor(WaveMark.GlowColorProperty, Tokens.Light("Glow"), Tokens.Dark("Glow"));
         Add(_label);
@@ -41,10 +41,13 @@ public sealed class ProSuffix : HorizontalStackLayout
         double size = FontSize;
         _label.FontSize = size;
         _label.Margin = new Thickness(size * 0.28, 0, 0, 0);
-        _wave.WidthRequest = size * 54 / 22;
-        _wave.HeightRequest = size * 20 / 22;
+        // The box is the string's size plus the glow's bleed all round; the
+        // margins are pulled in by the same amount, so the string sits where it did.
+        const double b = WaveMark.Glow;
+        _wave.WidthRequest = size * 54 / 22 + 2 * b;
+        _wave.HeightRequest = size * 20 / 22 + 2 * b;
         // Measured against Vollkorn: with these margins the string sits on the
         // vertical centre of the "o" (user rule 2026-08-27).
-        _wave.Margin = new Thickness(size * 0.3, size * 0.22, 0, 0);
+        _wave.Margin = new Thickness(size * 0.3 - b, size * 0.22 - b, -b, -b);
     }
 }

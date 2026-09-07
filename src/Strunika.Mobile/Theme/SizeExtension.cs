@@ -16,16 +16,18 @@ public sealed class SizeExtension : IMarkupExtension<BindingBase>
     public double Value { get; set; }
     public double Min { get; set; }
     public bool Hero { get; set; }
+    /// <summary>Points added after scaling — room that must not shrink (a glow's bleed).</summary>
+    public double Plus { get; set; }
 
     public BindingBase ProvideValue(IServiceProvider serviceProvider) =>
-        new Binding(Hero ? nameof(Metrics.HeroScale) : nameof(Metrics.Scale), BindingMode.OneWay, new ScaleConverter(Value, Min), source: Metrics.Instance);
+        new Binding(Hero ? nameof(Metrics.HeroScale) : nameof(Metrics.Scale), BindingMode.OneWay, new ScaleConverter(Value, Min, Plus), source: Metrics.Instance);
 
     object IMarkupExtension.ProvideValue(IServiceProvider serviceProvider) => ProvideValue(serviceProvider);
 
-    private sealed class ScaleConverter(double value, double min) : IValueConverter
+    private sealed class ScaleConverter(double value, double min, double plus) : IValueConverter
     {
         public object Convert(object? scale, Type targetType, object? parameter, CultureInfo culture) =>
-            Math.Max(min, value * (scale is double s ? s : 1.0));
+            Math.Max(min, value * (scale is double s ? s : 1.0)) + plus;
 
         public object ConvertBack(object? v, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
     }
