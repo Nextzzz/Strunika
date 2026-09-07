@@ -102,6 +102,15 @@ public sealed class ChordTrack : Grid
     private double _barSeconds;
     private double _tx;                                                     // translation of the visible ribbon
     private int _currentIndex = -1, _nextIndex = -1;
+    /// <summary>The pill being played, on its own small canvas that rides along
+    /// with the ribbon. The ribbons draw every pill in the resting style and
+    /// never change when the chord does: re-rendering three screens of ribbon
+    /// to recolour one pill was a visible hitch on every chord change on the
+    /// phone (CoreText is slow with text), the one stutter left in the song.</summary>
+    private readonly GraphicsView _current;
+    /// <summary>Where each pill was actually drawn relative to its moment, once
+    /// the no-overlap rule has nudged it: segment index → offset from x(start).</summary>
+    private readonly Dictionary<int, float> _pillShift = new();
     private double _panStart, _panAt;
     private bool _panning;
     private Color? _beatTick, _barTick, _playedBar;
@@ -120,8 +129,10 @@ public sealed class ChordTrack : Grid
         }
         _playhead = new BoxView { CornerRadius = 2, InputTransparent = true };
         _pinned = new GraphicsView { Drawable = new PinnedDrawable(this), IsVisible = false };
+        _current = new GraphicsView { Drawable = new CurrentDrawable(this), IsVisible = false, InputTransparent = true };
         _layers.Add(_leftClip);
         _layers.Add(_rightClip);
+        _layers.Add(_current);
         _layers.Add(_playhead);
         _layers.Add(_pinned);
         Add(_layers);
@@ -163,8 +174,10 @@ public sealed class ChordTrack : Grid
     /// <summary>Re-render every ribbon and the pinned pill (data or colours changed).</summary>
     public void Redraw()
     {
+        _pillShift.Clear();
         for (int i = 0; i < 2; i++) { _played[i].Invalidate(); _coming[i].Invalidate(); }
         _pinned.Invalidate();
+        _current.Invalidate();
     }
 
     private void ResetBuffers()
@@ -194,6 +207,7 @@ public sealed class ChordTrack : Grid
         }
         AbsoluteLayout.SetLayoutBounds(_playhead, new Rect(px - 2, PillTop + PillHeight + 4, 4, h - PillTop - PillHeight - 6));
         AbsoluteLayout.SetLayoutBounds(_pinned, new Rect(w - PillMaxWidth - 14, 0, PillMaxWidth + 14, PillTop + PillHeight + 2));
+        AbsoluteLayout.SetLayoutBounds(_current, new Rect(0, 0, PillMaxWidth + 12, PillTop + PillHeight + 2));
         _bars = null;
         ResetBuffers();
         Follow();
@@ -269,9 +283,19 @@ public sealed class ChordTrack : Grid
         int current = IndexAt(pos), next = NextAfter(pos);
         if (current != _currentIndex)
         {
+            // Only the small canvas changes; the ribbons stay as they are.
             _currentIndex = current;
-            Invalidate(_active);
-            if (_pendingSwap) Invalidate(back);
+            bool show = current >= 0 && segments != null && current < segments.Count && segments[current].Label != "—";
+            if (_current.IsVisible != show) _current.IsVisible = show;
+            if (show) _current.Invalidate();
+        }
+        if (_current.IsVisible && segments != null && _currentIndex >= 0 && _currentIndex < segments.Count)
+        {
+            // Over the very pill the ribbon drew, wherever the no-overlap rule put it.
+            var seg = segments[_currentIndex];
+            float pillW = _labels.TryGetValue(seg.Label, out var cm) ? cm.Width : 46f;
+            float shift = _pillShift.TryGetValue(_currentIndex, out var sh) ? sh : -pillW / 2;
+            NativeTransform.TranslateX(_current, px + (seg.Start - pos) * pps + shift);
         }
         if (next != _nextIndex) { _nextIndex = next; _pinnedShown = false; _pinned.Invalidate(); }
         if (next >= 0 && segments != null)
@@ -518,12 +542,32 @@ public sealed class ChordTrack : Grid
                     float left = x - w / 2;
                     if (left < lastRight + 3f) left = lastRight + 3f;
                     lastRight = left + w;
-                    t.DrawPill(canvas, left, seg.Label, i == t._currentIndex);
+                    t._pillShift[i] = left - x;
+                    t.DrawPill(canvas, left, seg.Label, current: false);   // the current one is the overlay's
                     pills.Add((new RectF(left, 0, w, PillTop + PillHeight + 8f), seg.Start));
                 }
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
             }
             if (played) t._drawnPlayed[index] = t0; else t._drawnComing[index] = t0;   // this window is on the canvas
+        }
+    }
+
+    /// <summary>The chord being played, in the accent, over its pill on the ribbon.</summary>
+    private sealed class CurrentDrawable(ChordTrack track) : IDrawable
+    {
+        public void Draw(ICanvas canvas, RectF rect)
+        {
+            if (track.Handler == null) return;                        // torn down: nothing to draw for
+            try
+            {
+                var t = track;
+                var segments = t.Segments;
+                if (t._currentIndex < 0 || segments == null || t._currentIndex >= segments.Count) return;
+                canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
+                t.DrawPill(canvas, 0f, segments[t._currentIndex].Label, current: true);
+                canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+            }
+            catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
         }
     }
 
