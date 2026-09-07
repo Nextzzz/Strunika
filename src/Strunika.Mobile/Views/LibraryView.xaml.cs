@@ -20,9 +20,17 @@ public partial class LibraryView : ContentView
         try { HapticFeedback.Default.Perform(HapticFeedbackType.LongPress); } catch { /* no engine */ }
     }
 
+    /// <summary>Letting go past the line deletes. MAUI's own threshold is the
+    /// slab's whole width (that is what lets the card travel), so the decision
+    /// is taken here from where the finger left off.</summary>
     private void OnSwipeEnded(object? sender, SwipeEndedEventArgs e)
     {
-        if (sender is SwipeView view) _pastLine.Remove(view);
+        if (sender is not SwipeView view) return;
+        bool past = _pastLine.Remove(view);
+        view.Close();
+        if (past && view.BindingContext is ViewModels.SongItem item && BindingContext is ViewModels.LibraryViewModel vm
+            && vm.DeleteCommand.CanExecute(item))
+            vm.DeleteCommand.Execute(item);
     }
 
     /// <summary>A card scrolled under the home indicator must not pad itself by

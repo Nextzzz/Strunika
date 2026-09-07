@@ -50,16 +50,17 @@
             </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SongItem">
-                    <!-- The card slides as far as the finger takes it; past 35 % of the row
-                         (Metrics.SwipeThreshold) letting go deletes, and crossing that line
-                         buzzes, either way (user decision 2026-09-07). The red under the card
-                         is a rounded slab the shape of the card, inset like it — never a strip
-                         from the screen's edge — wide enough to stay under the card however far
-                         it goes; the swipe can go as far as the slab is wide. -->
-                    <SwipeView Threshold="{Binding SwipeThreshold, Source={x:Static t:Metrics.Instance}}"
+                    <!-- The card slides as far as the finger takes it (MAUI caps the travel at
+                         the threshold, so the threshold is the slab's whole width); letting go
+                         past 35 % of the row (Metrics.SwipeThreshold) deletes — decided in
+                         code-behind, not by MAUI — and crossing that line buzzes, either way
+                         (user decision 2026-09-07). The red under the card is a rounded slab
+                         the shape of the card, inset like it — never a strip from the screen's
+                         edge — wide enough to stay under the card however far it goes. -->
+                    <SwipeView Threshold="1000"
                                SwipeChanging="OnSwipeChanging" SwipeEnded="OnSwipeEnded" Loaded="OnCardLoaded">
                         <SwipeView.RightItems>
-                            <SwipeItems Mode="Execute">
+                            <SwipeItems Mode="Reveal">
                                 <SwipeItemView Command="{Binding DeleteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}"
                                                CommandParameter="{Binding .}">
                                     <Grid Padding="0,0,20,0" WidthRequest="1000" HorizontalOptions="End">
