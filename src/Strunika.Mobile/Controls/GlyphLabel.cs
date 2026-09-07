@@ -49,15 +49,11 @@ public sealed class GlyphLabel : GraphicsView, IDrawable
         // Shrink rather than clip if the caller gave us less room than the text needs.
         float width = canvas.GetStringSize(text, font, size).Width;
         if (width > rect.Width && width > 0) size *= rect.Width / width;
-        canvas.Font = font;
-        canvas.FontSize = size;
         canvas.FontColor = TextColor;
-        // The box is the line's height at least, centred on the control: the
-        // control is sized to the glyph (that is its point), which is shorter
-        // than the face's line, and Core Text draws nothing into a box the
-        // line does not fit. The glyph itself stays inside the control.
-        float line = Math.Max(rect.Height, size * Theme.CanvasFonts.DisplayLine);
-        canvas.DrawString(text, rect.X, rect.Y + (rect.Height - line) / 2, rect.Width, line, HorizontalAlignment.Center, VerticalAlignment.Center);
+        // The control is sized to the glyph (that is its point), which is
+        // shorter than the face's line; the draw measures the line and gives
+        // it a frame it fits, centred here. The glyph stays inside the control.
+        Theme.CanvasFonts.Draw(canvas, text, font, size, rect);
         canvas.Font = Microsoft.Maui.Graphics.Font.Default;
     }
 

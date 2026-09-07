@@ -70,8 +70,8 @@ public sealed class IosClickPlayer : IClickPlayer
 
     public IosClickPlayer()
     {
-        _ticks = Pool(MetronomeClick.Render(1100, 0.5f));
-        _accents = Pool(MetronomeClick.Render(1650, 0.7f));
+        _ticks = Pool(MetronomeClick.Render(1100, 0.95f));
+        _accents = Pool(MetronomeClick.Render(1650, 1.0f));
     }
 
     private static AVAudioPlayer[] Pool(float[] samples)
@@ -90,14 +90,23 @@ public sealed class IosClickPlayer : IClickPlayer
 
     public void Click(bool accent)
     {
-        // A tick activates the session on its own (AVAudioPlayer does): make
-        // sure it is the mixable one, or the video under it pauses.
-        AudioSessions.ForPlayback();
         var pool = accent ? _accents : _ticks;
         var p = pool[_next++ % pool.Length];
-        p.Volume = (float)Math.Clamp(Volume, 0, 1);
-        p.CurrentTime = 0;
-        p.Play();
+        float volume = (float)Math.Clamp(Volume, 0, 1);
+        // Off the frame: AVAudioPlayer.Play takes milliseconds on the main
+        // thread and the conveyor stuttered on every tick. The session is
+        // made the mixable one first, or the video under the tick pauses.
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                AudioSessions.ForPlayback();
+                p.Volume = volume;
+                p.CurrentTime = 0;
+                p.Play();
+            }
+            catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("click", ex); }
+        });
     }
 
     public void Dispose()

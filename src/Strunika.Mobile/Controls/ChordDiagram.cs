@@ -82,20 +82,17 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
             // Centred over the fret box, which is itself centred in the control.
             float boxLeft = rect.Left + rect.Width * Gutter, boxRight = rect.Right - rect.Width * Gutter;
             var font = Theme.CanvasFonts.Named("DisplayBold");
-            // The size comes from the row through the face's own line height:
-            // Vollkorn's line is 1.3× its size, and the whole line has to sit
-            // inside the row — Core Text lays a line only where it fits, and
-            // a line poking past the control's top edge lost the tops of the
-            // letters. So the row is the text's box, and the text fits the row,
-            // whatever the control's size (it scales with the screen).
-            float size = titleRow / Theme.CanvasFonts.DisplayLine;
+            // The name is sized to its row by measuring: its line (as the
+            // canvas will lay it) takes at most 86 % of the row, so the whole
+            // line sits inside the row with air above the letters, whatever
+            // the control's size — it scales with the screen. Guessed metrics
+            // lost the names twice on the phone; nothing is guessed now.
+            float size = Theme.CanvasFonts.FitHeight(canvas, title, font, titleRow, titleBox);
             float max = (boxRight - boxLeft) * 1.05f;
             float w = canvas.GetStringSize(title, font, size).Width;
             if (w > max) size *= max / w;
-            canvas.Font = font;
-            canvas.FontSize = size;
             canvas.FontColor = TitleColor;
-            canvas.DrawString(title, boxLeft - 24f, rect.Top, boxRight - boxLeft + 48f, titleBox, HorizontalAlignment.Center, VerticalAlignment.Center);
+            Theme.CanvasFonts.Draw(canvas, title, font, size, new RectF(boxLeft - 24f, rect.Top, boxRight - boxLeft + 48f, titleBox));
             canvas.Font = Microsoft.Maui.Graphics.Font.Default;
         }
         if (shape == null) return;
@@ -148,13 +145,13 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
             float textWidth = canvas.GetStringSize(label, Microsoft.Maui.Graphics.Font.Default, size).Width;
             if (textWidth > gutter) size = Math.Max(7f, size * gutter / textWidth);
             canvas.FontColor = TitleColor;
-            canvas.FontSize = size;
             float barreRow = shape.Barre > 0 ? shape.Barre - shape.BaseFret : 0;
             float labelY = atCapo ? top - size : top + (barreRow + 0.5f) * fy - size;
             // Right-aligned in a box that starts well left of the control: the text
             // is placed by its right edge and can never be wrapped by the width.
             const float overflow = 40f;
-            canvas.DrawString(label, rect.Left - overflow, labelY, gutter + overflow, size * 2, HorizontalAlignment.Right, VerticalAlignment.Center);
+            Theme.CanvasFonts.Draw(canvas, label, Microsoft.Maui.Graphics.Font.Default, size,
+                                   new RectF(rect.Left - overflow, labelY, gutter + overflow, size * 2), HorizontalAlignment.Right);
         }
 
         float dotR = Math.Min(sx, fy) * 0.34f;
@@ -223,11 +220,11 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
                 if (w > room) size *= room / w;
             }
             size = Math.Max(size, numberRow * 0.34f);            // never so small it stops being readable
+            size = Theme.CanvasFonts.FitHeight(canvas, "12", Microsoft.Maui.Graphics.Font.Default, size, numberRow);
             canvas.FontColor = FretTextColor;
-            canvas.FontSize = size;
             for (int s = 0; s < strings; s++)
-                canvas.DrawString(numbers[s], X(s) - sx / 2, bottom + numberRow * 0.16f, sx, numberRow,
-                                  HorizontalAlignment.Center, VerticalAlignment.Center);
+                Theme.CanvasFonts.Draw(canvas, numbers[s], Microsoft.Maui.Graphics.Font.Default, size,
+                                       new RectF(X(s) - sx / 2, bottom + numberRow * 0.16f, sx, numberRow));
         }
     }
 }

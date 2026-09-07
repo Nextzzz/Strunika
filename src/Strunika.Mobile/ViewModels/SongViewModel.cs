@@ -249,7 +249,14 @@ public sealed partial class SongViewModel : ObservableObject
             if (_scrubbing) return;
             if (_seekTarget >= 0)
             {
-                bool confirmed = Math.Abs(pos - _seekTarget) < 0.5 || Environment.TickCount64 - _seekTicks > 1500;
+                // The old time keeps coming back for a while after a seek —
+                // longer when the player is paused and in no hurry to buffer
+                // the new place (the square went back to the old beat and then
+                // forward again). Wait it out: a playing player that has not
+                // reached the target in 1.5 s has gone elsewhere for a reason;
+                // a paused one gets five seconds.
+                long waited = Environment.TickCount64 - _seekTicks;
+                bool confirmed = Math.Abs(pos - _seekTarget) < 0.5 || (playing && waited > 1500) || waited > 5000;
                 if (!confirmed) return;                          // still the old time: keep the prediction
                 _seekTarget = -1;
             }
@@ -364,11 +371,14 @@ public sealed partial class SongViewModel : ObservableObject
         var transport = _transport;
         if (transport == null) return;
         seconds = Math.Clamp(seconds, 0, Math.Max(0, Duration));
-        await transport.SeekAsync(seconds);
+        // The page moves first, the player follows: a tap on a square lands
+        // there at once, and every reading already in flight is about the old
+        // place (NoteSeek bumps the sequence), so none can pull it back.
         NoteSeek(seconds);
         _predicted = seconds;
         _nextBeat = NextBeatAfter(seconds);
         SetPosition(seconds, fromTransport: false);
+        await transport.SeekAsync(seconds);
     }
 
     /// <summary>Drag on the conveyor or the slider: silent until the finger lifts.</summary>
@@ -389,10 +399,10 @@ public sealed partial class SongViewModel : ObservableObject
         var transport = _transport;
         if (transport == null) { _scrubbing = false; return; }
         seconds = Math.Clamp(seconds, 0, Math.Max(0, Duration));
-        await transport.SeekAsync(seconds);
         NoteSeek(seconds);
         _predicted = seconds;
         _nextBeat = NextBeatAfter(seconds);
+        await transport.SeekAsync(seconds);
         _scrubbing = false;
         if (_wasPlaying) await transport.PlayAsync();
     }

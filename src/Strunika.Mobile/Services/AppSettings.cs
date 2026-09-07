@@ -56,7 +56,7 @@ public static class AppSettings
     /// <summary>Metronome level on the song page, 0–1.</summary>
     public static double ClickVolume
     {
-        get => Preferences.Default.Get("click_volume", 0.8);
+        get => Preferences.Default.Get("click_volume", 1.0);
         set { Preferences.Default.Set("click_volume", Math.Clamp(value, 0, 1)); Raise(nameof(ClickVolume)); }
     }
 

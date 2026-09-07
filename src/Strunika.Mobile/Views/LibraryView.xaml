@@ -172,7 +172,7 @@
 
         <!-- Empty state -->
         <VerticalStackLayout VerticalOptions="Center" Spacing="10" Padding="36,160,36,104" IsVisible="{Binding IsEmpty}">
-            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" Bleed="12" HeightRequest="{t:Size 64, Min=44, Plus=24}" Margin="-12" />
+            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" Bleed="26" HeightRequest="{t:Size 64, Min=44, Plus=52}" Margin="-26" />
             <Label Style="{StaticResource Title2}" Text="{loc:Str Library_Empty_Title}" HorizontalTextAlignment="Center" Margin="0,8,0,0" />
             <Label Style="{StaticResource Subhead}" Text="{loc:Str Library_Empty_Body}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>

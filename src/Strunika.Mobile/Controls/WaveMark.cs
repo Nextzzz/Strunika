@@ -31,8 +31,10 @@ public sealed class WaveMark : GraphicsView, IDrawable
         BindableProperty.Create(nameof(Bleed), typeof(double), typeof(WaveMark), 0.0, propertyChanged: (b, _, _) => ((WaveMark)b).Invalidate());
     public double Bleed { get => (double)GetValue(BleedProperty); set => SetValue(BleedProperty, value); }
 
-    /// <summary>The bleed a glowing wave wants (the glow is blurred 10 pt).</summary>
-    public const double Glow = 12;
+    /// <summary>The bleed a glowing wave wants: the glow is blurred 10 pt, and a
+    /// blur fades over about two and a half times its radius — 12 pt cut it
+    /// off where it was still plainly visible.</summary>
+    public const double Glow = 26;
 
     // 342 × 64 design space, spikes left of centre like the logo.
     private static readonly PathF Shape = PathBuilder.Build(

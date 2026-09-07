@@ -43,7 +43,7 @@
                             </Label.FormattedText>
                         </Label>
                         <!-- A tiny string-wave right after the word "Pro" (experimental, user request 2026-08-26). -->
-                        <controls:WaveMark x:Name="ProWave" Grid.Column="1" Color="{t:Theme AccentText}" GlowColor="{t:Theme Glow}" Bleed="12" HeightRequest="{t:Size 20, Plus=24}" HorizontalOptions="Start" VerticalOptions="Center" Margin="-4,-9,0,-12" />
+                        <controls:WaveMark x:Name="ProWave" Grid.Column="1" Color="{t:Theme AccentText}" GlowColor="{t:Theme Glow}" Bleed="26" HeightRequest="{t:Size 20, Plus=52}" HorizontalOptions="Start" VerticalOptions="Center" Margin="-18,-23,-14,-26" />
                         <Button x:Name="ProButton" Grid.Column="2" Text="{loc:Str Pro_LearnMore}" FontSize="13" HeightRequest="{t:Size 32}" CornerRadius="16" Padding="12,0" MinimumWidthRequest="0" Clicked="OnProTapped" />
                     </Grid>
                     <Label Style="{StaticResource Footnote}" Text="{loc:Str Pro_Features}" LineBreakMode="WordWrap" />
