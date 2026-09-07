@@ -81,7 +81,7 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
         {
             // Centred over the fret box, which is itself centred in the control.
             float boxLeft = rect.Left + rect.Width * Gutter, boxRight = rect.Right - rect.Width * Gutter;
-            var font = new Microsoft.Maui.Graphics.Font("DisplayBold");
+            var font = Theme.CanvasFonts.Named("DisplayBold");
             float size = titleRow * 0.92f;
             float max = (boxRight - boxLeft) * 1.05f;
             float w = canvas.GetStringSize(title, font, size).Width;

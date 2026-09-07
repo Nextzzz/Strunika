@@ -44,7 +44,7 @@ public sealed class GlyphLabel : GraphicsView, IDrawable
     {
         var text = Text;
         if (string.IsNullOrEmpty(text) || rect.Width <= 0 || rect.Height <= 0) return;
-        var font = new Microsoft.Maui.Graphics.Font(FontFamily);
+        var font = Theme.CanvasFonts.Named(FontFamily);
         float size = (float)FontSize;
         // Shrink rather than clip if the caller gave us less room than the text needs.
         float width = canvas.GetStringSize(text, font, size).Width;
