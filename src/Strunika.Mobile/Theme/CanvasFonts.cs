@@ -43,21 +43,59 @@ public static class CanvasFonts
         return size;
     }
 
-    /// <summary>Draw <paramref name="text"/> centred on <paramref name="box"/>.
-    /// The frame handed to the canvas is the box or the measured line,
-    /// whichever is taller, centred on the box: a box shorter than the line
-    /// (a chip sized to the glyph, not to the face's line) would otherwise
-    /// draw nothing at all.</summary>
+    /// <summary>Draw <paramref name="text"/> with its capitals centred on
+    /// <paramref name="box"/>. On iOS the canvas's own "centre" centres the
+    /// line box and then nudges it up by half the descent, which for a face
+    /// with tall ascenders puts the letters well above the middle; so the
+    /// text is laid from the top of a frame placed by the face's real ascent
+    /// and cap height (Core Text puts the first baseline one ascent below the
+    /// frame's top), and the frame is the line's height, so it always fits.
+    /// Elsewhere the canvas centres the line box, which is close enough.</summary>
     public static void Draw(ICanvas canvas, string text, Microsoft.Maui.Graphics.Font font, float size, RectF box,
                             HorizontalAlignment horizontal = HorizontalAlignment.Center)
     {
         if (string.IsNullOrEmpty(text) || size <= 0 || box.Width <= 0) return;
-        float line = canvas.GetStringSize(text, font, size).Height;
-        float tall = Math.Max(box.Height, line + 2f);
         canvas.Font = font;
         canvas.FontSize = size;
+#if IOS
+        var (ascent, descent, cap) = MetricsOf(font, size);
+        float cy = box.Y + box.Height / 2;
+        float top = cy - ascent + cap / 2;
+        canvas.DrawString(text, box.X, top, box.Width, ascent + descent + 2f, horizontal, VerticalAlignment.Top);
+#else
+        float line = canvas.GetStringSize(text, font, size).Height;
+        float tall = Math.Max(box.Height, line + 2f);
         canvas.DrawString(text, box.X, box.Y + (box.Height - tall) / 2, box.Width, tall, horizontal, VerticalAlignment.Center);
+#endif
     }
+
+#if IOS
+    private static readonly Dictionary<(string, int), (float Ascent, float Descent, float Cap)> Metrics = new();
+
+    /// <summary>Ascent, descent and cap height of the face at this size, from
+    /// Core Text — the same font the canvas will draw with.</summary>
+    private static (float Ascent, float Descent, float Cap) MetricsOf(Microsoft.Maui.Graphics.Font font, float size)
+    {
+        var key = (font.Name ?? (font.Weight >= 600 ? "<bold>" : "<system>"), (int)Math.Round(size * 4));
+        if (Metrics.TryGetValue(key, out var known)) return known;
+        (float, float, float) metrics;
+        try
+        {
+            // UIFont and Core Text read the same tables; a registered face is
+            // found by its real name, the system face by weight.
+            var ui = (string.IsNullOrEmpty(font.Name) ? null : UIKit.UIFont.FromName(font.Name, size))
+                     ?? UIKit.UIFont.SystemFontOfSize(size, font.Weight >= 600 ? UIKit.UIFontWeight.Bold : UIKit.UIFontWeight.Regular);
+            metrics = ((float)ui.Ascender, (float)Math.Abs(ui.Descender), (float)ui.CapHeight);
+        }
+        catch (Exception ex)
+        {
+            Strunika.Core.Diagnostics.FileLog.Error("font metrics " + key.Item1, ex);
+            metrics = (size * 0.95f, size * 0.25f, size * 0.7f);
+        }
+        Metrics[key] = metrics;
+        return metrics;
+    }
+#endif
 
     public static Microsoft.Maui.Graphics.Font Named(string alias)
     {
