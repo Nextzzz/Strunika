@@ -226,6 +226,20 @@ public sealed class BeatGrid : Grid
                 });
                 _stack.Children.Add(_bands[^1]);
             }
+            // The grid's height is stated outright, and the scroll view above is
+            // asked to measure again on the next turn: the bands are cut inside
+            // the first layout pass (SizeChanged), and on iOS a measure
+            // invalidated from within that pass was dropped — a song opened
+            // straight into the grid view showed no squares at all, while
+            // switching to it on the page (a fresh pass) always worked.
+            HeightRequest = rows == 0 ? -1 : rows * cell + Math.Max(0, rows - 1) * gap;
+            Dispatcher.Dispatch(() =>
+            {
+                if (Handler == null) return;
+                InvalidateMeasure();
+                (Parent as VisualElement)?.InvalidateMeasure();
+                Redraw();
+            });
         }
         Redraw();
         PlaceCursor(force: true);
