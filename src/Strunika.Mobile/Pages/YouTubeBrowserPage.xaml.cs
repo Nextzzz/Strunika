@@ -7,10 +7,14 @@ namespace Strunika.Mobile.Pages;
 /// <summary>
 /// Built-in YouTube: the user searches and opens a video like in the app,
 /// and an "Add to library" bar appears as soon as a /watch page is open.
-/// YouTube is a single-page app, so besides <c>Navigated</c> the page polls
-/// <c>location.href</c> — pushState navigations never raise an event.
-/// The video itself is added through the normal YouTube path (metadata +
-/// audio extraction); nothing is scraped from the page except its title.
+/// YouTube is a single-page app, so besides <c>Navigated</c> the address has
+/// to be watched — pushState navigations never raise an event. On Windows
+/// the page polls <c>location.href</c>; on iOS the poll never came back (the
+/// device log had not one line from it), so there a script in the page
+/// reports the address and title itself, through a WebKit message handler,
+/// and nothing is asked of the page from outside. The video itself is added
+/// through the normal YouTube path (metadata + audio extraction); nothing is
+/// scraped from the page except its title.
 /// </summary>
 public partial class YouTubeBrowserPage : ContentPage
 {
@@ -30,14 +34,56 @@ public partial class YouTubeBrowserPage : ContentPage
         _poll.Interval = TimeSpan.FromMilliseconds(700);
         _poll.Tick += async (_, _) => await ProbeAsync();
 #if IOS
-        // A link that wants a new window (target=_blank) goes nowhere in a bare
-        // WKWebView — there is no second window to open. Load it here instead.
-        Web.HandlerChanged += (_, _) => { if (Web.Handler?.PlatformView is WebKit.WKWebView wk) wk.UIDelegate = _popups; };
+        Web.HandlerChanged += (_, _) =>
+        {
+            if (Web.Handler?.PlatformView is not WebKit.WKWebView wk || _wired) return;
+            _wired = true;
+            // A link that wants a new window (target=_blank) goes nowhere in a
+            // bare WKWebView — there is no second window to open. Load it here.
+            wk.UIDelegate = _popups;
+            // The page reports its own address: a script, injected into every
+            // document, posts "href\ntitle" whenever either changes.
+            var controller = wk.Configuration.UserContentController;
+            controller.AddScriptMessageHandler(new AddressWatcher(OnAddress), "strunika");
+            controller.AddUserScript(new WebKit.WKUserScript(new Foundation.NSString(AddressScript), WebKit.WKUserScriptInjectionTime.AtDocumentStart, true));
+            // The first load may already be under way without the script: load again.
+            wk.LoadRequest(new Foundation.NSUrlRequest(new Foundation.NSUrl("https://m.youtube.com/")));
+            Strunika.Core.Diagnostics.FileLog.Info("youtube browser: wired");
+        };
 #endif
     }
 
 #if IOS
     private readonly PopupDelegate _popups = new();
+    private bool _wired;
+
+    private const string AddressScript = """
+        (function () {
+          var last = '';
+          function tick() {
+            var now = location.href + '\n' + document.title;
+            if (now === last) return;
+            last = now;
+            try { window.webkit.messageHandlers.strunika.postMessage(now); } catch (e) {}
+          }
+          setInterval(tick, 500);
+          tick();
+        })();
+        """;
+
+    private void OnAddress(string href, string title) =>
+        MainThread.BeginInvokeOnMainThread(() => Apply(href, title));
+
+    private sealed class AddressWatcher(Action<string, string> onAddress) : WebKit.WKScriptMessageHandler
+    {
+        public override void DidReceiveScriptMessage(WebKit.WKUserContentController userContentController, WebKit.WKScriptMessage message)
+        {
+            var body = message.Body?.ToString() ?? "";
+            int cut = body.IndexOf('\n');
+            if (cut < 0) onAddress(body, "");
+            else onAddress(body[..cut], body[(cut + 1)..]);
+        }
+    }
 
     private sealed class PopupDelegate : WebKit.WKUIDelegate
     {
@@ -66,7 +112,10 @@ public partial class YouTubeBrowserPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        _poll.Start();
+        Strunika.Core.Diagnostics.FileLog.Info("youtube browser: opened");
+#if !IOS
+        _poll.Start();                                          // iOS: the page reports itself
+#endif
     }
 
     protected override void OnDisappearing()
@@ -75,10 +124,21 @@ public partial class YouTubeBrowserPage : ContentPage
         _poll.Stop();
     }
 
-    private async void OnNavigated(object? sender, WebNavigatedEventArgs e) => await ProbeAsync();
+    private async void OnNavigated(object? sender, WebNavigatedEventArgs e)
+    {
+        Strunika.Core.Diagnostics.FileLog.Info($"youtube browser: navigated {e.Result} {e.Url}");
+#if IOS
+        // The script reports; but a plain navigation carries its address here
+        // too, so the bar keeps up even if the script were ever silent.
+        if (!string.IsNullOrEmpty(e.Url)) Apply(e.Url, "");
+#else
+        await ProbeAsync();
+#endif
+    }
 
     private string? _lastHref;
 
+    /// <summary>Windows: ask the page where it is.</summary>
     private async Task ProbeAsync()
     {
         if (_busy) return;
@@ -93,6 +153,13 @@ public partial class YouTubeBrowserPage : ContentPage
             if (_lastHref != "<error>") Strunika.Core.Diagnostics.FileLog.Error("youtube browser probe", ex);
             _lastHref = "<error>";
         }
+        Apply(href, title);
+    }
+
+    /// <summary>The page is at <paramref name="href"/>: show or hide the bar.</summary>
+    private void Apply(string? href, string? title)
+    {
+        if (_busy) return;
         var id = href == null ? null : _youtube.TryParseVideoId(href);
         if (href != _lastHref)
         {
