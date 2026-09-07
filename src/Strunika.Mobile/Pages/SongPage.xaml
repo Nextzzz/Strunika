@@ -12,7 +12,12 @@
              NavigationPage.HasNavigationBar="False"
              NavigationPage.HasBackButton="False">
 
-    <Grid BackgroundColor="{t:Theme Bg}" Padding="0,8,0,20" RowDefinitions="44,Auto,Auto,3*,2*,Auto,Auto" RowSpacing="0">
+    <!-- Root: the whole screen. The body keeps the status-bar inset and lays its
+         bottom out by hand (code-behind: transport just above the home indicator);
+         the scrim and the sheet cover everything, safe area included — inside the
+         padded body a strip under the sheet stayed undimmed. -->
+    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}">
+    <Grid x:Name="Body" Padding="0,8,0,20" RowDefinitions="44,Auto,Auto,3*,2*,Auto,Auto" RowSpacing="0">
 
         <!-- Header: back · title/artist · Chord Editor -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="8,0,12,0" ColumnSpacing="6" Margin="{t:ContentInset}">
@@ -172,12 +177,15 @@
         </Grid>
 
 
+    </Grid>
+
         <!-- "More": everything that is not needed on every bar -->
-        <BoxView x:Name="MoreScrim" Grid.Row="0" Grid.RowSpan="7" Color="#99000000" Opacity="0" InputTransparent="True">
+        <BoxView x:Name="MoreScrim" Color="#99000000" Opacity="0" InputTransparent="True">
             <BoxView.GestureRecognizers><TapGestureRecognizer Tapped="OnMoreTapped" /></BoxView.GestureRecognizers>
         </BoxView>
 
-        <Border x:Name="MoreSheet" Grid.Row="0" Grid.RowSpan="7" VerticalOptions="End" TranslationY="600" Margin="{t:ContentInset}"
+        <!-- Bottom padding is set in code: 24 pt plus the home indicator. -->
+        <Border x:Name="MoreSheet" VerticalOptions="End" TranslationY="600" Margin="{t:ContentInset}"
                 BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="20,10,20,24"
                 StrokeShape="RoundRectangle 24,24,0,0">
             <Border.Shadow><Shadow Brush="#40000000" Radius="22" Opacity="0.6" Offset="0,-6" /></Border.Shadow>
@@ -277,10 +285,14 @@
                     <controls:SeekBar Grid.Column="1" Duration="1" Value="{Binding ClickVolume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,10,0" />
                 </Grid>
 
-                <!-- Volume -->
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 52, Min=44}">
+                <!-- Volume (a note instead, where the player will not take it) -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 52, Min=44}" IsVisible="{Binding VolumeAdjustable}">
                     <controls:IconView Name="vol" Size="{t:Size 22}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                     <controls:SeekBar Grid.Column="1" Duration="1" Value="{Binding Volume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,10,0" />
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" MinimumHeightRequest="{t:Size 52, Min=44}" IsVisible="{Binding VolumeAdjustable, Converter={StaticResource Not}}">
+                    <controls:IconView Name="vol" Size="{t:Size 22}" Color="{t:Theme Dim}" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="{loc:Str Song_VolumeDevice}" Style="{StaticResource Footnote}" VerticalOptions="Center" />
                 </Grid>
             </VerticalStackLayout>
         </Border>

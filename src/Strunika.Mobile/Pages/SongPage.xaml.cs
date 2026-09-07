@@ -51,6 +51,16 @@ public partial class SongPage : ContentPage
         Seeker.DragCompleted += (_, t) => _ = _vm.ScrubEndAsync(t);
 
         ApplyPanelSpacing(around: false);
+#if IOS
+        // Edge to edge at the bottom (MAUI 10 pads layouts by the safe area on
+        // its own): the transport sits 8 pt above the home indicator instead of
+        // 20 pt above the safe area, and the sheet and its scrim reach the
+        // screen's edge. The top keeps the status-bar inset.
+        Root.SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.None);
+        Body.SafeAreaEdges = SafeAreaEdges.None;
+        Body.Padding = new Thickness(0, 8, 0, Theme.SafeArea.Bottom + 4);
+        MoreSheet.Padding = new Thickness(20, 10, 20, 24 + Theme.SafeArea.Bottom);
+#endif
 
         BeatsView.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
         BeatsView.ActiveMoved += OnActiveBeatMoved;

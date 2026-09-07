@@ -9,7 +9,7 @@
              ios:Page.UseSafeArea="True"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid BackgroundColor="{t:Theme Bg}">
+    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}">
         <views:TunerView x:Name="Tuner" />
         <views:LiveView x:Name="Live" IsVisible="False" />
         <views:LibraryView x:Name="Library" IsVisible="False" />
@@ -17,6 +17,8 @@
 
         <Border x:Name="BottomShade" VerticalOptions="End" HeightRequest="{t:Size 100, Min=44}" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
 
+        <!-- The bar's bottom margin is set in code: it is measured from the
+             screen's edge, not the safe area (see SafeArea.FloatingBarMargin). -->
         <Grid VerticalOptions="End" Margin="{t:ContentInset}">
         <controls:PillTabBar x:Name="TabBar"
                              VerticalOptions="End"
