@@ -29,7 +29,27 @@ public partial class YouTubeBrowserPage : ContentPage
         _poll = Dispatcher.CreateTimer();
         _poll.Interval = TimeSpan.FromMilliseconds(700);
         _poll.Tick += async (_, _) => await ProbeAsync();
+#if IOS
+        // A link that wants a new window (target=_blank) goes nowhere in a bare
+        // WKWebView — there is no second window to open. Load it here instead.
+        Web.HandlerChanged += (_, _) => { if (Web.Handler?.PlatformView is WebKit.WKWebView wk) wk.UIDelegate = _popups; };
+#endif
     }
+
+#if IOS
+    private readonly PopupDelegate _popups = new();
+
+    private sealed class PopupDelegate : WebKit.WKUIDelegate
+    {
+        public override WebKit.WKWebView? CreateWebView(WebKit.WKWebView webView, WebKit.WKWebViewConfiguration configuration,
+                                                        WebKit.WKNavigationAction navigationAction, WebKit.WKWindowFeatures windowFeatures)
+        {
+            if (navigationAction.TargetFrame == null || !navigationAction.TargetFrame.MainFrame)
+                webView.LoadRequest(navigationAction.Request);
+            return null;
+        }
+    }
+#endif
 
     public static async Task ShowAsync(LibraryViewModel vm)
     {
@@ -57,6 +77,8 @@ public partial class YouTubeBrowserPage : ContentPage
 
     private async void OnNavigated(object? sender, WebNavigatedEventArgs e) => await ProbeAsync();
 
+    private string? _lastHref;
+
     private async Task ProbeAsync()
     {
         if (_busy) return;
@@ -66,8 +88,19 @@ public partial class YouTubeBrowserPage : ContentPage
             href = Unquote(await Web.EvaluateJavaScriptAsync("location.href"));
             title = Unquote(await Web.EvaluateJavaScriptAsync("document.title"));
         }
-        catch { /* page still loading */ }
+        catch (Exception ex)
+        {
+            if (_lastHref != "<error>") Strunika.Core.Diagnostics.FileLog.Error("youtube browser probe", ex);
+            _lastHref = "<error>";
+        }
         var id = href == null ? null : _youtube.TryParseVideoId(href);
+        if (href != _lastHref)
+        {
+            // One line per page the person lands on: enough to see why the bar
+            // did or did not appear on a device.
+            Strunika.Core.Diagnostics.FileLog.Info($"youtube browser: {href ?? "<null>"} → {id ?? "no id"}");
+            _lastHref = href;
+        }
         if (id == _videoId)
         {
             if (id != null && !string.IsNullOrEmpty(title)) VideoTitle.Text = Clean(title);

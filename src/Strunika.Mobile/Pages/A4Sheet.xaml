@@ -26,7 +26,9 @@
                     <Label Text="−" FontSize="24" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnMinus" /></Border.GestureRecognizers>
                 </Border>
-                <Slider x:Name="A4Slider" Grid.Column="1" Minimum="430" Maximum="450" ValueChanged="OnSliderChanged" VerticalOptions="Center" />
+                <!-- Our slider, 0–20 over 430–450 Hz; whole hertz only -->
+                <controls:SeekBar x:Name="A4Slider" Grid.Column="1" Duration="20" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}"
+                                  Dragging="OnSliderDragging" DragCompleted="OnSliderDone" VerticalOptions="Center" />
                 <Border Grid.Column="2" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" StrokeShape="{t:Round 44, Min=44}" BackgroundColor="{t:Theme Surface2}" Padding="0">
                     <Label Text="+" FontSize="24" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnPlus" /></Border.GestureRecognizers>

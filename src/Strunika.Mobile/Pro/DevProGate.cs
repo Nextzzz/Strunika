@@ -2,16 +2,18 @@ namespace Strunika.Mobile.Pro;
 
 /// <summary>
 /// Development-time entitlement source: a toggle under "Expert settings".
-/// Always available on the Windows head (there is no StoreKit there);
-/// on iOS it exists only in DEBUG / TestFlight builds. The store-backed
-/// gate (M6) will be composed with this one — whichever says Pro wins.
+/// Always available on the Windows head (there is no StoreKit there); on
+/// iOS in DEBUG builds and, while the app is in development, in every build
+/// (STRUNIKA_DEVPRO, set in the csproj — TestFlight builds are Release). The
+/// store-backed gate (M6) will be composed with this one — whichever says
+/// Pro wins.
 /// </summary>
 public sealed class DevProGate : IProGate
 {
     private const string Key = "dev_pro_override";
 
     public static bool IsAvailable =>
-#if WINDOWS || DEBUG
+#if WINDOWS || DEBUG || STRUNIKA_DEVPRO
         true;
 #else
         false;

@@ -39,6 +39,13 @@ public static class MauiProgram
         // UISwitch's off track is a faint grey that vanishes on the warm surfaces:
         // paint it with the Separator token (rounded background under the track).
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("OffTrack", (handler, _) => SwitchPaint.Track(handler.PlatformView));
+        // UITextField draws its own rounded rectangle; our Entries sit inside
+        // styled Borders already (the same reason the Windows head strips it).
+        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("Flat", (handler, _) =>
+        {
+            handler.PlatformView.BorderStyle = UIKit.UITextBorderStyle.None;
+            handler.PlatformView.BackgroundColor = UIKit.UIColor.Clear;
+        });
 #elif WINDOWS
         builder.Services.AddSingleton<IMicrophoneSource, Platforms.Windows.WindowsMicrophoneSource>();
         builder.Services.AddSingleton<IAudioDecoder, Platforms.Windows.WindowsAudioDecoder>();

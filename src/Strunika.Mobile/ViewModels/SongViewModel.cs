@@ -70,6 +70,16 @@ public sealed partial class SongViewModel : ObservableObject
     public Song Song { get; }
     public bool IsPro => _pro.IsPro;
     public bool IsYouTube => Song.Source == SongSource.YouTube;
+
+    /// <summary>Whether the song's volume can be set from the page. A YouTube
+    /// player on iOS ignores setVolume — Apple leaves media volume to the
+    /// hardware buttons — so the slider gives way to a note there.</summary>
+    public bool VolumeAdjustable =>
+#if IOS
+        !IsYouTube;
+#else
+        true;
+#endif
     public string Title => Song.Title;
     public string Artist => string.IsNullOrWhiteSpace(Song.Artist) ? Loc.Get(Song.Source == SongSource.Recording ? "Library_Source_Recording" : "Library_Source_File") : Song.Artist;
     /// <summary>The key as it sounds now (transposition included).</summary>

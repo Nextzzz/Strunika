@@ -82,12 +82,14 @@ public static class SwitchPaint
     }
 
     /// <summary>UISwitch's off track is a faint grey that vanishes on the warm
-    /// surfaces: paint it with the Separator token.</summary>
+    /// surfaces: tint it with the Separator token. TintColor is the off-state
+    /// track colour (iOS 13+), so the switch animates it itself. A background
+    /// painted behind the control, as before, showed through the moment the
+    /// on colour started to fade and the turn-off looked like a jump.</summary>
     private static void Paint(UIKit.UISwitch view)
     {
-        view.BackgroundColor = Theme.Tokens.Current("Separator").ToPlatform();
-        view.Layer.CornerRadius = 15.5f;
-        view.ClipsToBounds = true;
+        view.TintColor = Theme.Tokens.Current("Separator").ToPlatform();
+        view.BackgroundColor = UIKit.UIColor.Clear;
     }
 #endif
 }

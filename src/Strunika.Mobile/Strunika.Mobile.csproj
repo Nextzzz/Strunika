@@ -52,7 +52,14 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 	</PropertyGroup>
 
-	<ItemGroup>
+		<!-- The Pro toggle under Expert settings stays in Release / TestFlight builds
+	     while the app is being developed: there is no store yet to grant Pro.
+	     Drop this constant (or build with -p:StrunikaDevPro=false) for the store. -->
+	<PropertyGroup Condition="'$(StrunikaDevPro)' != 'false'">
+		<DefineConstants>$(DefineConstants);STRUNIKA_DEVPRO</DefineConstants>
+	</PropertyGroup>
+
+<ItemGroup>
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" />
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#16110B" BaseSize="256,142" />
 		<MauiImage Include="Resources\Images\*" />

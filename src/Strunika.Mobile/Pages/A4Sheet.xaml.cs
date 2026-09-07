@@ -11,7 +11,7 @@ public partial class A4Sheet : ContentPage
     public A4Sheet()
     {
         InitializeComponent();
-        A4Slider.Value = AppSettings.A4Reference;
+        A4Slider.Value = AppSettings.A4Reference - A4Min;
         Render();
     }
 
@@ -22,12 +22,16 @@ public partial class A4Sheet : ContentPage
         hz = Math.Clamp(Math.Round(hz), 430, 450);
         if (Math.Abs(hz - AppSettings.A4Reference) < 0.5) return;
         AppSettings.A4Reference = hz;
-        if (Math.Abs(A4Slider.Value - hz) > 0.5) A4Slider.Value = hz;
+        if (Math.Abs(A4Slider.Value + A4Min - hz) > 0.5) A4Slider.Position = hz - A4Min;
         Haptics.Default.Selection();
         Render();
     }
 
-    private void OnSliderChanged(object? sender, ValueChangedEventArgs e) => Set(e.NewValue);
+    private const double A4Min = 430;
+
+    // The bar runs 0–20 for 430–450 Hz; a drag rounds to whole hertz as it goes.
+    private void OnSliderDragging(object? sender, double v) => Set(Math.Round(A4Min + v));
+    private void OnSliderDone(object? sender, double v) { Set(Math.Round(A4Min + v)); A4Slider.Position = AppSettings.A4Reference - A4Min; }
     private void OnMinus(object? sender, TappedEventArgs e) => Set(AppSettings.A4Reference - 1);
     private void OnPlus(object? sender, TappedEventArgs e) => Set(AppSettings.A4Reference + 1);
     private void OnReset(object? sender, TappedEventArgs e) => Set(440);
