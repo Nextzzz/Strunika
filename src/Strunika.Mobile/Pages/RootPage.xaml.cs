@@ -32,6 +32,14 @@ public partial class RootPage : ContentPage
         TabBar.Tabs.Add(new PillTab("songs", Loc.Get("Tab_Songs")));
         TabBar.Tabs.Add(new PillTab("sliders", Loc.Get("Tab_Settings")));
         TabBar.Refresh();
+#if IOS
+        // Content runs under the home indicator like the system's own floating
+        // tab bar (iOS 26 keeps that bar 21 pt off the screen's edge); the status
+        // bar inset stays. Everything the tabs lay out against the bottom keeps
+        // its distance from the bar: the bar moved down, and so did they.
+        Root.SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.None);
+        TabBar.Margin = new Thickness(14, 0, 14, SafeArea.FloatingBarMargin);
+#endif
 
         ApplyShade();
         AppSettings.Changed += (_, key) => { if (key == nameof(AppSettings.Theme)) ApplyShade(); };
@@ -71,9 +79,10 @@ public partial class RootPage : ContentPage
             view.IsVisible = true;
             await Task.Yield();                                   // let a layout pass happen
             await Task.Delay(60);
-            view.IsVisible = false;
             view.InputTransparent = false;
-            view.Opacity = 1;
+            // A tap during those 60 ms made this the current tab: leave it be.
+            // Hiding it here left the Songs tab blank until it was reopened.
+            if (_current != i) { view.IsVisible = false; view.Opacity = 1; }
             _warmed.Add(i);
             Strunika.Core.Diagnostics.FileLog.Info($"tab warm-up {i}: {clock.ElapsedMilliseconds} ms");
         }

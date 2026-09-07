@@ -50,9 +50,12 @@
             </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SongItem">
-                    <SwipeView>
+                    <!-- Reveal, not Execute: a swipe shows the button and a tap on it deletes,
+                         like Mail. Execute needed a drag across most of the row and a swipe
+                         started by accident while scrolling was already a deletion. -->
+                    <SwipeView Threshold="{t:Size 96}">
                         <SwipeView.RightItems>
-                            <SwipeItems Mode="Execute">
+                            <SwipeItems Mode="Reveal" SwipeBehaviorOnInvoked="Close">
                                 <SwipeItem Text="{loc:Str Library_Delete}" BackgroundColor="{t:Theme Error}"
                                            Command="{Binding DeleteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}"
                                            CommandParameter="{Binding .}" />
@@ -60,8 +63,10 @@
                         </SwipeView.RightItems>
 
                         <!-- The list spans the screen so the scroll indicator sits at the edge; the card keeps
-                             the page inset (a Grid, because item-root margins are dropped on Windows). -->
-                        <Grid Padding="20,0">
+                             the page inset (a Grid, because item-root margins are dropped on Windows). Opaque:
+                             the swipe item lies under the whole row on iOS and showed red through the gutters
+                             on both sides. -->
+                        <Grid Padding="20,0" BackgroundColor="{t:Theme Bg}">
                         <Border Style="{StaticResource Card}">
                             <!-- Windows/Mac only: right-click → Delete (SwipeView needs touch there). -->
                             <FlyoutBase.ContextFlyout>
