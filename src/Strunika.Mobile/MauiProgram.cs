@@ -39,6 +39,23 @@ public static class MauiProgram
         // UISwitch's off track is a faint grey that vanishes on the warm surfaces:
         // paint it with the Separator token (rounded background under the track).
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("OffTrack", (handler, _) => SwitchPaint.Track(handler.PlatformView));
+        // MAUI repaints the track's own view the instant IsOn changes, over the
+        // switch's animation: turning on looked like a jump. The state change
+        // is left to the switch and the track colour is animated alongside.
+        Microsoft.Maui.Handlers.SwitchHandler.Mapper.ModifyMapping(nameof(ISwitch.IsOn), (handler, view, _) =>
+        {
+            handler.PlatformView.SetState(view.IsOn, animated: true);
+            SwitchPaint.Paint(handler.PlatformView, animated: true);
+        });
+        Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping(nameof(ISwitch.TrackColor), (handler, _) => SwitchPaint.Paint(handler.PlatformView, animated: false));
+        // Lists run edge to edge under the floating bar; UIKit would otherwise
+        // add the home-indicator inset to their content on top of the footer
+        // that already clears the bar.
+        Microsoft.Maui.Controls.Handlers.Items.CollectionViewHandler.Mapper.AppendToMapping("EdgeToEdge", (handler, _) =>
+        {
+            if (handler.PlatformView is UIKit.UIScrollView scroll)
+                scroll.ContentInsetAdjustmentBehavior = UIKit.UIScrollViewContentInsetAdjustmentBehavior.Never;
+        });
         // UITextField draws its own rounded rectangle; our Entries sit inside
         // styled Borders already (the same reason the Windows head strips it).
         Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("Flat", (handler, _) =>

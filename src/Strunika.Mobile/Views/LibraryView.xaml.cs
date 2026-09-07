@@ -6,6 +6,34 @@ namespace Strunika.Mobile.Views;
 
 public partial class LibraryView : ContentView
 {
+    /// <summary>Which cards are past the delete line, so the buzz fires once per crossing.</summary>
+    private readonly HashSet<SwipeView> _pastLine = new();
+
+    private void OnSwipeChanging(object? sender, SwipeChangingEventArgs e)
+    {
+        if (sender is not SwipeView view) return;
+        bool past = Math.Abs(e.Offset) >= Theme.Metrics.Instance.SwipeThreshold;
+        bool was = _pastLine.Contains(view);
+        if (past == was) return;
+        if (past) _pastLine.Add(view); else _pastLine.Remove(view);
+        // The line is crossed: a buzz, whichever way (letting go now deletes / no longer deletes).
+        try { HapticFeedback.Default.Perform(HapticFeedbackType.LongPress); } catch { /* no engine */ }
+    }
+
+    private void OnSwipeEnded(object? sender, SwipeEndedEventArgs e)
+    {
+        if (sender is SwipeView view) _pastLine.Remove(view);
+    }
+
+    /// <summary>A card scrolled under the home indicator must not pad itself by
+    /// it (the list runs edge to edge under the floating bar).</summary>
+    private void OnCardLoaded(object? sender, EventArgs e)
+    {
+#if IOS
+        if (sender is Element card) Theme.SafeArea.IgnoreBelow(card);
+#endif
+    }
+
     public LibraryView()
     {
         InitializeComponent();

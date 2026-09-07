@@ -50,22 +50,33 @@
             </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SongItem">
-                    <!-- Reveal, not Execute: a swipe shows the button and a tap on it deletes,
-                         like Mail. Execute needed a drag across most of the row and a swipe
-                         started by accident while scrolling was already a deletion. -->
-                    <SwipeView Threshold="{t:Size 96}">
+                    <!-- The card slides as far as the finger takes it; past 35 % of the row
+                         (Metrics.SwipeThreshold) letting go deletes, and crossing that line
+                         buzzes, either way (user decision 2026-09-07). The red under the card
+                         is a rounded slab the shape of the card, inset like it — never a strip
+                         from the screen's edge — wide enough to stay under the card however far
+                         it goes; the swipe can go as far as the slab is wide. -->
+                    <SwipeView Threshold="{Binding SwipeThreshold, Source={x:Static t:Metrics.Instance}}"
+                               SwipeChanging="OnSwipeChanging" SwipeEnded="OnSwipeEnded" Loaded="OnCardLoaded">
                         <SwipeView.RightItems>
-                            <SwipeItems Mode="Reveal" SwipeBehaviorOnInvoked="Close">
-                                <SwipeItem Text="{loc:Str Library_Delete}" BackgroundColor="{t:Theme Error}"
-                                           Command="{Binding DeleteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}"
-                                           CommandParameter="{Binding .}" />
+                            <SwipeItems Mode="Execute">
+                                <SwipeItemView Command="{Binding DeleteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}"
+                                               CommandParameter="{Binding .}">
+                                    <Grid Padding="0,0,20,0" WidthRequest="1000" HorizontalOptions="End">
+                                        <Border BackgroundColor="{t:Theme Error}" StrokeThickness="0" StrokeShape="RoundRectangle 17" Padding="0,0,22,0">
+                                            <HorizontalStackLayout Spacing="8" HorizontalOptions="End" VerticalOptions="Center">
+                                                <controls:IconView Name="trash" Size="{t:Size 20}" Color="White" VerticalOptions="Center" />
+                                                <Label Text="{loc:Str Library_Delete}" FontSize="15" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </Border>
+                                    </Grid>
+                                </SwipeItemView>
                             </SwipeItems>
                         </SwipeView.RightItems>
 
                         <!-- The list spans the screen so the scroll indicator sits at the edge; the card keeps
-                             the page inset (a Grid, because item-root margins are dropped on Windows). Opaque:
-                             the swipe item lies under the whole row on iOS and showed red through the gutters
-                             on both sides. -->
+                             the page inset (a Grid, because item-root margins are dropped on Windows). Opaque,
+                             so nothing shows through the gutters while the card slides. -->
                         <Grid Padding="20,0" BackgroundColor="{t:Theme Bg}">
                         <Border Style="{StaticResource Card}">
                             <!-- Windows/Mac only: right-click → Delete (SwipeView needs touch there). -->
@@ -160,7 +171,7 @@
 
         <!-- Empty state -->
         <VerticalStackLayout VerticalOptions="Center" Spacing="10" Padding="36,160,36,104" IsVisible="{Binding IsEmpty}">
-            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" HeightRequest="{t:Size 64, Min=44}" />
+            <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" Bleed="12" HeightRequest="{t:Size 64, Min=44, Plus=24}" Margin="-12" />
             <Label Style="{StaticResource Title2}" Text="{loc:Str Library_Empty_Title}" HorizontalTextAlignment="Center" Margin="0,8,0,0" />
             <Label Style="{StaticResource Subhead}" Text="{loc:Str Library_Empty_Body}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>

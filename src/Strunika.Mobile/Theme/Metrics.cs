@@ -53,6 +53,10 @@ public sealed class Metrics : INotifyPropertyChanged
     public double ShortestSide { get; private set; }
     public double Width { get; private set; }
 
+    /// <summary>How far a song card is swiped before letting go deletes it:
+    /// 35 % of the window (user decision 2026-09-07).</summary>
+    public double SwipeThreshold => Width * 0.35;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>A chrome size for code-behind: <c>Metrics.Instance.Size(104)</c>.</summary>
@@ -103,6 +107,7 @@ public sealed class Metrics : INotifyPropertyChanged
         Strunika.Core.Diagnostics.FileLog.Info($"metrics: {width:0}×{height:0} pt → {cls} (scale {scale}, hero {hero}, inset {side:0}), listeners {listeners}");
         Raise(nameof(ShortestSide));
         Raise(nameof(Width));
+        Raise(nameof(SwipeThreshold));
         Raise(nameof(ContentInset));
         Raise(nameof(ContentInsetPlus));
         if (!changed) return;

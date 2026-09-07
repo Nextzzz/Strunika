@@ -35,9 +35,17 @@ public partial class RootPage : ContentPage
 #if IOS
         // Content runs under the home indicator like the system's own floating
         // tab bar (iOS 26 keeps that bar 21 pt off the screen's edge); the status
-        // bar inset stays. Everything the tabs lay out against the bottom keeps
-        // its distance from the bar: the bar moved down, and so did they.
+        // bar inset stays. Every layout that reaches the screen's bottom pads
+        // itself by the safe area unless told not to (MAUI 10, and UIKit hands
+        // each view its own share of the inset), so the tab bar's holder and
+        // each tab's root layout are told; the tabs' 104 pt bottom paddings
+        // then clear the bar as before. The legacy Page.UseSafeArea is gone
+        // from the XAML: it still pads the whole page and hid all of this.
         Root.SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.None);
+        TabHolder.SafeAreaEdges = SafeAreaEdges.None;
+        BottomShade.SafeAreaEdges = SafeAreaEdges.None;
+        foreach (var tab in new View[] { Tuner, Live, Library, Settings })
+            SafeArea.IgnoreBelow(tab);
         TabBar.Margin = new Thickness(14, 0, 14, SafeArea.FloatingBarMargin);
 #endif
 

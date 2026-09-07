@@ -6,7 +6,6 @@
              xmlns:views="clr-namespace:Strunika.Mobile.Views"
              xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
              x:Class="Strunika.Mobile.Pages.RootPage"
-             ios:Page.UseSafeArea="True"
              NavigationPage.HasNavigationBar="False">
 
     <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}">
@@ -19,7 +18,7 @@
 
         <!-- The bar's bottom margin is set in code: it is measured from the
              screen's edge, not the safe area (see SafeArea.FloatingBarMargin). -->
-        <Grid VerticalOptions="End" Margin="{t:ContentInset}">
+        <Grid x:Name="TabHolder" VerticalOptions="End" Margin="{t:ContentInset}">
         <controls:PillTabBar x:Name="TabBar"
                              VerticalOptions="End"
                              Margin="14,0,14,22"

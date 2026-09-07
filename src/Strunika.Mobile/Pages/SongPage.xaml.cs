@@ -58,7 +58,12 @@ public partial class SongPage : ContentPage
         // screen's edge. The top keeps the status-bar inset.
         Root.SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.None);
         Body.SafeAreaEdges = SafeAreaEdges.None;
-        Body.Padding = new Thickness(0, 8, 0, Theme.SafeArea.Bottom + 4);
+        Transport.SafeAreaEdges = SafeAreaEdges.None;             // it dips into the inset: no padding of its own
+        Theme.SafeArea.IgnoreBelow(MoreSheet);                    // the sheet pads for the indicator itself (below)
+        // The play button's bottom lands 40 pt off the screen's edge: 19 pt clear
+        // of the home indicator's 21 pt zone. (The page's legacy UseSafeArea is
+        // gone from the XAML; it padded everything and hid this.)
+        Body.Padding = new Thickness(0, 8, 0, Math.Max(0, Theme.SafeArea.Bottom - 10));
         MoreSheet.Padding = new Thickness(20, 10, 20, 24 + Theme.SafeArea.Bottom);
 #endif
 
