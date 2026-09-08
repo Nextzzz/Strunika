@@ -43,6 +43,13 @@ public partial class LibraryView : ContentView
 #endif
     }
 
+    /// <summary>A recycled card shows another song: whatever the last one was
+    /// doing at the delete line is forgotten.</summary>
+    private void OnCardRebound(object? sender, EventArgs e)
+    {
+        if (sender is SwipeView view) _pastLine.Remove(view);
+    }
+
     public LibraryView()
     {
         InitializeComponent();
@@ -62,48 +69,56 @@ public partial class LibraryView : ContentView
                         LayoutQuickRow(vm);
                 };
                 LayoutQuickRow(vm);
-                Header.SizeChanged += (_, _) => FitHeader();
-                // A page turn or a filter starts at the top of the list — header
-                // included, which ScrollTo(item) cannot express (Controls/ScrollHelper)
-                // — once the new items are laid out, not before. And whenever the
-                // list goes from nothing to something (a filter emptied it, the next
-                // one fills it) the header spacer is fitted again and the list put at
-                // its top: the platform list laid the first card out as if there were
-                // no header and left it under the pinned one, out of reach.
-                vm.PageChanged += (_, _) => Dispatcher.Dispatch(() => { FitHeader(); Controls.ScrollHelper.ToTop(List); });
-                int had = vm.Items.Count;
-                vm.Items.CollectionChanged += (_, _) =>
-                {
-                    int now = vm.Items.Count;
-                    if (had == 0 && now > 0) Dispatcher.Dispatch(() => { FitHeader(); Controls.ScrollHelper.ToTop(List); });
-                    had = now;
-                };
+                // A page turn, a filter, a sort or a search starts at the top of the
+                // list; nothing else moves it (the list keeps its own offset when
+                // songs come and go, and the page is patched in place, never
+                // rebuilt — LibraryViewModel.ApplyPage).
+                vm.ListReset += (_, _) => ScrollToTop();
                 ApplyShade();
                 Services.AppSettings.Changed += (_, key) => { if (key == nameof(Services.AppSettings.Theme)) ApplyShade(); };
                 if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, _) => ApplyShade();
                 // Width is known only after the first layout; labels change with the
                 // language and sizes with the size class (Theme.Refit covers both).
                 QuickRow.SizeChanged += (_, _) => LayoutQuickRow(vm);
-                Theme.Refit.Watch(this, () => { LayoutQuickRow(vm); FitHeader(); });
+                Theme.Refit.Watch(this, () => LayoutQuickRow(vm));
             }
         };
+#if IOS
+        // The footer runs under the home indicator like the cards; padded by it,
+        // it would grow at the end of every scroll and the list would jump.
+        Theme.SafeArea.IgnoreBelow(Footer);
+#endif
     }
 
     private LibraryViewModel? Vm => BindingContext as LibraryViewModel;
 
-    /// <summary>The list scrolls under the pinned header: its spacer and the
-    /// shade follow the header's height (quick row, language, search).</summary>
-    private void FitHeader()
+    /// <summary>The first card to the top of the list, once the new items are in
+    /// place. There is no header inside the list any more, so the first item's
+    /// top is the top. With nothing to show the list is at its top already.</summary>
+    private void ScrollToTop()
     {
-        if (Header.Height <= 0) return;
-        // The room under the pinned header is the list's own top inset, so the
-        // cards scroll under the header and the inset can never go missing. It
-        // was a spacer item at the head of the list before, and the platform
-        // list dropped it whenever the list emptied and filled again (a filter
-        // with nothing in it, then back): the first card sat under the header,
-        // out of reach.
-        Controls.ScrollHelper.SetTopInset(List, Header.Height + 14);
-        HeaderShade.Margin = new Thickness(0, Header.Height, 0, 0);
+        Dispatcher.Dispatch(() =>
+        {
+            if (Vm is { Items.Count: > 0 })
+                List.ScrollTo(0, position: ScrollToPosition.Start, animate: false);
+            SetShade(0);
+        });
+    }
+
+    /// <summary>The shade under the header is there only while cards are under
+    /// it: it fades in over the first shade-height of scrolling, as the hairline
+    /// under a large title does on iOS, so the first card at rest is untouched.</summary>
+    private void OnListScrolled(object? sender, ItemsViewScrolledEventArgs e) => SetShade(e.VerticalOffset);
+
+    private double _shade = -1;
+
+    private void SetShade(double offset)
+    {
+        double depth = Math.Max(1, HeaderShade.Height > 0 ? HeaderShade.Height : Theme.Metrics.Instance.Size(28));
+        double shade = Math.Clamp(offset / depth, 0, 1);
+        if (Math.Abs(shade - _shade) < 0.01) return;      // one native write per visible step, not per scroll event
+        _shade = shade;
+        HeaderShade.Opacity = shade;
     }
 
     /// <summary>Short shade under the header: page background dissolving over 28 pt.</summary>

@@ -77,14 +77,10 @@ public static class MauiProgram
         // The knob keeps the system's own look: a tinted knob took its colour
         // only at the end of the turn-on animation and snapped there.
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping(nameof(ISwitch.ThumbColor), (handler, _) => handler.PlatformView.ThumbTintColor = null);
-        // Lists run edge to edge under the floating bar; UIKit would otherwise
-        // add the home-indicator inset to their content on top of the footer
-        // that already clears the bar.
-        Microsoft.Maui.Controls.Handlers.Items.CollectionViewHandler.Mapper.AppendToMapping("EdgeToEdge", (handler, _) =>
-        {
-            if (handler.PlatformView is UIKit.UIScrollView scroll)
-                scroll.ContentInsetAdjustmentBehavior = UIKit.UIScrollViewContentInsetAdjustmentBehavior.Never;
-        });
+        // Lists need no mapping to run edge to edge under the floating bar: the
+        // handler in use on iOS (MAUI 10's CollectionViewHandler2) already tells
+        // UIKit not to inset their content by the safe area. A mapping on the old
+        // handler's mapper used to sit here for that and never ran.
         // UITextField draws its own rounded rectangle; our Entries sit inside
         // styled Borders already (the same reason the Windows head strips it).
         Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("Flat", (handler, _) =>

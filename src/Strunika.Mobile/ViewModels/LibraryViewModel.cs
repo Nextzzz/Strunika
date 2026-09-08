@@ -45,6 +45,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             foreach (var item in _all) item.Refresh();
             OnPropertyChanged(nameof(SortLabel));
+            if (NoMatches) NoMatchesText = NoMatchesFor(Filter, Query);
         };
     }
 
@@ -59,6 +60,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private bool _isEmpty;
     [ObservableProperty] private bool _hasSongs;
     [ObservableProperty] private bool _loaded;
+
+    /// <summary>There are songs, but none passes the filter or the search; the
+    /// text says which (a blank list read as the songs having vanished).</summary>
+    [ObservableProperty] private bool _noMatches;
+    [ObservableProperty] private string _noMatchesText = "";
 
     public bool FoldersLocked => !_pro.Has(Feature.Folders);
 
@@ -141,11 +147,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Something to tell the user (localised text).</summary>
     public event EventHandler<string>? Message;
 
-    partial void OnQueryChanged(string value) { Page = 0; Rebuild(); }
+    // A search or a filter is a new list: it starts at the top, like a page turn.
+    partial void OnQueryChanged(string value) { Page = 0; Rebuild(); ListReset?.Invoke(this, EventArgs.Empty); }
 
-    // A filter is a new list: it starts at the top, like a page turn (the old
-    // offset left the first card under the header).
-    partial void OnFilterChanged(int value) { Page = 0; Rebuild(); PageChanged?.Invoke(this, EventArgs.Empty); }
+    partial void OnFilterChanged(int value) { Page = 0; Rebuild(); ListReset?.Invoke(this, EventArgs.Empty); }
 
     /// <summary>
     /// The first page, fetched while the launch screen is still up, so opening
@@ -190,10 +195,18 @@ public sealed partial class LibraryViewModel : ObservableObject
                     song.Error = "Interrupted";
                     await _songs.UpdateAsync(song);
                 }
+            // One item per song, whatever the store says; a song the preload
+            // already shows keeps its card (a new card for the same song would
+            // be a delete and an insert on screen).
+            var cards = _all.ToDictionary(i => i.Id);
             _all.Clear();
             var seen = new HashSet<int>();
             foreach (var song in songs)
-                if (seen.Add(song.Id)) _all.Add(new SongItem(song));   // one item per song, whatever the store says
+            {
+                if (!seen.Add(song.Id)) continue;
+                if (cards.TryGetValue(song.Id, out var card)) { card.Update(song); _all.Add(card); }
+                else _all.Add(new SongItem(song));
+            }
         }
         catch (Exception ex)
         {
@@ -224,6 +237,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         Page = 0;
         OnPropertyChanged(nameof(SortLabel));
         Rebuild();
+        ListReset?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Every song that passes the filters, in order — the page is a window on this.</summary>
@@ -238,28 +252,45 @@ public sealed partial class LibraryViewModel : ObservableObject
     public bool CanPageNext => Page + 1 < PageCount;
 
     [RelayCommand]
-    private void PreviousPage() { if (CanPagePrevious) { Page--; ApplyPage(); PageChanged?.Invoke(this, EventArgs.Empty); } }
+    private void PreviousPage() { if (CanPagePrevious) { Page--; ApplyPage(); ListReset?.Invoke(this, EventArgs.Empty); } }
 
     [RelayCommand]
-    private void NextPage() { if (CanPageNext) { Page++; ApplyPage(); PageChanged?.Invoke(this, EventArgs.Empty); } }
+    private void NextPage() { if (CanPageNext) { Page++; ApplyPage(); ListReset?.Invoke(this, EventArgs.Empty); } }
 
     private void ApplyPage()
     {
-        var page = _matching.Skip(Page * PageSize).Take(PageSize).ToList();
-        // Cheap diff: rebuild only when the page actually differs.
-        if (!page.SequenceEqual(Items))
-        {
-            Items.Clear();
-            foreach (var item in page) Items.Add(item);
-        }
+        Patch(Items, _matching.Skip(Page * PageSize).Take(PageSize).ToList());
         OnPropertyChanged(nameof(PageLabel));
         OnPropertyChanged(nameof(CanPagePrevious));
         OnPropertyChanged(nameof(CanPageNext));
     }
 
-    /// <summary>Raised only when the reader turns a page, so the view scrolls
-    /// back to the top; a rebuild behind their back never moves the list.</summary>
-    public event EventHandler? PageChanged;
+    /// <summary>Brings the shown items to <paramref name="target"/> with the
+    /// fewest changes: cards that left are removed, new ones inserted where they
+    /// go, the rest moved into order. Clearing and refilling — the old way —
+    /// was a reload plus ten animated inserts on iOS and ten scroll requests on
+    /// Windows, it lost the scroll offset and every card's swipe state, and it
+    /// left the platform list in half-laid-out states: cards under the header,
+    /// cards off the screen until touched.</summary>
+    private static void Patch(ObservableCollection<SongItem> items, List<SongItem> target)
+    {
+        var wanted = new HashSet<SongItem>(target);
+        for (int i = items.Count - 1; i >= 0; i--)
+            if (!wanted.Contains(items[i])) items.RemoveAt(i);
+        for (int i = 0; i < target.Count; i++)
+        {
+            int at = items.IndexOf(target[i]);            // -1 or ≥ i: everything before i is settled
+            if (at == i) continue;
+            if (at < 0) items.Insert(i, target[i]);
+            else items.Move(at, i);
+        }
+    }
+
+    /// <summary>The reader asked for another list — a page, a filter, a sort, a
+    /// search — so the view starts at its top. A rebuild behind their back (a
+    /// song finished, one was added or deleted) never raises it: the list stays
+    /// where they left it.</summary>
+    public event EventHandler? ListReset;
 
     private void Rebuild()
     {
@@ -283,7 +314,15 @@ public sealed partial class LibraryViewModel : ObservableObject
         ApplyPage();
         HasSongs = _all.Count > 0;
         IsEmpty = Loaded && _all.Count == 0;
+        NoMatches = HasSongs && _matching.Count == 0;
+        NoMatchesText = NoMatches ? NoMatchesFor(Filter, q) : "";
     }
+
+    private static string NoMatchesFor(int filter, string query) =>
+        query.Trim().Length > 0 ? Loc.Get("Library_NoResults")
+        : filter == FilterFavourites ? Loc.Get("Library_NoFavourites")
+        : filter == FilterFolders ? Loc.Get("Library_NoFolders")
+        : "";
 
     // ---- adding songs -------------------------------------------------
 

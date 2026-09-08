@@ -8,17 +8,24 @@
              x:Class="Strunika.Mobile.Views.LibraryView"
              x:DataType="vm:LibraryViewModel">
 
-    <Grid Padding="0,8,0,0" Margin="{t:ContentInset}">
+    <!-- The header takes the first row and the list the rest: the list starts
+         where the header ends, so no card can ever sit under it. A short shade
+         at the top of the list row fades in as the cards scroll under it
+         (code-behind), like the hairline under a large title on iOS. -->
+    <Grid Padding="0,8,0,0" Margin="{t:ContentInset}" RowDefinitions="Auto,*">
 
-
-        <!-- Cards -->
-        <CollectionView x:Name="List" ItemsSource="{Binding Items}"
-                        SelectionMode="None" IsVisible="{Binding HasSongs}" VerticalScrollBarVisibility="Default">
+        <!-- Cards. KeepScrollOffset: the list never moves on its own when items
+             come and go (MAUI's default scrolls the first item into view on
+             every add, which on Windows raced the app's own scroll to the top);
+             a page turn, a filter, a sort or a search scrolls it (code-behind). -->
+        <CollectionView x:Name="List" Grid.Row="1" ItemsSource="{Binding Items}"
+                        SelectionMode="None" IsVisible="{Binding HasSongs}" VerticalScrollBarVisibility="Default"
+                        ItemsUpdatingScrollMode="KeepScrollOffset" Scrolled="OnListScrolled">
             <CollectionView.ItemsLayout>
                 <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
             </CollectionView.ItemsLayout>
             <CollectionView.Footer>
-                <VerticalStackLayout Spacing="0">
+                <VerticalStackLayout x:Name="Footer" Spacing="0">
                     <!-- Ten songs to a page; the filters above still search the whole library. -->
                     <Grid ColumnDefinitions="Auto,*,Auto" Padding="20,10,20,0" ColumnSpacing="10" IsVisible="{Binding HasPages}">
                         <Border Style="{StaticResource Chip}" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" Padding="0">
@@ -55,7 +62,7 @@
                          the shape of the card, inset like it — never a strip from the screen's
                          edge — wide enough to stay under the card however far it goes. -->
                     <SwipeView Threshold="1000"
-                               SwipeChanging="OnSwipeChanging" SwipeEnded="OnSwipeEnded" Loaded="OnCardLoaded">
+                               SwipeChanging="OnSwipeChanging" SwipeEnded="OnSwipeEnded" Loaded="OnCardLoaded" BindingContextChanged="OnCardRebound">
                         <SwipeView.RightItems>
                             <SwipeItems Mode="Reveal">
                                 <SwipeItemView Command="{Binding DeleteCommand, Source={RelativeSource AncestorType={x:Type vm:LibraryViewModel}}}"
@@ -168,17 +175,20 @@
         </CollectionView>
 
         <!-- Empty state -->
-        <VerticalStackLayout VerticalOptions="Center" Spacing="10" Padding="36,160,36,104" IsVisible="{Binding IsEmpty}">
+        <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" Spacing="10" Padding="36,0,36,104" IsVisible="{Binding IsEmpty}">
             <controls:WaveMark Color="{t:Theme Accent}" GlowColor="{t:Theme Glow}" Bleed="26" HeightRequest="{t:Size 64, Min=44, Plus=52}" Margin="-26" />
             <Label Style="{StaticResource Title2}" Text="{loc:Str Library_Empty_Title}" HorizontalTextAlignment="Center" Margin="0,8,0,0" />
             <Label Style="{StaticResource Subhead}" Text="{loc:Str Library_Empty_Body}" HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
 
-        <Border x:Name="HeaderShade" VerticalOptions="Start" HeightRequest="{t:Size 28}" Margin="0,240,0,0" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
-        <!-- Pinned header over the list (declared last = drawn on top): opaque page
-             background, then a short shade below it so cards dissolve as they scroll under.
-             The list's header spacer follows this block's height (code-behind). -->
-        <Grid x:Name="Header" VerticalOptions="Start" Padding="20,0" BackgroundColor="{t:Theme Bg}" RowDefinitions="44,Auto,Auto,Auto" RowSpacing="0">
+        <!-- A filter or a search with nothing in it says so (the list itself is blank then). -->
+        <Label Grid.Row="1" Style="{StaticResource Subhead}" Text="{Binding NoMatchesText}" IsVisible="{Binding NoMatches}"
+               HorizontalTextAlignment="Center" VerticalOptions="Center" Padding="36,0,36,104" InputTransparent="True" />
+
+        <Border x:Name="HeaderShade" Grid.Row="1" VerticalOptions="Start" HeightRequest="{t:Size 28}" Opacity="0" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+
+        <!-- Header: title, quick ways of adding, search, filters. 14 pt under it before the first card. -->
+        <Grid x:Name="Header" Padding="20,0,20,14" RowDefinitions="44,Auto,Auto,Auto" RowSpacing="0">
 
         <!-- Title + add -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto">

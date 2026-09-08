@@ -111,6 +111,15 @@
   <data name="Library_Empty_Title" xml:space="preserve">
     <value>Add your first song</value>
   </data>
+  <data name="Library_NoFavourites" xml:space="preserve">
+    <value>No favourites yet — tap ★ on a song</value>
+  </data>
+  <data name="Library_NoFolders" xml:space="preserve">
+    <value>No songs in folders yet</value>
+  </data>
+  <data name="Library_NoResults" xml:space="preserve">
+    <value>Nothing found</value>
+  </data>
   <data name="Library_Err_File" xml:space="preserve">
     <value>Couldn’t read the file</value>
   </data>
