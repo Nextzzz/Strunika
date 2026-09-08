@@ -24,6 +24,34 @@ public static class ScrollHelper
         catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("scroll to top", ex); }
     }
 
+    /// <summary>Room at the top of the list that scrolls with its content — for
+    /// a header pinned over the list. A content inset on iOS; the list's own
+    /// padding on Windows (it lives inside the scroller, so it scrolls too).</summary>
+    public static void SetTopInset(CollectionView view, double inset)
+    {
+        void Apply()
+        {
+            try
+            {
+#if WINDOWS
+                if (view.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.ListViewBase list)
+                    list.Padding = new Microsoft.UI.Xaml.Thickness(0, inset, 0, 0);
+#elif IOS
+                if (view.Handler?.PlatformView is UIKit.UIScrollView scroll)
+                {
+                    bool atTop = scroll.ContentOffset.Y <= -scroll.ContentInset.Top + 1;
+                    scroll.ContentInset = new UIKit.UIEdgeInsets((nfloat)inset, 0, 0, 0);
+                    scroll.VerticalScrollIndicatorInsets = new UIKit.UIEdgeInsets((nfloat)inset, 0, 0, 0);
+                    if (atTop) scroll.SetContentOffset(new CoreGraphics.CGPoint(0, -inset), false);
+                }
+#endif
+            }
+            catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("list inset", ex); }
+        }
+        if (view.Handler != null) Apply();
+        else view.HandlerChanged += (_, _) => Apply();
+    }
+
 #if WINDOWS
     private static Microsoft.UI.Xaml.Controls.ScrollViewer? FindScroller(Microsoft.UI.Xaml.DependencyObject root)
     {

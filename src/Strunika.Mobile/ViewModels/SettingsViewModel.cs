@@ -96,6 +96,18 @@ public partial class SettingsViewModel : ObservableObject
         set { AppSettings.Expert = value; OnPropertyChanged(); }
     }
 
+    /// <summary>How much earlier the metronome's tick is placed, by ear (ms):
+    /// the player and the device add a delay of their own between the beat
+    /// and the sound. Expert settings (user decision 2026-09-08).</summary>
+    public int ClickOffsetMs
+    {
+        get => AppSettings.ClickOffsetMs;
+        set { AppSettings.ClickOffsetMs = value; OnPropertyChanged(); OnPropertyChanged(nameof(ClickOffsetText)); }
+    }
+    public string ClickOffsetText => string.Format(Loc.Get("Song_ClickOffset_Value"), ClickOffsetMs);
+    public void ClickEarlier() => ClickOffsetMs = Math.Min(150, ClickOffsetMs + 5);
+    public void ClickLater() => ClickOffsetMs = Math.Max(-150, ClickOffsetMs - 5);
+
     public bool DevProAvailable => DevProGate.IsAvailable;
 
     public bool DevWindowAvailable => DevWindow.IsAvailable;

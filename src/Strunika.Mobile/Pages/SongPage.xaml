@@ -283,26 +283,6 @@
                     <controls:IconView Name="vol" Size="{t:Size 18}" Color="{t:Theme Dim}" VerticalOptions="Center" Margin="2,0,0,0" />
                     <controls:SeekBar Grid.Column="1" Duration="1" Value="{Binding ClickVolume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,10,0" />
                 </Grid>
-                <!-- How much earlier the tick goes, by ear: the player and the device add
-                     a delay of their own between the beat and the sound. -->
-                <Grid ColumnDefinitions="*,Auto" HeightRequest="{t:Size 52, Min=44}" IsVisible="{Binding Metronome}">
-                    <VerticalStackLayout Spacing="1" VerticalOptions="Center">
-                        <Label Text="{loc:Str Song_ClickOffset}" FontSize="16" TextColor="{t:Theme TextPri}" />
-                        <Label Text="{loc:Str Song_ClickOffset_Hint}" Style="{StaticResource Footnote}" />
-                    </VerticalStackLayout>
-                    <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
-                        <Border WidthRequest="{t:Size 38}" HeightRequest="{t:Size 38}" StrokeShape="{t:Round 38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0">
-                            <controls:IconView Name="minus" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding ClickLaterCommand}" /></Border.GestureRecognizers>
-                        </Border>
-                        <Label Text="{Binding ClickOffsetText}" FontFamily="Display" FontSize="17" TextColor="{t:Theme AccentText}" HorizontalTextAlignment="Center" WidthRequest="{t:Size 64}" VerticalOptions="Center" />
-                        <Border WidthRequest="{t:Size 38}" HeightRequest="{t:Size 38}" StrokeShape="{t:Round 38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0">
-                            <controls:IconView Name="plus" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding ClickEarlierCommand}" /></Border.GestureRecognizers>
-                        </Border>
-                    </HorizontalStackLayout>
-                </Grid>
-
                 <!-- Volume (for a YouTube song on iOS this is the device's own volume) -->
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 52, Min=44}">
                     <controls:IconView Name="vol" Size="{t:Size 22}" Color="{t:Theme TextSec}" VerticalOptions="Center" />

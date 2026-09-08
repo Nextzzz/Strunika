@@ -131,6 +131,25 @@
                             <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_Expert}" />
                             <Switch Grid.Column="1" IsToggled="{Binding Expert}" VerticalOptions="Center" />
                         </Grid>
+                        <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" IsVisible="{Binding Expert}" />
+                        <!-- The metronome's tick lead, by ear: plus if the tick sounds late, minus if early. -->
+                        <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto" IsVisible="{Binding Expert}">
+                            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                                <Label Style="{StaticResource RowLabel}" Text="{loc:Str Song_ClickOffset}" />
+                                <Label Style="{StaticResource Footnote}" Text="{loc:Str Song_ClickOffset_Hint}" />
+                            </VerticalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                <Border WidthRequest="{t:Size 38}" HeightRequest="{t:Size 38}" StrokeShape="{t:Round 38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                                    <controls:IconView Name="minus" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnClickLater" /></Border.GestureRecognizers>
+                                </Border>
+                                <Label Text="{Binding ClickOffsetText}" FontFamily="Display" FontSize="17" TextColor="{t:Theme AccentText}" HorizontalTextAlignment="Center" WidthRequest="{t:Size 64}" VerticalOptions="Center" />
+                                <Border WidthRequest="{t:Size 38}" HeightRequest="{t:Size 38}" StrokeShape="{t:Round 38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0">
+                                    <controls:IconView Name="plus" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnClickEarlier" /></Border.GestureRecognizers>
+                                </Border>
+                            </HorizontalStackLayout>
+                        </Grid>
                         <BoxView Style="{StaticResource SeparatorLine}" Margin="14,0,0,0" IsVisible="{Binding DevProAvailable}" />
                         <Grid Style="{StaticResource Row}" ColumnDefinitions="*,Auto" IsVisible="{Binding DevProAvailable}">
                             <Label Style="{StaticResource RowLabel}" Text="{loc:Str Settings_DevPro}" />

@@ -162,11 +162,7 @@ public sealed partial class SongViewModel : ObservableObject
     [ObservableProperty] private double _loopEnd = -1;
     [ObservableProperty] private double _volume = AppSettings.SongVolume;
     [ObservableProperty] private double _clickVolume = AppSettings.ClickVolume;
-    [ObservableProperty] private int _clickOffsetMs = AppSettings.ClickOffsetMs;
-    public string ClickOffsetText => string.Format(Loc.Get("Song_ClickOffset_Value"), ClickOffsetMs);
-    partial void OnClickOffsetMsChanged(int value) { AppSettings.ClickOffsetMs = value; OnPropertyChanged(nameof(ClickOffsetText)); }
-    [RelayCommand] private void ClickEarlier() => ClickOffsetMs = Math.Min(150, ClickOffsetMs + 5);
-    [RelayCommand] private void ClickLater() => ClickOffsetMs = Math.Max(-150, ClickOffsetMs - 5);
+
     [ObservableProperty] private bool _playerExpanded;
     [ObservableProperty] private bool _leftHanded = AppSettings.LeftHanded;
 
@@ -302,7 +298,7 @@ public sealed partial class SongViewModel : ObservableObject
             // then the start-up on top — audibly behind the beat squares.
             // The lead (set by ear) moves the tick earlier so it is heard on the
             // beat through whatever the player and the device add on the way.
-            double lead = ClickOffsetMs / 1000.0;
+            double lead = AppSettings.ClickOffsetMs / 1000.0;      // set under Expert settings
             double horizon = pos + (ClickLookahead + Math.Max(0, lead)) * Speed;
             while (_nextBeat < _beats.Length && _beats[_nextBeat] <= horizon)
             {

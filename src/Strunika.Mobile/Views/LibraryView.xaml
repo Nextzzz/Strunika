@@ -17,9 +17,6 @@
             <CollectionView.ItemsLayout>
                 <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
             </CollectionView.ItemsLayout>
-            <CollectionView.Header>
-                <BoxView x:Name="HeaderSpacer" HeightRequest="{t:Size 240, Min=44}" Color="Transparent" />
-            </CollectionView.Header>
             <CollectionView.Footer>
                 <VerticalStackLayout Spacing="0">
                     <!-- Ten songs to a page; the filters above still search the whole library. -->

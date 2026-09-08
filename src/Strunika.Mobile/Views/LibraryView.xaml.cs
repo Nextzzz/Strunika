@@ -95,7 +95,13 @@ public partial class LibraryView : ContentView
     private void FitHeader()
     {
         if (Header.Height <= 0) return;
-        HeaderSpacer.HeightRequest = Header.Height + 14;
+        // The room under the pinned header is the list's own top inset, so the
+        // cards scroll under the header and the inset can never go missing. It
+        // was a spacer item at the head of the list before, and the platform
+        // list dropped it whenever the list emptied and filled again (a filter
+        // with nothing in it, then back): the first card sat under the header,
+        // out of reach.
+        Controls.ScrollHelper.SetTopInset(List, Header.Height + 14);
         HeaderShade.Margin = new Thickness(0, Header.Height, 0, 0);
     }
 

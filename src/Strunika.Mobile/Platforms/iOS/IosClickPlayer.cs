@@ -60,16 +60,25 @@ public sealed class IosClickPlayer : IClickPlayer
 
     /// <summary>What lies between a sample being rendered at its scheduled
     /// time and it being heard: the engine's IO buffer (the render runs one
-    /// buffer ahead of the output) and the hardware's own output latency.</summary>
-    private static double OutputLatency()
+    /// buffer ahead of the output) and the hardware's own output latency.
+    /// Capped at 60 ms: with a video playing the session reported a buffer
+    /// long enough to put every tick "in the past", so none was scheduled
+    /// and all of them played at once, a frame's jitter apart; the lead under
+    /// Expert settings absorbs what the numbers do not say.</summary>
+    private double OutputLatency()
     {
         try
         {
             var session = AVAudioSession.SharedInstance();
-            return session.OutputLatency + session.IOBufferDuration;
+            double raw = session.OutputLatency + session.IOBufferDuration;
+            if (_latencyLogged++ < 2)
+                Strunika.Core.Diagnostics.FileLog.Info($"click latency: output {session.OutputLatency * 1000:0} ms, io buffer {session.IOBufferDuration * 1000:0} ms, node {_node.Latency * 1000:0} ms, presentation {_engine.OutputNode.PresentationLatency * 1000:0} ms");
+            return Math.Min(raw, 0.06);
         }
         catch { return 0; }
     }
+
+    private int _latencyLogged;
 
     /// <summary>The engine running and the node playing, on the mixable
     /// playback session; true when a tick can be scheduled.</summary>
