@@ -162,6 +162,15 @@ public sealed partial class SongViewModel : ObservableObject
     [ObservableProperty] private double _loopEnd = -1;
     [ObservableProperty] private double _volume = AppSettings.SongVolume;
     [ObservableProperty] private double _clickVolume = AppSettings.ClickVolume;
+    /// <summary>The tick lead lives on the song page, where it is heard, and
+    /// shows only with Expert settings on (user decision 2026-09-08).</summary>
+    [ObservableProperty] private int _clickOffsetMs = AppSettings.ClickOffsetMs;
+    public bool ShowClickOffset => Metronome && AppSettings.Expert;
+    public string ClickOffsetText => string.Format(Loc.Get("Song_ClickOffset_Value"), ClickOffsetMs);
+    partial void OnClickOffsetMsChanged(int value) { AppSettings.ClickOffsetMs = value; OnPropertyChanged(nameof(ClickOffsetText)); }
+    partial void OnMetronomeChanged(bool value) => OnPropertyChanged(nameof(ShowClickOffset));
+    [RelayCommand] private void ClickEarlier() => ClickOffsetMs = Math.Min(150, ClickOffsetMs + 5);
+    [RelayCommand] private void ClickLater() => ClickOffsetMs = Math.Max(-150, ClickOffsetMs - 5);
 
     [ObservableProperty] private bool _playerExpanded;
     [ObservableProperty] private bool _leftHanded = AppSettings.LeftHanded;

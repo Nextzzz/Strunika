@@ -62,9 +62,6 @@ public partial class SettingsView : ContentView
 
     private async void OnDictionaryTapped(object? sender, TappedEventArgs e) => await ChordDictionaryPage.OpenAsync();
 
-    private void OnClickEarlier(object? sender, TappedEventArgs e) => Vm?.ClickEarlier();
-    private void OnClickLater(object? sender, TappedEventArgs e) => Vm?.ClickLater();
-
     /// <summary>
     /// The page title comes first: it is a large display face and truncating it
     /// looks like a bug. If "Словник" will not fit beside it (a 13 mini), the chip
