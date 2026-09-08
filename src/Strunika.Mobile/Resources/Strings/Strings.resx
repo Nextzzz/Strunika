@@ -1,235 +1,666 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
-  <resheader name="version"><value>2.0</value></resheader>
-  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-
-  <data name="App_Name" xml:space="preserve"><value>Strunika</value></data>
-  <data name="Common_Start" xml:space="preserve"><value>Start</value></data>
-  <data name="Common_Done" xml:space="preserve"><value>Done</value></data>
-  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
-  <data name="Common_Stop" xml:space="preserve"><value>Stop</value></data>
-  <data name="Common_Listen" xml:space="preserve"><value>Listen</value></data>
-  <data name="Common_Soon" xml:space="preserve"><value>Coming soon</value></data>
-
-  <data name="Tab_Tuner" xml:space="preserve"><value>Tuner</value></data>
-  <data name="Tab_Live" xml:space="preserve"><value>Live</value></data>
-  <data name="Tab_Songs" xml:space="preserve"><value>Songs</value></data>
-  <data name="Tab_Settings" xml:space="preserve"><value>Settings</value></data>
-
-  <data name="Welcome_Tagline" xml:space="preserve"><value>Tuner · Live chords · Chords from songs</value></data>
-  <data name="Welcome_Language" xml:space="preserve"><value>Language</value></data>
-  <data name="Welcome_Theme" xml:space="preserve"><value>Theme</value></data>
-  <data name="Welcome_ChangeLater" xml:space="preserve"><value>You can change this any time in Settings</value></data>
-  <data name="Welcome_MicNote" xml:space="preserve"><value>We’ll ask for the microphone when you tap “Listen”</value></data>
-  <data name="Lang_Uk" xml:space="preserve"><value>Українська</value></data>
-  <data name="Lang_En" xml:space="preserve"><value>English</value></data>
-  <data name="Theme_System" xml:space="preserve"><value>System</value></data>
-  <data name="Theme_Dark" xml:space="preserve"><value>Dark</value></data>
-  <data name="Theme_Light" xml:space="preserve"><value>Light</value></data>
-
-  <data name="Tuner_Listening" xml:space="preserve"><value>Listening</value></data>
-  <data name="Tuner_Hint_Idle" xml:space="preserve"><value>Tap “Listen” and play a note</value></data>
-  <data name="Tuner_Hint_Play" xml:space="preserve"><value>Play any string</value></data>
-  <data name="Tuner_NoMic" xml:space="preserve"><value>No microphone access — allow it in Settings.</value></data>
-  <data name="Tuner_Flat" xml:space="preserve"><value>slightly flat</value></data>
-  <data name="Tuner_Sharp" xml:space="preserve"><value>slightly sharp</value></data>
-  <data name="Tuner_InTune" xml:space="preserve"><value>in tune</value></data>
-  <data name="Tuner_Tuning" xml:space="preserve"><value>Tuning</value></data>
-  <data name="Tuner_Standard" xml:space="preserve"><value>Standard</value></data>
-  <data name="Tuner_AutoHint" xml:space="preserve"><value>Auto · tap a peg to lock a string</value></data>
-
-  <data name="Live_Idle" xml:space="preserve"><value>Tap “Listen” and play</value></data>
-  <data name="Live_Listening" xml:space="preserve"><value>Listening…</value></data>
-  <data name="Live_Stopped" xml:space="preserve"><value>Stopped</value></data>
-  <data name="Live_Unpacking" xml:space="preserve"><value>Unpacking model…</value></data>
-  <data name="Live_ModelMissing" xml:space="preserve"><value>Model not found</value></data>
-  <data name="Live_NoNeural" xml:space="preserve"><value>Listening (no neural net)</value></data>
-  <data name="Live_Ready" xml:space="preserve"><value>Ready</value></data>
-  <data name="Live_Guess" xml:space="preserve"><value>guess</value></data>
-  <data name="Live_Mode" xml:space="preserve"><value>Mode</value></data>
-  <data name="Live_SimpleChords" xml:space="preserve"><value>Simple chords</value></data>
-  <data name="Live_Revise" xml:space="preserve"><value>Refine</value></data>
-  <data name="Live_Metronome" xml:space="preserve"><value>Metronome</value></data>
-  <data name="Live_History" xml:space="preserve"><value>History</value></data>
-  <data name="Model_Base" xml:space="preserve"><value>Base</value></data>
-  <data name="Model_Guitar" xml:space="preserve"><value>Guitar</value></data>
-
-  <data name="Library_Search" xml:space="preserve"><value>Search</value></data>
-  <data name="Library_All" xml:space="preserve"><value>All</value></data>
-  <data name="Library_Favourites" xml:space="preserve"><value>Favourites</value></data>
-  <data name="Library_Folders" xml:space="preserve"><value>Folders</value></data>
-  <data name="Library_Empty_Title" xml:space="preserve"><value>Add your first song</value></data>
-  <data name="Library_Empty_Body" xml:space="preserve"><value>A file, a recording or a YouTube link — Strunika will find the chords.</value></data>
-  <data name="Library_Add" xml:space="preserve"><value>Add song</value></data>
-
-  <data name="Settings_Appearance" xml:space="preserve"><value>Appearance</value></data>
-  <data name="Settings_Theme" xml:space="preserve"><value>Theme</value></data>
-  <data name="Settings_Language" xml:space="preserve"><value>Language</value></data>
-  <data name="Settings_LeftHanded" xml:space="preserve"><value>Left-handed</value></data>
-  <data name="Settings_Tuner" xml:space="preserve"><value>Tuner</value></data>
-  <data name="Settings_A4" xml:space="preserve"><value>A4 reference</value></data>
-  <data name="Settings_DefaultTuning" xml:space="preserve"><value>Default tuning</value></data>
-  <data name="Settings_Recognition" xml:space="preserve"><value>Recognition</value></data>
-  <data name="Settings_BeatSnap" xml:space="preserve"><value>Snap to beats</value></data>
-  <data name="Settings_Expert" xml:space="preserve"><value>Expert settings</value></data>
-  <data name="Settings_DevPro" xml:space="preserve"><value>Pro override (dev)</value></data>
-  <data name="Settings_About" xml:space="preserve"><value>About</value></data>
-  <data name="Settings_Version" xml:space="preserve"><value>Version</value></data>
-  <data name="Settings_Privacy" xml:space="preserve"><value>Privacy &amp; licences</value></data>
-
-  <data name="Pro_Title" xml:space="preserve"><value>Strunika Pro</value></data>
-  <data name="Pro_Features" xml:space="preserve"><value>Tunings · A4 · capo &amp; transpose · speed · A–B loop · Chord Editor · folders · export · unlimited songs</value></data>
-  <data name="Pro_LearnMore" xml:space="preserve"><value>Learn more</value></data>
-  <data name="Pro_Restore" xml:space="preserve"><value>Restore purchases</value></data>
-  <data name="Pro_Redeem" xml:space="preserve"><value>Promo code</value></data>
-  <data name="Pro_Year" xml:space="preserve"><value>Year</value></data>
-  <data name="Pro_Month" xml:space="preserve"><value>Month</value></data>
-  <data name="Pro_SaveYear" xml:space="preserve"><value>−40 %</value></data>
-  <data name="Pro_Continue" xml:space="preserve"><value>Continue</value></data>
-  <data name="Pro_Terms" xml:space="preserve"><value>Terms</value></data>
-  <data name="Pro_Locked_Body" xml:space="preserve"><value>This is part of Strunika Pro.</value></data>
-  <data name="Pro_All" xml:space="preserve"><value>All Pro features</value></data>
-  <data name="Pro_PriceSoon" xml:space="preserve"><value>Prices appear once the App Store is connected</value></data>
-
-  <data name="Feature_AltTunings" xml:space="preserve"><value>Alternative tunings</value></data>
-  <data name="Feature_A4Reference" xml:space="preserve"><value>A4 reference pitch</value></data>
-  <data name="Feature_TransposeCapo" xml:space="preserve"><value>Transpose &amp; capo</value></data>
-  <data name="Feature_Speed" xml:space="preserve"><value>Playback speed</value></data>
-  <data name="Feature_ABLoop" xml:space="preserve"><value>A–B loop</value></data>
-  <data name="Feature_Export" xml:space="preserve"><value>Export</value></data>
-  <data name="Feature_ChordEditor" xml:space="preserve"><value>Chord Editor</value></data>
-  <data name="Feature_Folders" xml:space="preserve"><value>Folders &amp; setlists</value></data>
-  <data name="Feature_FullChordVocabulary" xml:space="preserve"><value>Full chord vocabulary</value></data>
-  <data name="Feature_UnlimitedSongs" xml:space="preserve"><value>Unlimited songs</value></data>
-
-  <data name="Tuning_DropD" xml:space="preserve"><value>Drop D</value></data>
-  <data name="Tuning_HalfDown" xml:space="preserve"><value>Half-step down</value></data>
-  <data name="Tuning_FullDown" xml:space="preserve"><value>Full-step down</value></data>
-  <data name="Tuning_DADGAD" xml:space="preserve"><value>DADGAD</value></data>
-  <data name="Tuning_OpenG" xml:space="preserve"><value>Open G</value></data>
-  <data name="Tuning_OpenD" xml:space="preserve"><value>Open D</value></data>
-  <data name="Tuning_Ukulele" xml:space="preserve"><value>Ukulele</value></data>
-  <data name="Tuning_Bass" xml:space="preserve"><value>Bass</value></data>
-  <data name="Tuner_A4Title" xml:space="preserve"><value>A4 reference</value></data>
-  <data name="Tuner_A4Hint" xml:space="preserve"><value>Concert pitch is 440 Hz; lower it for old recordings or a piano that has drifted.</value></data>
-  <data name="Tuner_Reset" xml:space="preserve"><value>Reset to 440 Hz</value></data>
-  <data name="Tuner_Hint_Locked" xml:space="preserve"><value>String locked · tap the peg again for auto</value></data>
-  <data name="Unit_Hz" xml:space="preserve"><value>Hz</value></data>
-
-  <data name="Tuner_LetsTune" xml:space="preserve"><value>Let’s tune!</value></data>
-  <data name="Tuner_AllSet" xml:space="preserve"><value>All set — let’s play!</value></data>
-  <data name="Tuner_StartAgain" xml:space="preserve"><value>Start again</value></data>
-  <data name="Library_FromFile" xml:space="preserve"><value>From a file</value></data>
-  <data name="Library_FromFile_Hint" xml:space="preserve"><value>mp3, m4a or wav from Files or iCloud</value></data>
-  <data name="Library_Record" xml:space="preserve"><value>Record</value></data>
-  <data name="Library_Record_Hint" xml:space="preserve"><value>Play into the microphone</value></data>
-  <data name="Library_YouTube" xml:space="preserve"><value>YouTube link</value></data>
-  <data name="Library_YouTube_Hint" xml:space="preserve"><value>A link from the clipboard or the built-in YouTube</value></data>
-  <data name="Library_UrlPlaceholder" xml:space="preserve"><value>https://youtube.com/…</value></data>
-  <data name="Library_Analyze" xml:space="preserve"><value>Find chords</value></data>
-  <data name="Library_Err_NotLink" xml:space="preserve"><value>That’s not a YouTube link</value></data>
-  <data name="Library_Err_YouTube" xml:space="preserve"><value>YouTube is temporarily unavailable</value></data>
-  <data name="Library_Err_File" xml:space="preserve"><value>Couldn’t read the file</value></data>
-  <data name="Library_Err_TooShort" xml:space="preserve"><value>Too short to analyse</value></data>
-  <data name="Library_Err_ModelMissing" xml:space="preserve"><value>Recognition model is missing</value></data>
-  <data name="Library_Err_Unknown" xml:space="preserve"><value>Analysis failed</value></data>
-  <data name="Library_Err_Quota" xml:space="preserve"><value>Free limit reached — tap for Pro</value></data>
-  <data name="Library_Err_Interrupted" xml:space="preserve"><value>Interrupted — tap to retry</value></data>
-  <data name="Library_Retry" xml:space="preserve"><value>Retry</value></data>
-  <data name="Library_Stage_Queued" xml:space="preserve"><value>Waiting…</value></data>
-  <data name="Library_Stage_Downloading" xml:space="preserve"><value>Analysing</value></data>
-  <data name="Library_Stage_Decoding" xml:space="preserve"><value>Analysing</value></data>
-  <data name="Library_Stage_Recognizing" xml:space="preserve"><value>Analysing</value></data>
-  <data name="Library_Stage_Beats" xml:space="preserve"><value>Analysing</value></data>
-  <data name="Library_Stage_Saving" xml:space="preserve"><value>Saving</value></data>
-  <data name="Library_SortTitle" xml:space="preserve"><value>Sort by</value></data>
-  <data name="Library_Sort_Date" xml:space="preserve"><value>Date</value></data>
-  <data name="Library_Sort_Title" xml:space="preserve"><value>Title</value></data>
-  <data name="Library_Sort_Key" xml:space="preserve"><value>Key</value></data>
-  <data name="Library_Take" xml:space="preserve"><value>Take</value></data>
-  <data name="Library_Source_Recording" xml:space="preserve"><value>Recording</value></data>
-  <data name="Library_Source_File" xml:space="preserve"><value>File</value></data>
-  <data name="Library_Source_YouTube" xml:space="preserve"><value>YouTube</value></data>
-  <data name="Library_Edited" xml:space="preserve"><value>edited</value></data>
-  <data name="Library_Delete" xml:space="preserve"><value>Delete</value></data>
-  <data name="Library_Duplicate" xml:space="preserve"><value>This song is already in the library</value></data>
-  <data name="Library_QuotaLeft" xml:space="preserve"><value>Free analyses left: {0}</value></data>
-  <data name="Library_QuotaDaily" xml:space="preserve"><value>Free: 1 analysis per day</value></data>
-  <data name="Library_NoMic" xml:space="preserve"><value>Microphone unavailable</value></data>
-  <data name="Record_Title" xml:space="preserve"><value>Recording</value></data>
-  <data name="Record_Hint" xml:space="preserve"><value>Play the song — stop when you’re done</value></data>
-  <data name="Record_Start" xml:space="preserve"><value>Start recording</value></data>
-  <data name="Record_Ready" xml:space="preserve"><value>Tap Start when you are ready</value></data>
-  <data name="Record_Stop" xml:space="preserve"><value>Stop &amp; find chords</value></data>
-  <data name="Song_Soon" xml:space="preserve"><value>The song screen comes in the next step</value></data>
-  <data name="Library_Stage_Cancelling" xml:space="preserve"><value>Cancelling…</value></data>
-  <data name="YT_Hint" xml:space="preserve"><value>Open the song, then tap “Add”</value></data>
-  <data name="YT_Add" xml:space="preserve"><value>Add</value></data>
-  <data name="Library_YT_Choice_Title" xml:space="preserve"><value>There’s a YouTube link in the clipboard</value></data>
-  <data name="Library_YT_UseLink" xml:space="preserve"><value>Add this link</value></data>
-  <data name="Library_YT_Browse" xml:space="preserve"><value>Open built-in YouTube</value></data>
-  <data name="Library_YT_Browse_Hint" xml:space="preserve"><value>Find the song yourself</value></data>
-  <data name="Library_Pin_Hint" xml:space="preserve"><value>★ — show on the Songs screen</value></data>
-  <data name="Launch_Loading" xml:space="preserve"><value>Tuning up…</value></data>
-  <data name="Launch_Models" xml:space="preserve"><value>Preparing recognition…</value></data>
-  <data name="Pro_Soon" xml:space="preserve"><value>Coming soon</value></data>
-  <data name="Pro_Soon_Badge" xml:space="preserve"><value>Soon</value></data>
-  <data name="Pro_Soon_Stems" xml:space="preserve"><value>Stems: solo, mute and your own track mix</value></data>
-  <data name="Pro_Soon_Stems_Hint" xml:space="preserve"><value>Drop the drums, keep the bass, or take your instrument out and play it yourself</value></data>
-  <data name="Pro_Soon_BassTabs" xml:space="preserve"><value>Bass tabs</value></data>
-  <data name="Pro_Soon_BassTabs_Hint" xml:space="preserve"><value>The bass line as notes and tabs, from the isolated bass track</value></data>
-  <data name="Pro_Soon_Karaoke" xml:space="preserve"><value>Karaoke / backing track</value></data>
-  <data name="Pro_Soon_Karaoke_Hint" xml:space="preserve"><value>Take the vocals out and sing or play over the original</value></data>
-  <data name="Settings_SkipWelcome" xml:space="preserve"><value>Skip the welcome screen</value></data>
-  <data name="Song_Key" xml:space="preserve"><value>Key</value></data>
-  <data name="Song_Capo" xml:space="preserve"><value>Capo {0}</value></data>
-  <data name="Song_Simple" xml:space="preserve"><value>Simple chords</value></data>
-  <data name="Song_Next" xml:space="preserve"><value>next ·</value></data>
-  <data name="Song_Click" xml:space="preserve"><value>Metronome</value></data>
-  <data name="Song_Editor" xml:space="preserve"><value>Chord Editor</value></data>
-  <data name="Song_NoBeats" xml:space="preserve"><value>No beat grid for this song yet — re-analyse it to get the click.</value></data>
-  <data name="Song_SpeedUnsupported" xml:space="preserve"><value>Speed change works on iPhone; the Windows preview plays at 1×.</value></data>
-  <data name="Song_CapoTitle" xml:space="preserve"><value>Capo</value></data>
-  <data name="Song_CapoNone" xml:space="preserve"><value>No capo</value></data>
-  <data name="Song_Fret" xml:space="preserve"><value>fret {0}</value></data>
-  <data name="Song_Transpose" xml:space="preserve"><value>Transpose</value></data>
-  <data name="Song_TransposeStep" xml:space="preserve"><value>{0:+#;−#;0} semitones</value></data>
-  <data name="Song_Player_Hide" xml:space="preserve"><value>Hide player</value></data>
-  <data name="Song_Player_Show" xml:space="preserve"><value>Show player</value></data>
-  <data name="Song_Editor_Soon" xml:space="preserve"><value>The Chord Editor comes in a later step.</value></data>
-  <data name="Song_Editor_Short" xml:space="preserve"><value>Editor</value></data>
-  <data name="Song_Alt_Title" xml:space="preserve"><value>chord shapes</value></data>
-  <data name="Song_Alt_Hint" xml:space="preserve"><value>Pick the position you play — it stays for this chord.</value></data>
-  <data name="Song_Alt_Only" xml:space="preserve"><value>The only position we know for this chord.</value></data>
-  <data name="Song_Alt_Open" xml:space="preserve"><value>Open position</value></data>
-  <data name="Song_YT_Error" xml:space="preserve"><value>YouTube will not play this video inside the app (error {0}). Chords still work — you can watch it on YouTube.</value></data>
-  <data name="Song_YT_Open" xml:space="preserve"><value>Open YouTube</value></data>
-  <data name="Song_Key_Full" xml:space="preserve"><value>Key</value></data>
-  <data name="Song_Speed" xml:space="preserve"><value>Speed</value></data>
-  <data name="Song_Loop" xml:space="preserve"><value>A–B loop</value></data>
-  <data name="Song_Capo_Label" xml:space="preserve"><value>Capo</value></data>
-  <data name="Settings_DevWindow" xml:space="preserve"><value>Window as device</value></data>
-  <data name="Library_YT_Off" xml:space="preserve"><value>YouTube analysis is switched off for now. Files and recordings work as usual.</value></data>
-  <data name="Song_Capo_Suggest" xml:space="preserve"><value>Suggest {0}</value></data>
-  <data name="Song_Info_Title" xml:space="preserve"><value>About the song</value></data>
-  <data name="Song_Info_Chords" xml:space="preserve"><value>Chords in the song</value></data>
-  <data name="Song_Info_Source" xml:space="preserve"><value>Source</value></data>
-  <data name="Song_Info_Key" xml:space="preserve"><value>Key</value></data>
-  <data name="Song_Info_Tempo" xml:space="preserve"><value>Tempo</value></data>
-  <data name="Song_Info_Length" xml:space="preserve"><value>Length</value></data>
-  <data name="Song_Info_Added" xml:space="preserve"><value>Added</value></data>
-  <data name="Song_Info_Model" xml:space="preserve"><value>Model</value></data>
-  <data name="Song_Info_Transposed" xml:space="preserve"><value>Now playing in {0}</value></data>
-  <data name="Settings_Dictionary" xml:space="preserve"><value>Dictionary</value></data>
-  <data name="Dictionary_Search" xml:space="preserve"><value>Chord name</value></data>
-  <data name="Dictionary_Empty" xml:space="preserve"><value>No chord with that name.</value></data>
-  <data name="Song_Alt_Choose" xml:space="preserve"><value>Choose</value></data>
-  <data name="Dictionary_Title" xml:space="preserve"><value>Chord dictionary</value></data>
-  <data name="Library_Page" xml:space="preserve"><value>Page {0} of {1}</value></data>
-  <data name="Song_Alt_Open_Short" xml:space="preserve"><value>open</value></data>
-  <data name="Song_View" xml:space="preserve"><value>View</value></data>
-  <data name="Welcome_SkipNote" xml:space="preserve"><value>This screen can be turned off in Settings</value></data>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="App_Name" xml:space="preserve">
+    <value>Strunika</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Common_Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Common_Listen" xml:space="preserve">
+    <value>Listen</value>
+  </data>
+  <data name="Common_Soon" xml:space="preserve">
+    <value>Coming soon</value>
+  </data>
+  <data name="Common_Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="Common_Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Dictionary_Empty" xml:space="preserve">
+    <value>No chord with that name.</value>
+  </data>
+  <data name="Dictionary_Search" xml:space="preserve">
+    <value>Chord name</value>
+  </data>
+  <data name="Dictionary_Title" xml:space="preserve">
+    <value>Chord dictionary</value>
+  </data>
+  <data name="Feature_A4Reference" xml:space="preserve">
+    <value>A4 reference pitch</value>
+  </data>
+  <data name="Feature_ABLoop" xml:space="preserve">
+    <value>A–B loop</value>
+  </data>
+  <data name="Feature_AltTunings" xml:space="preserve">
+    <value>Alternative tunings</value>
+  </data>
+  <data name="Feature_ChordEditor" xml:space="preserve">
+    <value>Chord Editor</value>
+  </data>
+  <data name="Feature_Export" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="Feature_Folders" xml:space="preserve">
+    <value>Folders &amp; setlists</value>
+  </data>
+  <data name="Feature_FullChordVocabulary" xml:space="preserve">
+    <value>Full chord vocabulary</value>
+  </data>
+  <data name="Feature_Speed" xml:space="preserve">
+    <value>Playback speed</value>
+  </data>
+  <data name="Feature_TransposeCapo" xml:space="preserve">
+    <value>Transpose &amp; capo</value>
+  </data>
+  <data name="Feature_UnlimitedSongs" xml:space="preserve">
+    <value>Unlimited songs</value>
+  </data>
+  <data name="Lang_En" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Lang_Uk" xml:space="preserve">
+    <value>Українська</value>
+  </data>
+  <data name="Launch_Loading" xml:space="preserve">
+    <value>Tuning up…</value>
+  </data>
+  <data name="Launch_Models" xml:space="preserve">
+    <value>Preparing recognition…</value>
+  </data>
+  <data name="Library_Add" xml:space="preserve">
+    <value>Add song</value>
+  </data>
+  <data name="Library_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Library_Analyze" xml:space="preserve">
+    <value>Find chords</value>
+  </data>
+  <data name="Library_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Library_Duplicate" xml:space="preserve">
+    <value>This song is already in the library</value>
+  </data>
+  <data name="Library_Edited" xml:space="preserve">
+    <value>edited</value>
+  </data>
+  <data name="Library_Empty_Body" xml:space="preserve">
+    <value>A file, a recording or a YouTube link — Strunika will find the chords.</value>
+  </data>
+  <data name="Library_Empty_Title" xml:space="preserve">
+    <value>Add your first song</value>
+  </data>
+  <data name="Library_Err_File" xml:space="preserve">
+    <value>Couldn’t read the file</value>
+  </data>
+  <data name="Library_Err_Interrupted" xml:space="preserve">
+    <value>Interrupted — tap to retry</value>
+  </data>
+  <data name="Library_Err_ModelMissing" xml:space="preserve">
+    <value>Recognition model is missing</value>
+  </data>
+  <data name="Library_Err_NotLink" xml:space="preserve">
+    <value>That’s not a YouTube link</value>
+  </data>
+  <data name="Library_Err_Quota" xml:space="preserve">
+    <value>Free limit reached — tap for Pro</value>
+  </data>
+  <data name="Library_Err_TooShort" xml:space="preserve">
+    <value>Too short to analyse</value>
+  </data>
+  <data name="Library_Err_Unknown" xml:space="preserve">
+    <value>Analysis failed</value>
+  </data>
+  <data name="Library_Err_YouTube" xml:space="preserve">
+    <value>YouTube is temporarily unavailable</value>
+  </data>
+  <data name="Library_Favourites" xml:space="preserve">
+    <value>Favourites</value>
+  </data>
+  <data name="Library_Folders" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="Library_FromFile" xml:space="preserve">
+    <value>From a file</value>
+  </data>
+  <data name="Library_FromFile_Hint" xml:space="preserve">
+    <value>mp3, m4a or wav from Files or iCloud</value>
+  </data>
+  <data name="Library_NoMic" xml:space="preserve">
+    <value>Microphone unavailable</value>
+  </data>
+  <data name="Library_Page" xml:space="preserve">
+    <value>Page {0} of {1}</value>
+  </data>
+  <data name="Library_Pin_Hint" xml:space="preserve">
+    <value>★ — show on the Songs screen</value>
+  </data>
+  <data name="Library_QuotaDaily" xml:space="preserve">
+    <value>Free: 1 analysis per day</value>
+  </data>
+  <data name="Library_QuotaLeft" xml:space="preserve">
+    <value>Free analyses left: {0}</value>
+  </data>
+  <data name="Library_Record" xml:space="preserve">
+    <value>Record</value>
+  </data>
+  <data name="Library_Record_Hint" xml:space="preserve">
+    <value>Play into the microphone</value>
+  </data>
+  <data name="Library_Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Library_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Library_SortTitle" xml:space="preserve">
+    <value>Sort by</value>
+  </data>
+  <data name="Library_Sort_Date" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Library_Sort_Key" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="Library_Sort_Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="Library_Source_File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="Library_Source_Recording" xml:space="preserve">
+    <value>Recording</value>
+  </data>
+  <data name="Library_Source_YouTube" xml:space="preserve">
+    <value>YouTube</value>
+  </data>
+  <data name="Library_Stage_Beats" xml:space="preserve">
+    <value>Analysing</value>
+  </data>
+  <data name="Library_Stage_Cancelling" xml:space="preserve">
+    <value>Cancelling…</value>
+  </data>
+  <data name="Library_Stage_Decoding" xml:space="preserve">
+    <value>Analysing</value>
+  </data>
+  <data name="Library_Stage_Downloading" xml:space="preserve">
+    <value>Analysing</value>
+  </data>
+  <data name="Library_Stage_Queued" xml:space="preserve">
+    <value>Waiting…</value>
+  </data>
+  <data name="Library_Stage_Recognizing" xml:space="preserve">
+    <value>Analysing</value>
+  </data>
+  <data name="Library_Stage_Saving" xml:space="preserve">
+    <value>Saving</value>
+  </data>
+  <data name="Library_Take" xml:space="preserve">
+    <value>Take</value>
+  </data>
+  <data name="Library_UrlPlaceholder" xml:space="preserve">
+    <value>https://youtube.com/…</value>
+  </data>
+  <data name="Library_YouTube" xml:space="preserve">
+    <value>YouTube link</value>
+  </data>
+  <data name="Library_YouTube_Hint" xml:space="preserve">
+    <value>A link from the clipboard or the built-in YouTube</value>
+  </data>
+  <data name="Library_YT_Browse" xml:space="preserve">
+    <value>Open built-in YouTube</value>
+  </data>
+  <data name="Library_YT_Browse_Hint" xml:space="preserve">
+    <value>Find the song yourself</value>
+  </data>
+  <data name="Library_YT_Choice_Title" xml:space="preserve">
+    <value>There’s a YouTube link in the clipboard</value>
+  </data>
+  <data name="Library_YT_Off" xml:space="preserve">
+    <value>YouTube analysis is switched off for now. Files and recordings work as usual.</value>
+  </data>
+  <data name="Library_YT_UseLink" xml:space="preserve">
+    <value>Add this link</value>
+  </data>
+  <data name="Live_Guess" xml:space="preserve">
+    <value>guess</value>
+  </data>
+  <data name="Live_History" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Live_Idle" xml:space="preserve">
+    <value>Tap “Listen” and play</value>
+  </data>
+  <data name="Live_Listening" xml:space="preserve">
+    <value>Listening…</value>
+  </data>
+  <data name="Live_Metronome" xml:space="preserve">
+    <value>Metronome</value>
+  </data>
+  <data name="Live_Mode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Live_ModelMissing" xml:space="preserve">
+    <value>Model not found</value>
+  </data>
+  <data name="Live_NoNeural" xml:space="preserve">
+    <value>Listening (no neural net)</value>
+  </data>
+  <data name="Live_Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Live_Revise" xml:space="preserve">
+    <value>Refine</value>
+  </data>
+  <data name="Live_SimpleChords" xml:space="preserve">
+    <value>Simple chords</value>
+  </data>
+  <data name="Live_Stopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="Live_Unpacking" xml:space="preserve">
+    <value>Unpacking model…</value>
+  </data>
+  <data name="Model_Base" xml:space="preserve">
+    <value>Base</value>
+  </data>
+  <data name="Model_Guitar" xml:space="preserve">
+    <value>Guitar</value>
+  </data>
+  <data name="Pro_All" xml:space="preserve">
+    <value>All Pro features</value>
+  </data>
+  <data name="Pro_Continue" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="Pro_Features" xml:space="preserve">
+    <value>Tunings · A4 · capo &amp; transpose · speed · A–B loop · Chord Editor · folders · export · unlimited songs</value>
+  </data>
+  <data name="Pro_LearnMore" xml:space="preserve">
+    <value>Learn more</value>
+  </data>
+  <data name="Pro_Locked_Body" xml:space="preserve">
+    <value>This is part of Strunika Pro.</value>
+  </data>
+  <data name="Pro_Month" xml:space="preserve">
+    <value>Month</value>
+  </data>
+  <data name="Pro_PriceSoon" xml:space="preserve">
+    <value>Prices appear once the App Store is connected</value>
+  </data>
+  <data name="Pro_Redeem" xml:space="preserve">
+    <value>Promo code</value>
+  </data>
+  <data name="Pro_Restore" xml:space="preserve">
+    <value>Restore purchases</value>
+  </data>
+  <data name="Pro_SaveYear" xml:space="preserve">
+    <value>−40 %</value>
+  </data>
+  <data name="Pro_Soon" xml:space="preserve">
+    <value>Coming soon</value>
+  </data>
+  <data name="Pro_Soon_Badge" xml:space="preserve">
+    <value>Soon</value>
+  </data>
+  <data name="Pro_Soon_BassTabs" xml:space="preserve">
+    <value>Bass tabs</value>
+  </data>
+  <data name="Pro_Soon_BassTabs_Hint" xml:space="preserve">
+    <value>The bass line as notes and tabs, from the isolated bass track</value>
+  </data>
+  <data name="Pro_Soon_Karaoke" xml:space="preserve">
+    <value>Karaoke / backing track</value>
+  </data>
+  <data name="Pro_Soon_Karaoke_Hint" xml:space="preserve">
+    <value>Take the vocals out and sing or play over the original</value>
+  </data>
+  <data name="Pro_Soon_Stems" xml:space="preserve">
+    <value>Stems: solo, mute and your own track mix</value>
+  </data>
+  <data name="Pro_Soon_Stems_Hint" xml:space="preserve">
+    <value>Drop the drums, keep the bass, or take your instrument out and play it yourself</value>
+  </data>
+  <data name="Pro_Terms" xml:space="preserve">
+    <value>Terms</value>
+  </data>
+  <data name="Pro_Title" xml:space="preserve">
+    <value>Strunika Pro</value>
+  </data>
+  <data name="Pro_Year" xml:space="preserve">
+    <value>Year</value>
+  </data>
+  <data name="Record_Hint" xml:space="preserve">
+    <value>Play the song — stop when you’re done</value>
+  </data>
+  <data name="Record_Ready" xml:space="preserve">
+    <value>Tap Start when you are ready</value>
+  </data>
+  <data name="Record_Start" xml:space="preserve">
+    <value>Start recording</value>
+  </data>
+  <data name="Record_Stop" xml:space="preserve">
+    <value>Stop &amp; find chords</value>
+  </data>
+  <data name="Record_Title" xml:space="preserve">
+    <value>Recording</value>
+  </data>
+  <data name="Settings_A4" xml:space="preserve">
+    <value>A4 reference</value>
+  </data>
+  <data name="Settings_About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings_BeatSnap" xml:space="preserve">
+    <value>Snap to beats</value>
+  </data>
+  <data name="Settings_DefaultTuning" xml:space="preserve">
+    <value>Default tuning</value>
+  </data>
+  <data name="Settings_DevPro" xml:space="preserve">
+    <value>Pro override (dev)</value>
+  </data>
+  <data name="Settings_DevWindow" xml:space="preserve">
+    <value>Window as device</value>
+  </data>
+  <data name="Settings_Dictionary" xml:space="preserve">
+    <value>Dictionary</value>
+  </data>
+  <data name="Settings_Expert" xml:space="preserve">
+    <value>Expert settings</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_LeftHanded" xml:space="preserve">
+    <value>Left-handed</value>
+  </data>
+  <data name="Settings_Privacy" xml:space="preserve">
+    <value>Privacy &amp; licences</value>
+  </data>
+  <data name="Settings_Recognition" xml:space="preserve">
+    <value>Recognition</value>
+  </data>
+  <data name="Settings_SkipWelcome" xml:space="preserve">
+    <value>Skip the welcome screen</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_Tuner" xml:space="preserve">
+    <value>Tuner</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Song_Alt_Choose" xml:space="preserve">
+    <value>Choose</value>
+  </data>
+  <data name="Song_Alt_Hint" xml:space="preserve">
+    <value>Pick the position you play — it stays for this chord.</value>
+  </data>
+  <data name="Song_Alt_Only" xml:space="preserve">
+    <value>The only position we know for this chord.</value>
+  </data>
+  <data name="Song_Alt_Open" xml:space="preserve">
+    <value>Open position</value>
+  </data>
+  <data name="Song_Alt_Open_Short" xml:space="preserve">
+    <value>open</value>
+  </data>
+  <data name="Song_Alt_Title" xml:space="preserve">
+    <value>chord shapes</value>
+  </data>
+  <data name="Song_Capo" xml:space="preserve">
+    <value>Capo {0}</value>
+  </data>
+  <data name="Song_CapoNone" xml:space="preserve">
+    <value>No capo</value>
+  </data>
+  <data name="Song_CapoTitle" xml:space="preserve">
+    <value>Capo</value>
+  </data>
+  <data name="Song_Capo_Label" xml:space="preserve">
+    <value>Capo</value>
+  </data>
+  <data name="Song_Capo_Suggest" xml:space="preserve">
+    <value>Suggest {0}</value>
+  </data>
+  <data name="Song_Click" xml:space="preserve">
+    <value>Metronome</value>
+  </data>
+  <data name="Song_Editor" xml:space="preserve">
+    <value>Chord Editor</value>
+  </data>
+  <data name="Song_Editor_Short" xml:space="preserve">
+    <value>Editor</value>
+  </data>
+  <data name="Song_Editor_Soon" xml:space="preserve">
+    <value>The Chord Editor comes in a later step.</value>
+  </data>
+  <data name="Song_Fret" xml:space="preserve">
+    <value>fret {0}</value>
+  </data>
+  <data name="Song_Info_Added" xml:space="preserve">
+    <value>Added</value>
+  </data>
+  <data name="Song_Info_Chords" xml:space="preserve">
+    <value>Chords in the song</value>
+  </data>
+  <data name="Song_Info_Key" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="Song_Info_Length" xml:space="preserve">
+    <value>Length</value>
+  </data>
+  <data name="Song_Info_Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="Song_Info_Source" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="Song_Info_Tempo" xml:space="preserve">
+    <value>Tempo</value>
+  </data>
+  <data name="Song_Info_Title" xml:space="preserve">
+    <value>About the song</value>
+  </data>
+  <data name="Song_Info_Transposed" xml:space="preserve">
+    <value>Now playing in {0}</value>
+  </data>
+  <data name="Song_Key" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="Song_Key_Full" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="Song_Loop" xml:space="preserve">
+    <value>A–B loop</value>
+  </data>
+  <data name="Song_Next" xml:space="preserve">
+    <value>next ·</value>
+  </data>
+  <data name="Song_NoBeats" xml:space="preserve">
+    <value>No beat grid for this song yet — re-analyse it to get the click.</value>
+  </data>
+  <data name="Song_Player_Hide" xml:space="preserve">
+    <value>Hide player</value>
+  </data>
+  <data name="Song_Player_Show" xml:space="preserve">
+    <value>Show player</value>
+  </data>
+  <data name="Song_Simple" xml:space="preserve">
+    <value>Simple chords</value>
+  </data>
+  <data name="Song_Soon" xml:space="preserve">
+    <value>The song screen comes in the next step</value>
+  </data>
+  <data name="Song_Speed" xml:space="preserve">
+    <value>Speed</value>
+  </data>
+  <data name="Song_SpeedUnsupported" xml:space="preserve">
+    <value>Speed change works on iPhone; the Windows preview plays at 1×.</value>
+  </data>
+  <data name="Song_Transpose" xml:space="preserve">
+    <value>Transpose</value>
+  </data>
+  <data name="Song_TransposeStep" xml:space="preserve">
+    <value>{0:+#;−#;0} semitones</value>
+  </data>
+  <data name="Song_View" xml:space="preserve">
+    <value>View</value>
+  </data>
+  <data name="Song_YT_Error" xml:space="preserve">
+    <value>YouTube will not play this video inside the app (error {0}). Chords still work — you can watch it on YouTube.</value>
+  </data>
+  <data name="Song_YT_Open" xml:space="preserve">
+    <value>Open YouTube</value>
+  </data>
+  <data name="Tab_Live" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="Tab_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Tab_Songs" xml:space="preserve">
+    <value>Songs</value>
+  </data>
+  <data name="Tab_Tuner" xml:space="preserve">
+    <value>Tuner</value>
+  </data>
+  <data name="Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Theme_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Tuner_A4Hint" xml:space="preserve">
+    <value>Concert pitch is 440 Hz; lower it for old recordings or a piano that has drifted.</value>
+  </data>
+  <data name="Tuner_A4Title" xml:space="preserve">
+    <value>A4 reference</value>
+  </data>
+  <data name="Tuner_AllSet" xml:space="preserve">
+    <value>All set — let’s play!</value>
+  </data>
+  <data name="Tuner_AutoHint" xml:space="preserve">
+    <value>Auto · tap a peg to lock a string</value>
+  </data>
+  <data name="Tuner_Flat" xml:space="preserve">
+    <value>slightly flat</value>
+  </data>
+  <data name="Tuner_Hint_Idle" xml:space="preserve">
+    <value>Tap “Listen” and play a note</value>
+  </data>
+  <data name="Tuner_Hint_Locked" xml:space="preserve">
+    <value>String locked · tap the peg again for auto</value>
+  </data>
+  <data name="Tuner_Hint_Play" xml:space="preserve">
+    <value>Play any string</value>
+  </data>
+  <data name="Tuner_InTune" xml:space="preserve">
+    <value>in tune</value>
+  </data>
+  <data name="Tuner_LetsTune" xml:space="preserve">
+    <value>Let’s tune!</value>
+  </data>
+  <data name="Tuner_Listening" xml:space="preserve">
+    <value>Listening</value>
+  </data>
+  <data name="Tuner_NoMic" xml:space="preserve">
+    <value>No microphone access — allow it in Settings.</value>
+  </data>
+  <data name="Tuner_Reset" xml:space="preserve">
+    <value>Reset to 440 Hz</value>
+  </data>
+  <data name="Tuner_Sharp" xml:space="preserve">
+    <value>slightly sharp</value>
+  </data>
+  <data name="Tuner_Standard" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="Tuner_StartAgain" xml:space="preserve">
+    <value>Start again</value>
+  </data>
+  <data name="Tuner_Tuning" xml:space="preserve">
+    <value>Tuning</value>
+  </data>
+  <data name="Tuning_Bass" xml:space="preserve">
+    <value>Bass</value>
+  </data>
+  <data name="Tuning_DADGAD" xml:space="preserve">
+    <value>DADGAD</value>
+  </data>
+  <data name="Tuning_DropD" xml:space="preserve">
+    <value>Drop D</value>
+  </data>
+  <data name="Tuning_FullDown" xml:space="preserve">
+    <value>Full-step down</value>
+  </data>
+  <data name="Tuning_HalfDown" xml:space="preserve">
+    <value>Half-step down</value>
+  </data>
+  <data name="Tuning_OpenD" xml:space="preserve">
+    <value>Open D</value>
+  </data>
+  <data name="Tuning_OpenG" xml:space="preserve">
+    <value>Open G</value>
+  </data>
+  <data name="Tuning_Ukulele" xml:space="preserve">
+    <value>Ukulele</value>
+  </data>
+  <data name="Unit_Hz" xml:space="preserve">
+    <value>Hz</value>
+  </data>
+  <data name="Welcome_ChangeLater" xml:space="preserve">
+    <value>You can change this any time in Settings</value>
+  </data>
+  <data name="Welcome_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Welcome_MicNote" xml:space="preserve">
+    <value>We’ll ask for the microphone when you tap “Listen”</value>
+  </data>
+  <data name="Welcome_SkipNote" xml:space="preserve">
+    <value>This screen can be turned off in Settings</value>
+  </data>
+  <data name="Welcome_Tagline" xml:space="preserve">
+    <value>Tuner · Live chords · Chords from songs</value>
+  </data>
+  <data name="Welcome_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="YT_Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="YT_Hint" xml:space="preserve">
+    <value>Open the song, then tap “Add”</value>
+  </data>
 </root>

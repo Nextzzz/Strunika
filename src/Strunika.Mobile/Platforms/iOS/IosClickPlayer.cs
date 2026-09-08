@@ -47,9 +47,17 @@ public sealed class IosClickPlayer : IClickPlayer
         return buffer;
     }
 
+    /// <summary>What lies between a sample being rendered at its scheduled
+    /// time and it being heard: the engine's IO buffer (the render runs one
+    /// buffer ahead of the output) and the hardware's own output latency.</summary>
     private static double OutputLatency()
     {
-        try { return AVAudioSession.SharedInstance().OutputLatency; } catch { return 0; }
+        try
+        {
+            var session = AVAudioSession.SharedInstance();
+            return session.OutputLatency + session.IOBufferDuration;
+        }
+        catch { return 0; }
     }
 
     /// <summary>The engine running and the node playing, on the mixable

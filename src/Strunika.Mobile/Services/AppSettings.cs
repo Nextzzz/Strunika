@@ -53,6 +53,15 @@ public static class AppSettings
         };
     }
 
+    /// <summary>Metronome lead in milliseconds: how much earlier than the beat
+    /// the tick is placed, so it is *heard* on the beat through whatever the
+    /// device and the player add. Set by ear on the song page (±150 ms).</summary>
+    public static int ClickOffsetMs
+    {
+        get => Preferences.Default.Get("click_offset_ms", 0);
+        set { Preferences.Default.Set("click_offset_ms", Math.Clamp(value, -150, 150)); Raise(nameof(ClickOffsetMs)); }
+    }
+
     /// <summary>Metronome level on the song page, 0–1.</summary>
     public static double ClickVolume
     {
