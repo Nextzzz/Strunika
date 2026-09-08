@@ -24,12 +24,23 @@ public sealed class IosClickPlayer : IClickPlayer
     private readonly AVAudioPcmBuffer _tick, _accent;
     private readonly object _gate = new();
     private int _logged;
+    /// <summary>The ticks' own thread. The thread pool was the wrong place:
+    /// while a song is analysed the pool's threads are busy with the network
+    /// and the model, and a queued tick waited 175 ms for one — behind the
+    /// beat by the time it was placed (the log: "scheduled in −72 ms").</summary>
+    private readonly System.Collections.Concurrent.BlockingCollection<Action> _work = new();
 
     public IosClickPlayer()
     {
         var format = new AVAudioFormat(AVAudioCommonFormat.PCMFloat32, SampleRate, 1, false);
         _tick = Buffer(format, MetronomeClick.Render(1100, 0.95f));
         _accent = Buffer(format, MetronomeClick.Render(1650, 1.0f));
+        var thread = new Thread(() =>
+        {
+            foreach (var job in _work.GetConsumingEnumerable())
+                try { job(); } catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("click", ex); }
+        }) { IsBackground = true, Name = "metronome", Priority = ThreadPriority.Highest };
+        thread.Start();
         _engine.AttachNode(_node);
         _engine.Connect(_node, _engine.MainMixerNode, format);
         // A route change (headphones in or out) or an interruption stops the
@@ -87,7 +98,7 @@ public sealed class IosClickPlayer : IClickPlayer
         long asked = System.Diagnostics.Stopwatch.GetTimestamp();
         // Off the frame: starting an engine is slow the first time, and the
         // conveyor must not wait for it.
-        ThreadPool.QueueUserWorkItem(_ =>
+        _work.Add(() =>
         {
             lock (_gate)
             {
@@ -136,6 +147,7 @@ public sealed class IosClickPlayer : IClickPlayer
 
     public void Dispose()
     {
+        _work.CompleteAdding();
         lock (_gate)
         {
             try { _node.Stop(); _engine.Stop(); } catch { }

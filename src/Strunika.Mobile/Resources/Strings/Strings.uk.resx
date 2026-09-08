@@ -453,6 +453,15 @@
   <data name="Song_Click" xml:space="preserve">
     <value>Метроном</value>
   </data>
+  <data name="Song_ClickOffset" xml:space="preserve">
+    <value>Випередження тіку</value>
+  </data>
+  <data name="Song_ClickOffset_Hint" xml:space="preserve">
+    <value>Плюс, якщо тік запізнюється, мінус, якщо поспішає</value>
+  </data>
+  <data name="Song_ClickOffset_Value" xml:space="preserve">
+    <value>{0:+0;-0;0} мс</value>
+  </data>
   <data name="Song_Editor" xml:space="preserve">
     <value>Редактор акордів</value>
   </data>

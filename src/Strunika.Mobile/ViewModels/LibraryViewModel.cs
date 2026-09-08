@@ -143,20 +143,25 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     partial void OnQueryChanged(string value) { Page = 0; Rebuild(); }
 
-    partial void OnFilterChanged(int value) { Page = 0; Rebuild(); }
+    // A filter is a new list: it starts at the top, like a page turn (the old
+    // offset left the first card under the header).
+    partial void OnFilterChanged(int value) { Page = 0; Rebuild(); PageChanged?.Invoke(this, EventArgs.Empty); }
 
     /// <summary>
     /// The first page, fetched while the launch screen is still up, so opening
     /// the Songs tab paints straight away. The full list follows in
     /// <see cref="LoadAsync"/>; whatever it finds replaces this.
     /// </summary>
+    /// <summary>The full load is under way: the preload steps aside.</summary>
+    private bool _loading;
+
     public async Task PreloadAsync()
     {
-        if (Loaded || _all.Count > 0) return;
+        if (Loaded || _loading || _all.Count > 0) return;
         try
         {
             var songs = await _songs.GetRecentAsync(PageSize);
-            if (Loaded || _all.Count > 0) return;                 // the full load won the race
+            if (Loaded || _loading || _all.Count > 0) return;     // the full load won the race
             foreach (var song in songs) _all.Add(new SongItem(song));
             Rebuild();
         }
@@ -168,27 +173,34 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public async Task LoadAsync()
     {
+        _loading = true;
         try
         {
             var songs = await _songs.GetAllAsync();
-            _all.Clear();
+            // Jobs do not survive a restart: anything left "analysing" is retried
+            // on demand. Written back before the list is touched — the old code
+            // cleared the list, then awaited these writes, and the preload landing
+            // in that gap added its songs to an empty list; the load then added
+            // them all again. Every song showed twice, and the retry of a song
+            // updated one copy while the other sat "queued" for ever.
             foreach (var song in songs)
-            {
-                // Jobs do not survive a restart: anything left "analysing" is retried on demand.
                 if (song.Status == SongStatus.Analyzing || (song.Status == SongStatus.Pending && song.Error == null))
                 {
                     song.Status = SongStatus.Failed;
                     song.Error = "Interrupted";
                     await _songs.UpdateAsync(song);
                 }
-                _all.Add(new SongItem(song));
-            }
+            _all.Clear();
+            var seen = new HashSet<int>();
+            foreach (var song in songs)
+                if (seen.Add(song.Id)) _all.Add(new SongItem(song));   // one item per song, whatever the store says
         }
         catch (Exception ex)
         {
             FileLog.Error("library load", ex);
         }
         Loaded = true;
+        _loading = false;
         Rebuild();
     }
 

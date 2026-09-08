@@ -453,6 +453,15 @@
   <data name="Song_Click" xml:space="preserve">
     <value>Metronome</value>
   </data>
+  <data name="Song_ClickOffset" xml:space="preserve">
+    <value>Tick lead</value>
+  </data>
+  <data name="Song_ClickOffset_Hint" xml:space="preserve">
+    <value>Plus if the tick sounds late, minus if early</value>
+  </data>
+  <data name="Song_ClickOffset_Value" xml:space="preserve">
+    <value>{0:+0;-0;0} ms</value>
+  </data>
   <data name="Song_Editor" xml:space="preserve">
     <value>Chord Editor</value>
   </data>

@@ -11,7 +11,10 @@ namespace Strunika.Mobile.Services;
 /// </summary>
 public sealed class YoutubeExplodeSource : IYouTubeSource
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
+    // The timeout covers the whole request, body included: a song's audio over
+    // a slow connection took longer than 30 s and the analysis failed with
+    // "The request timed out" (device log). Cancellation still ends a job.
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly YoutubeClient _client = new(Http);
 
     public string? TryParseVideoId(string text)
