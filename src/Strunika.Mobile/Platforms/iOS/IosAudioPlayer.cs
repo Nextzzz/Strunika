@@ -88,14 +88,19 @@ public sealed class IosClickPlayer : IClickPlayer
         return pool;
     }
 
-    public void Click(bool accent)
+    public void Click(bool accent) => ClickAt(0, accent);
+
+    public void ClickAt(double delaySeconds, bool accent)
     {
         var pool = accent ? _accents : _ticks;
         var p = pool[_next++ % pool.Length];
         float volume = (float)Math.Clamp(Volume, 0, 1);
-        // Off the frame: AVAudioPlayer.Play takes milliseconds on the main
-        // thread and the conveyor stuttered on every tick. The session is
-        // made the mixable one first, or the video under the tick pauses.
+        // The moment is fixed on the audio clock now, on this thread; the start
+        // itself goes off the frame (AVAudioPlayer's start takes milliseconds
+        // on the main thread and the conveyor stuttered on every tick). The
+        // session is made the mixable one first, or the video under the tick
+        // pauses.
+        double at = delaySeconds > 0.002 ? p.DeviceCurrentTime + delaySeconds : 0;
         ThreadPool.QueueUserWorkItem(_ =>
         {
             try
@@ -103,10 +108,16 @@ public sealed class IosClickPlayer : IClickPlayer
                 AudioSessions.ForPlayback();
                 p.Volume = volume;
                 p.CurrentTime = 0;
-                p.Play();
+                if (at > 0) p.PlayAtTime(at); else p.Play();
             }
             catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("click", ex); }
         });
+    }
+
+    public void Cancel()
+    {
+        foreach (var p in _ticks.Concat(_accents))
+            try { if (p.Playing) p.Stop(); } catch { /* gone */ }
     }
 
     public void Dispose()

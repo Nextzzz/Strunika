@@ -83,6 +83,18 @@ public sealed class WindowsClickPlayer : IClickPlayer
         _mixer.AddMixerInput(new VolumeSampleProvider(source) { Volume = (float)Math.Clamp(Volume, 0, 1) });
     }
 
+    private int _generation;
+
+    /// <summary>The dev head: a timer is as exact as it gets here.</summary>
+    public async void ClickAt(double delaySeconds, bool accent)
+    {
+        int generation = _generation;
+        if (delaySeconds > 0.002) await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+        if (generation == _generation) Click(accent);
+    }
+
+    public void Cancel() => _generation++;
+
     private static byte[] FloatBytes(float[] samples)
     {
         var bytes = new byte[samples.Length * 4];

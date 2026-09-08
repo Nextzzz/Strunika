@@ -282,14 +282,25 @@ public sealed partial class SongViewModel : ObservableObject
         finally { _probing = false; }
     }
 
+    /// <summary>How far ahead a tick is placed on the audio clock. Longer than
+    /// a frame and the player's start-up; short enough that a pause or a seek
+    /// rarely has a tick already in the air.</summary>
+    private const double ClickLookahead = 0.12;
+
     private void SetPosition(double pos, bool fromTransport)
     {
         if (Metronome && fromTransport && IsPlaying)
         {
-            while (_nextBeat < _beats.Length && _beats[_nextBeat] <= pos)
+            // Every beat inside the lookahead is scheduled now for its exact
+            // moment (song seconds to real seconds through the speed). Ticking
+            // when a frame found the beat already behind it was a frame late,
+            // then the start-up on top — audibly behind the beat squares.
+            double horizon = pos + ClickLookahead * Speed;
+            while (_nextBeat < _beats.Length && _beats[_nextBeat] <= horizon)
             {
-                // Only click for beats we are actually crossing now (not after a seek).
-                if (pos - _beats[_nextBeat] < 0.25) _click.Click(_nextBeat % 4 == 0);
+                double delay = (_beats[_nextBeat] - pos) / Math.Max(0.1, Speed);
+                // Only beats we are actually crossing now (not a pile left behind by a seek).
+                if (delay > -0.25) _click.ClickAt(Math.Max(0, delay), _nextBeat % 4 == 0);
                 _nextBeat++;
             }
         }
@@ -333,6 +344,7 @@ public sealed partial class SongViewModel : ObservableObject
     {
         var transport = _transport;
         if (transport == null || !IsPlaying) return;
+        _click.Cancel();                                         // a tick already in the air stays there
         await transport.PauseAsync();
         IsPlaying = false;
     }

@@ -111,9 +111,16 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
         float X(int stringIndex) => LeftHanded ? right - stringIndex * sx : left + stringIndex * sx;
 
         canvas.StrokeColor = LineColor;
-        canvas.StrokeSize = 1.2f;
+        // Strings are drawn as they lie on the guitar: the low E — the top one
+        // when the guitar is held — on the left (on the right for a
+        // left-hander), and thicker, thinning towards the high e, so the
+        // diagram reads the right way up at a glance.
         for (int s = 0; s < strings; s++)
+        {
+            canvas.StrokeSize = 2.0f - 1.0f * s / (strings - 1);
             canvas.DrawLine(X(s), top, X(s), bottom);
+        }
+        canvas.StrokeSize = 1.2f;
         for (int f = 0; f <= frets; f++)
             canvas.DrawLine(left, top + f * fy, right, top + f * fy);
         // The nut (or, with a capo on, the capo itself).

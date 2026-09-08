@@ -13,30 +13,49 @@ namespace Strunika.Mobile.Platforms.iOS;
 /// </summary>
 public static class AudioSessions
 {
-    private static bool _playback;
+    private static bool _playback, _watching;
+    private static readonly object Gate = new();
 
     /// <summary>Playback, mixable, active. Cheap to call before every sound:
     /// it only touches the session when the category is not already ours
-    /// (the tuner's Record, the greeting's Ambient).</summary>
+    /// (the tuner's Record, the greeting's Ambient). Called from the tick's
+    /// worker thread too, hence the gate.</summary>
     public static void ForPlayback()
     {
-        try
+        lock (Gate)
         {
-            var session = AVAudioSession.SharedInstance();
-            bool ours = session.Category == AVAudioSession.CategoryPlayback
-                        && session.CategoryOptions.HasFlag(AVAudioSessionCategoryOptions.MixWithOthers);
-            if (!ours)
+            try
             {
-                session.SetCategory(AVAudioSessionCategory.Playback, AVAudioSessionCategoryOptions.MixWithOthers);
-                _playback = false;
+                Watch();
+                var session = AVAudioSession.SharedInstance();
+                bool ours = session.Category == AVAudioSession.CategoryPlayback
+                            && session.CategoryOptions.HasFlag(AVAudioSessionCategoryOptions.MixWithOthers);
+                if (!ours)
+                {
+                    Strunika.Core.Diagnostics.FileLog.Info($"audio session: {session.Category} → playback, mixable");
+                    session.SetCategory(AVAudioSessionCategory.Playback, AVAudioSessionCategoryOptions.MixWithOthers);
+                    _playback = false;
+                }
+                if (!_playback)
+                {
+                    session.SetActive(true);
+                    _playback = true;
+                }
             }
-            if (!_playback)
-            {
-                session.SetActive(true);
-                _playback = true;
-            }
+            catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("audio session", ex); }
         }
-        catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("audio session", ex); }
+    }
+
+    /// <summary>Interruptions are logged with their reason: the song's sound
+    /// dropping out for a second on the phone needs a cause, not a guess.</summary>
+    private static void Watch()
+    {
+        if (_watching) return;
+        _watching = true;
+        AVAudioSession.Notifications.ObserveInterruption((_, e) =>
+            Strunika.Core.Diagnostics.FileLog.Info($"audio session interruption: {e.InterruptionType} reason {e.Notification.UserInfo?[new Foundation.NSString("AVAudioSessionInterruptionReasonKey")]} options {e.Option}"));
+        AVAudioSession.Notifications.ObserveRouteChange((_, e) =>
+            Strunika.Core.Diagnostics.FileLog.Info($"audio route change: {e.Reason}"));
     }
 
     /// <summary>Something else set the category (the tuner took the microphone).</summary>
