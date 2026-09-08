@@ -308,7 +308,9 @@ public sealed partial class SongViewModel : ObservableObject
             {
                 double delay = (_beats[_nextBeat] - pos) / Math.Max(0.1, Speed) - lead;
                 // Only beats we are actually crossing now (not a pile left behind by a seek).
-                if (delay > -0.25) _click.ClickAt(Math.Max(0, delay), _nextBeat % 4 == 0);
+                // One sound for every beat (user decision 2026-09-08): the higher,
+                // louder downbeat read as a second instrument.
+                if (delay > -0.25) _click.ClickAt(Math.Max(0, delay), accent: false);
                 _nextBeat++;
             }
         }

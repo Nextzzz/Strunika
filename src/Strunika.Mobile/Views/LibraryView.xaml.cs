@@ -62,9 +62,21 @@ public partial class LibraryView : ContentView
                 };
                 LayoutQuickRow(vm);
                 Header.SizeChanged += (_, _) => FitHeader();
-                // A page turn starts at the top of the list — header included, which
-                // ScrollTo(item) cannot express (Controls/ScrollHelper).
-                vm.PageChanged += (_, _) => Controls.ScrollHelper.ToTop(List);
+                // A page turn or a filter starts at the top of the list — header
+                // included, which ScrollTo(item) cannot express (Controls/ScrollHelper)
+                // — once the new items are laid out, not before. And whenever the
+                // list goes from nothing to something (a filter emptied it, the next
+                // one fills it) the header spacer is fitted again and the list put at
+                // its top: the platform list laid the first card out as if there were
+                // no header and left it under the pinned one, out of reach.
+                vm.PageChanged += (_, _) => Dispatcher.Dispatch(() => { FitHeader(); Controls.ScrollHelper.ToTop(List); });
+                int had = vm.Items.Count;
+                vm.Items.CollectionChanged += (_, _) =>
+                {
+                    int now = vm.Items.Count;
+                    if (had == 0 && now > 0) Dispatcher.Dispatch(() => { FitHeader(); Controls.ScrollHelper.ToTop(List); });
+                    had = now;
+                };
                 ApplyShade();
                 Services.AppSettings.Changed += (_, key) => { if (key == nameof(Services.AppSettings.Theme)) ApplyShade(); };
                 if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, _) => ApplyShade();
