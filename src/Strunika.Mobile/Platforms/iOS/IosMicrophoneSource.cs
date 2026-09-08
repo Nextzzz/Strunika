@@ -30,9 +30,9 @@ public sealed class IosMicrophoneSource : IMicrophoneSource
         session.SetActive(true);
         AudioSessions.Changed();
 
-        var permission = new TaskCompletionSource<bool>();
-        session.RequestRecordPermission(granted => permission.TrySetResult(granted));
-        if (!await permission.Task)
+        // Through MAUI's own permissions: AVAudioSession.RequestRecordPermission
+        // is obsolete from iOS 17 (AVAudioApplication took it over).
+        if (await Permissions.RequestAsync<Permissions.Microphone>() != PermissionStatus.Granted)
             return false;
 
         _engine = new AVAudioEngine();
@@ -46,7 +46,7 @@ public sealed class IosMicrophoneSource : IMicrophoneSource
         {
             var converter = _converter;
             var target = _target;
-            if (converter == null || target == null)
+            if (converter is null || target is null)
                 return;
 
             uint capacity = (uint)(buffer.FrameLength *

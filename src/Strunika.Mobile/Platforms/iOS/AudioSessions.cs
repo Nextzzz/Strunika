@@ -28,7 +28,7 @@ public static class AudioSessions
             {
                 Watch();
                 var session = AVAudioSession.SharedInstance();
-                bool ours = session.Category == AVAudioSession.CategoryPlayback
+                bool ours = session.Category == AVAudioSessionCategory.Playback.GetConstant()
                             && session.CategoryOptions.HasFlag(AVAudioSessionCategoryOptions.MixWithOthers);
                 if (!ours)
                 {

@@ -87,7 +87,11 @@
 		<!-- Song library: SQLite (segments as JSON per song) and on-device YouTube
 		     metadata/audio extraction (plain YoutubeExplode on both platforms). -->
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
-		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
+		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
+		<!-- CVE-2025-6965 (SQLite < 3.50.2, memory corruption from crafted aggregate SQL):
+		     no patched SQLitePCLRaw exists yet, and every query here is the app's own —
+		     nothing user-supplied reaches the engine. Re-check when 2.1.12 ships. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
 		<!-- The Windows head takes the NuGet package; iOS compiles the same source
 		     itself (src/Strunika.YouTube) because the package's merged assembly
 		     breaks the iOS trimmer — see that project's VENDORED.md. -->

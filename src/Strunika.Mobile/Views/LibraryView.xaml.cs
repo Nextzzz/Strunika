@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using Strunika.Mobile.Localization;
 using Strunika.Mobile.Pages;
 using Strunika.Mobile.ViewModels;
@@ -199,14 +200,14 @@ public partial class LibraryView : ContentView
     {
         if (Vm == null || Host == null) return;
         string date = Loc.Get("Library_Sort_Date"), title = Loc.Get("Library_Sort_Title"), key = Loc.Get("Library_Sort_Key");
-        var picked = await Host.DisplayActionSheet(Loc.Get("Library_SortTitle"), Loc.Get("Common_Cancel"), null, date, title, key);
+        var picked = await Host.DisplayActionSheetAsync(Loc.Get("Library_SortTitle"), Loc.Get("Common_Cancel"), null, date, title, key);
         if (picked == date) Vm.SetSort("date");
         else if (picked == title) Vm.SetSort("title");
         else if (picked == key) Vm.SetSort("key");
     }
 
     private static Task ShowMessageAsync(string text) =>
-        Host?.DisplayAlert(Loc.Get("Tab_Songs"), text, "OK") ?? Task.CompletedTask;
+        Host?.DisplayAlertAsync(Loc.Get("Tab_Songs"), text, "OK") ?? Task.CompletedTask;
 
     private static Task OpenAsync(SongItem item) => SongPage.OpenAsync(item.Song);
 }

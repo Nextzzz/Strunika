@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using Strunika.Core.Diagnostics;
 using Strunika.Mobile.Localization;
 using Strunika.Mobile.Services;
@@ -83,12 +84,12 @@ public partial class LaunchPage : ContentPage
     /// the wordmark and the caption come up around it, then the caption breathes.</summary>
     private async Task RevealAsync()
     {
-        if (Motion.Reduced) { Title.Opacity = 1; Caption.Opacity = 1; return; }
-        await Task.WhenAll(Title.FadeTo(1, 400, Easing.CubicOut), Caption.FadeTo(1, 400, Easing.CubicOut));
+        if (Motion.Reduced) { Wordmark.Opacity = 1; Caption.Opacity = 1; return; }
+        await Task.WhenAll(Wordmark.FadeToAsync(1, 400, Easing.CubicOut), Caption.FadeToAsync(1, 400, Easing.CubicOut));
         while (Navigation.NavigationStack.Contains(this))
         {
-            await Caption.FadeTo(0.35, 900, Easing.SinInOut);
-            await Caption.FadeTo(1.0, 900, Easing.SinInOut);
+            await Caption.FadeToAsync(0.35, 900, Easing.SinInOut);
+            await Caption.FadeToAsync(1.0, 900, Easing.SinInOut);
         }
     }
 }

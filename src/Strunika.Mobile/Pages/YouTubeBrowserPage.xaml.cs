@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using Strunika.Mobile.Localization;
 using Strunika.Mobile.Services;
 using Strunika.Mobile.ViewModels;
@@ -213,7 +214,7 @@ public partial class YouTubeBrowserPage : ContentPage
             // Said here, over the browser, where the person is — a toast on the
             // library underneath went unseen and the song seemed to vanish. The
             // browser stays open: they may well want another song.
-            await DisplayAlert("YouTube", Loc.Get(error), "OK");
+            await this.DisplayAlertAsync("YouTube", Loc.Get(error), "OK");
         }
         finally
         {

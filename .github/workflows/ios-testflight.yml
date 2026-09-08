@@ -42,11 +42,11 @@ jobs:
         working-directory: src/Strunika.Mobile
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1                      # the history carries the models: shallow is much faster
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: src/Strunika.Mobile/global.json
 
@@ -136,7 +136,7 @@ jobs:
           ls -lh "$IPA"
           echo "IPA=src/Strunika.Mobile/$IPA" >> "$GITHUB_ENV"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: strunika-ios
           path: ${{ env.IPA }}
@@ -152,7 +152,7 @@ jobs:
           ditto -c -k --keepParent "$DSYM" "$RUNNER_TEMP/strunika-ios.dSYM.zip"
           echo "DSYM_ZIP=$RUNNER_TEMP/strunika-ios.dSYM.zip" >> "$GITHUB_ENV"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ env.DSYM_ZIP != '' }}
         with:
           name: strunika-ios-dsym

@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using Strunika.Mobile.Localization;
 using Strunika.Mobile.Pages;
 using Strunika.Mobile.Pro;
@@ -88,7 +89,7 @@ public partial class SettingsView : ContentView
     {
         if (Host == null || Vm == null) return;
         var names = Services.DevWindow.Presets.Select(p => $"{p.Name} · {p.Width:0}×{p.Height:0}").ToArray();
-        string? choice = await Host.DisplayActionSheet(Loc.Get("Settings_DevWindow"), Loc.Get("Common_Cancel"), null, names);
+        string? choice = await Host.DisplayActionSheetAsync(Loc.Get("Settings_DevWindow"), Loc.Get("Common_Cancel"), null, names);
         int i = Array.IndexOf(names, choice);
         if (i < 0) return;
         Services.DevWindow.Apply(Services.DevWindow.Presets[i]);
@@ -99,7 +100,7 @@ public partial class SettingsView : ContentView
     {
         if (Host == null || Vm == null) return;
         string system = Loc.Get("Theme_System"), dark = Loc.Get("Theme_Dark"), light = Loc.Get("Theme_Light");
-        string? choice = await Host.DisplayActionSheet(Loc.Get("Settings_Theme"), Loc.Get("Common_Cancel"), null, system, dark, light);
+        string? choice = await Host.DisplayActionSheetAsync(Loc.Get("Settings_Theme"), Loc.Get("Common_Cancel"), null, system, dark, light);
         if (choice == system) Vm.SetTheme(0);
         else if (choice == dark) Vm.SetTheme(1);
         else if (choice == light) Vm.SetTheme(2);
@@ -109,7 +110,7 @@ public partial class SettingsView : ContentView
     {
         if (Host == null || Vm == null) return;
         string uk = Loc.Get("Lang_Uk"), en = Loc.Get("Lang_En");
-        string? choice = await Host.DisplayActionSheet(Loc.Get("Settings_Language"), Loc.Get("Common_Cancel"), null, uk, en);
+        string? choice = await Host.DisplayActionSheetAsync(Loc.Get("Settings_Language"), Loc.Get("Common_Cancel"), null, uk, en);
         if (choice == uk) Vm.SetLanguage("uk");
         else if (choice == en) Vm.SetLanguage("en");
     }

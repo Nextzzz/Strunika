@@ -6,7 +6,6 @@
              xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
              xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
              x:Class="Strunika.Mobile.Pages.YouTubeBrowserPage"
-             ios:Page.UseSafeArea="True"
              ios:Page.ModalPresentationStyle="FullScreen"
              NavigationPage.HasNavigationBar="False">
 

@@ -44,7 +44,7 @@ public partial class ChordDictionaryPage : ContentPage
         int span = Math.Clamp((int)((usable + 10) / (Theme.Metrics.Instance.Size(CardWidth) + 10)), 2, 6);
         if (span == _span) return;
         _span = span;
-        Layout.Span = span;
+        Columns.Span = span;
     }
 
     private async void OnBackTapped(object? sender, TappedEventArgs e) => await Navigation.PopAsync(animated: true);

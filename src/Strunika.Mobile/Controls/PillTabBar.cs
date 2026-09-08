@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using Strunika.Mobile.Services;
 
 namespace Strunika.Mobile.Controls;
@@ -95,7 +96,7 @@ public sealed class PillTabBar : GraphicsView, IDrawable
         _dragStartPos = _selectorPos;
         this.AbortAnimation("snap");
         this.AbortAnimation("scale");
-        this.ScaleTo(Motion.Reduced ? 1.0 : 1.04, 120, Easing.CubicOut);
+        this.ScaleToAsync(Motion.Reduced ? 1.0 : 1.04, 120, Easing.CubicOut);
     }
 
     private void OnDrag(object? sender, TouchEventArgs e)
@@ -137,7 +138,7 @@ public sealed class PillTabBar : GraphicsView, IDrawable
     {
         this.AbortAnimation("scale");
         // SpringOut from 1.04 → 1.0 dips slightly below 1 before settling: the "bounce".
-        this.ScaleTo(1.0, (uint)(Motion.Reduced ? 120 : 350), Motion.Spring);
+        this.ScaleToAsync(1.0, (uint)(Motion.Reduced ? 120 : 350), Motion.Spring);
     }
 
     private void SnapTo(int index)

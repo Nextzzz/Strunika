@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using System.Globalization;
 using Strunika.Mobile.Controls;
 using Strunika.Mobile.Localization;
@@ -18,6 +19,12 @@ public partial class WelcomePage : ContentPage
     {
         _services = services;
         InitializeComponent();
+#if IOS
+        // The page's root is a scroll view, which pads nothing by itself: it
+        // keeps the status-bar and home-indicator insets like the legacy
+        // Page.UseSafeArea did (the layouts on the other pages do this on their own).
+        Scroller.SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container);
+#endif
         ApplyGreeting();
         Loc.Instance.PropertyChanged += (_, _) => ApplyGreeting();
         Loaded += (_, _) => _ = GreetAsync();
@@ -116,7 +123,7 @@ public partial class WelcomePage : ContentPage
         WaveClip.Clip = waveClip;
         GreetingClip.Clip = wordClip;
         // The whole screen appears out of the dark in 0.5 s, then the string starts writing.
-        await Root.FadeTo(1, 500, Easing.CubicOut);
+        await Root.FadeToAsync(1, 500, Easing.CubicOut);
         double width = GreetingClip.Width > 0 ? GreetingClip.Width : 342;
         var done = new TaskCompletionSource();
         new Animation(v =>

@@ -90,11 +90,10 @@ public static class SystemVolume
     {
         if (_view != null && _slider != null) return;
         var window = UIApplication.SharedApplication.ConnectedScenes.OfType<UIWindowScene>()
-            .SelectMany(s => s.Windows).FirstOrDefault(w => w.IsKeyWindow)
-            ?? UIApplication.SharedApplication.Windows.FirstOrDefault();
+            .SelectMany(s => s.Windows).FirstOrDefault(w => w.IsKeyWindow);
         if (window == null) return;
         // Off screen and out of the way: it has to be in a window to work.
-        _view = new MPVolumeView(new CGRect(-2000, -2000, 120, 40)) { ShowsRouteButton = false, ShowsVolumeSlider = true, Alpha = 0.01f };
+        _view = new MPVolumeView(new CGRect(-2000, -2000, 120, 40)) { Alpha = 0.01f };   // the slider is what it shows by default
         window.AddSubview(_view);
         _slider = _view.Subviews.OfType<UISlider>().FirstOrDefault();
     }

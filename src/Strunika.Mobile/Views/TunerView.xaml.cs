@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using Strunika.Mobile.Pages;
 using Strunika.Mobile.Pro;
 using Strunika.Mobile.Services;
@@ -31,8 +32,8 @@ public partial class TunerView : ContentView
         var pegs = PegRow.Children.OfType<View>().ToList();
         if (index < 0 || index >= pegs.Count) return;
         var peg = pegs[index];
-        await peg.ScaleTo(1.35, 160, Easing.CubicOut);
-        await peg.ScaleTo(1.0, 420, Easing.SpringOut);
+        await peg.ScaleToAsync(1.35, 160, Easing.CubicOut);
+        await peg.ScaleToAsync(1.0, 420, Easing.SpringOut);
     }
 
     /// <summary>Last string tuned: pegs bounce in a wave and the string flashes;
@@ -54,8 +55,8 @@ public partial class TunerView : ContentView
                     await Task.Delay(delay);
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        await peg.ScaleTo(1.28, 130, Easing.CubicOut);
-                        await peg.ScaleTo(1.0, 320, Easing.SpringOut);
+                        await peg.ScaleToAsync(1.28, 130, Easing.CubicOut);
+                        await peg.ScaleToAsync(1.0, 320, Easing.SpringOut);
                     });
                 }));
             }
@@ -71,7 +72,7 @@ public partial class TunerView : ContentView
         {
             IdleLabel.Scale = 0.85;
             IdleLabel.Opacity = 0;
-            await Task.WhenAll(IdleLabel.FadeTo(1, 220), IdleLabel.ScaleTo(1, 420, Easing.SpringOut));
+            await Task.WhenAll(IdleLabel.FadeToAsync(1, 220), IdleLabel.ScaleToAsync(1, 420, Easing.SpringOut));
         }
     }
 

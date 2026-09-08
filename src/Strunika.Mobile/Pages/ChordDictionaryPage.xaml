@@ -8,7 +8,6 @@
              xmlns:vm="clr-namespace:Strunika.Mobile.ViewModels"
              x:Class="Strunika.Mobile.Pages.ChordDictionaryPage"
              x:DataType="vm:ChordDictionaryViewModel"
-             ios:Page.UseSafeArea="True"
              NavigationPage.HasNavigationBar="False"
              NavigationPage.HasBackButton="False">
 
@@ -64,7 +63,7 @@
         <CollectionView Grid.Row="2" x:Name="List" ItemsSource="{Binding Groups}" IsGrouped="True" SelectionMode="None"
                         VerticalScrollBarVisibility="Default" IsVisible="{Binding IsEmpty, Converter={StaticResource Not}}">
             <CollectionView.ItemsLayout>
-                <GridItemsLayout x:Name="Layout" Orientation="Vertical" Span="3" HorizontalItemSpacing="10" VerticalItemSpacing="10" />
+                <GridItemsLayout x:Name="Columns" Orientation="Vertical" Span="3" HorizontalItemSpacing="10" VerticalItemSpacing="10" />
             </CollectionView.ItemsLayout>
             <CollectionView.GroupHeaderTemplate>
                 <DataTemplate x:DataType="vm:ChordGroup">

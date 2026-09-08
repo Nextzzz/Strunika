@@ -84,7 +84,7 @@ public static class CanvasFonts
             // UIFont and Core Text read the same tables; a registered face is
             // found by its real name, the system face by weight.
             var ui = (string.IsNullOrEmpty(font.Name) ? null : UIKit.UIFont.FromName(font.Name, size))
-                     ?? UIKit.UIFont.SystemFontOfSize(size, font.Weight >= 600 ? UIKit.UIFontWeight.Bold : UIKit.UIFontWeight.Regular);
+                     ?? UIKit.UIFont.SystemFontOfSize(size, font.Weight >= 600 ? UIKit.UIFontWeight.Bold : UIKit.UIFontWeight.Regular)!;
             metrics = ((float)ui.Ascender, (float)Math.Abs(ui.Descender), (float)ui.CapHeight);
         }
         catch (Exception ex)

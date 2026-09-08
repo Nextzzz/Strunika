@@ -134,7 +134,7 @@ public partial class RootPage : ContentPage
 
         to.Opacity = 0;
         to.IsVisible = true;
-        await Task.WhenAll(from.FadeTo(0, 90, Easing.CubicIn), to.FadeTo(1, 140, Easing.CubicOut));
+        await Task.WhenAll(from.FadeToAsync(0, 90, Easing.CubicIn), to.FadeToAsync(1, 140, Easing.CubicOut));
         from.IsVisible = false;
         from.Opacity = 1;
         if (clock != null)

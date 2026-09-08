@@ -6,7 +6,6 @@
              xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
              xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
              x:Class="Strunika.Mobile.Pages.LaunchPage"
-             ios:Page.UseSafeArea="False"
              NavigationPage.HasNavigationBar="False">
 
     <!-- iOS shows its static launch screen (the mark, 256×142 pt, dead centre of
@@ -18,7 +17,7 @@
     <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}">
         <Image Source="{AppThemeBinding Light=strunika_mark_light.png, Dark=strunika_mark.png}" HeightRequest="142" WidthRequest="256" Aspect="AspectFit"
                HorizontalOptions="Center" VerticalOptions="Center" />
-        <Label x:Name="Title" FontFamily="Display" FontSize="46" Text="Strunika" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center"
+        <Label x:Name="Wordmark" FontFamily="Display" FontSize="46" Text="Strunika" TextColor="{t:Theme TextPri}" HorizontalTextAlignment="Center"
                HorizontalOptions="Center" VerticalOptions="Center" TranslationY="112" Opacity="0" />
         <Label x:Name="Caption" Style="{StaticResource Footnote}" Text="{loc:Str Launch_Loading}" HorizontalTextAlignment="Center"
                VerticalOptions="End" Margin="24,0,24,64" Opacity="0" />

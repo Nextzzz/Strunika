@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using Strunika.Mobile.Localization;
 using Strunika.Mobile.Services;
 using Strunika.Mobile.ViewModels;
@@ -78,8 +79,8 @@ public partial class RecordSheet : ContentPage
     {
         while (_recorder.IsRecording && !_done)
         {
-            await Dot.FadeTo(0.25, 600, Easing.SinInOut);
-            await Dot.FadeTo(1, 600, Easing.SinInOut);
+            await Dot.FadeToAsync(0.25, 600, Easing.SinInOut);
+            await Dot.FadeToAsync(1, 600, Easing.SinInOut);
         }
     }
 

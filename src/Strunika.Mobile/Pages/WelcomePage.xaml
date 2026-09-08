@@ -6,7 +6,6 @@
              xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
              xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
              x:Class="Strunika.Mobile.Pages.WelcomePage"
-             ios:Page.UseSafeArea="True"
              NavigationPage.HasNavigationBar="False">
 
     <!-- Content starts invisible and fades in over 0.5 s (GreetAsync); the page background is the darkness it appears from. -->

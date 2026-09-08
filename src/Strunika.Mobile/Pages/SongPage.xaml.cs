@@ -1,3 +1,4 @@
+using Strunika.Mobile.Theme;
 using System.Diagnostics;
 using Strunika.Core.Diagnostics;
 using Strunika.Mobile.Data;
@@ -39,7 +40,7 @@ public partial class SongPage : ContentPage
         _vm = new SongViewModel(song, services.GetRequiredService<ISongRepository>(), services.GetRequiredService<IProGate>(), services.GetRequiredService<IClickPlayer>());
         BindingContext = _vm;
         _vm.ProRequired += (_, f) => { _sheetOpen = true; _ = PaywallSheet.ShowAsync(f); };
-        _vm.Message += (_, text) => _ = DisplayAlert(song.Title, text, "OK");
+        _vm.Message += (_, text) => _ = this.DisplayAlertAsync(song.Title, text, "OK");
 
         Track.ScrubStarted += (_, _) => _ = _vm.ScrubStartAsync();
         Track.Scrubbing += (_, t) => _vm.Scrubbing(t);
@@ -141,7 +142,7 @@ public partial class SongPage : ContentPage
         catch (Exception ex)
         {
             FileLog.Error("song open", ex);
-            await DisplayAlert(_vm.Title, Loc.Get("Library_Err_File"), "OK");
+            await this.DisplayAlertAsync(_vm.Title, Loc.Get("Library_Err_File"), "OK");
         }
         _attached = true;
         _clock.Restart();
@@ -176,7 +177,7 @@ public partial class SongPage : ContentPage
     // ---- frame diagnostics: every hitch over 50 ms is logged with what coincided ----
     private int _gc0Seen, _frames, _hitches, _lastSecond = -1;
     private double _worst, _sumDt, _sinceReport;
-    private bool _secondTickedLastFrame, _sliderMovedLastFrame;
+    private bool _secondTickedLastFrame;
     private long _allocatedSeen = -1;
     /// <summary>Diagnostics: leave the conveyor still while the song plays, to tell
     /// drawing from audio as the source of a stall (Settings → About, debug).</summary>
@@ -226,11 +227,9 @@ public partial class SongPage : ContentPage
             // control, no layout in the frame.
             if (Math.Abs(Track.Position - _vm.Position) > 0.002) Track.Position = _vm.Position;
             if (_gridView) BeatsView.Position = _vm.Position;    // a comparison unless the beat changed
-            _sliderMovedLastFrame = false;
             if (++_frame % 3 == 0)
             {
                 Seeker.Position = _vm.Position;
-                _sliderMovedLastFrame = true;
             }
         }
         catch (Exception ex) { FileLog.Error("song frame", ex); }
@@ -240,7 +239,7 @@ public partial class SongPage : ContentPage
     /// usable origin. Either way the only honest offer is YouTube itself.</summary>
     private async void OnPlayerError(object? sender, int code)
     {
-        var open = await DisplayAlert(_vm.Title, string.Format(Loc.Get("Song_YT_Error"), code), Loc.Get("Song_YT_Open"), Loc.Get("Common_Cancel"));
+        var open = await this.DisplayAlertAsync(_vm.Title, string.Format(Loc.Get("Song_YT_Error"), code), Loc.Get("Song_YT_Open"), Loc.Get("Common_Cancel"));
         if (open) await Launcher.Default.OpenAsync($"https://www.youtube.com/watch?v={_vm.Song.SourceRef}");
     }
 
@@ -335,7 +334,7 @@ public partial class SongPage : ContentPage
     }
 
     private async void OnEditorTapped(object? sender, TappedEventArgs e) =>
-        await DisplayAlert(Loc.Get("Song_Editor"), Loc.Get("Song_Editor_Soon"), "OK");
+        await this.DisplayAlertAsync(Loc.Get("Song_Editor"), Loc.Get("Song_Editor_Soon"), "OK");
 
     private Task OnShapeTappedAsync(string chord)
     {
@@ -367,11 +366,11 @@ public partial class SongPage : ContentPage
             // Before the first layout the rows have no height yet: fall back to the full size.
             double free = Panel.Height + Track.Height;
             PlayerHost.HeightRequest = free > 0 ? Math.Clamp(free * 0.45, m.Size(110), m.Size(200, hero: true)) : m.Size(200, hero: true);
-            if (animate) await PlayerHost.FadeTo(1, 200); else PlayerHost.Opacity = 1;
+            if (animate) await PlayerHost.FadeToAsync(1, 200); else PlayerHost.Opacity = 1;
         }
         else
         {
-            if (animate) await PlayerHost.FadeTo(0, 150); else PlayerHost.Opacity = 0;
+            if (animate) await PlayerHost.FadeToAsync(0, 150); else PlayerHost.Opacity = 0;
             PlayerHost.HeightRequest = 1;
         }
     }
@@ -394,16 +393,16 @@ public partial class SongPage : ContentPage
                 _vm.Volume = Platforms.iOS.SystemVolume.Get();     // where the buttons left it since the song opened
             }
 #endif
-            _ = MoreScrim.FadeTo(0.45, 180);
-            await MoreSheet.TranslateTo(0, 0, 260, Easing.CubicOut);
+            _ = MoreScrim.FadeToAsync(0.45, 180);
+            await MoreSheet.TranslateToAsync(0, 0, 260, Easing.CubicOut);
         }
         else
         {
 #if IOS
             Platforms.iOS.SystemVolume.Detach();
 #endif
-            _ = MoreScrim.FadeTo(0, 160);
-            await MoreSheet.TranslateTo(0, MoreSheet.Height + 40, 220, Easing.CubicIn);
+            _ = MoreScrim.FadeToAsync(0, 160);
+            await MoreSheet.TranslateToAsync(0, MoreSheet.Height + 40, 220, Easing.CubicIn);
         }
     }
 }

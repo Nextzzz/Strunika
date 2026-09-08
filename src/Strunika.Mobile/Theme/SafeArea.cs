@@ -18,8 +18,7 @@ public static class SafeArea
             try
             {
                 var window = UIKit.UIApplication.SharedApplication.ConnectedScenes
-                    .OfType<UIKit.UIWindowScene>().SelectMany(s => s.Windows).FirstOrDefault(w => w.IsKeyWindow)
-                    ?? UIKit.UIApplication.SharedApplication.Windows.FirstOrDefault();
+                    .OfType<UIKit.UIWindowScene>().SelectMany(s => s.Windows).FirstOrDefault(w => w.IsKeyWindow);
                 return window?.SafeAreaInsets.Bottom ?? 0;
             }
             catch { return 0; }
