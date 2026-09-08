@@ -61,7 +61,8 @@
 
         <!-- Chords, grouped by root; the span follows the screen (OnSized) -->
         <CollectionView Grid.Row="2" x:Name="List" ItemsSource="{Binding Groups}" IsGrouped="True" SelectionMode="None"
-                        VerticalScrollBarVisibility="Default" IsVisible="{Binding IsEmpty, Converter={StaticResource Not}}">
+                        VerticalScrollBarVisibility="Default" IsVisible="{Binding IsEmpty, Converter={StaticResource Not}}"
+                        Scrolled="OnListScrolled">
             <CollectionView.ItemsLayout>
                 <GridItemsLayout x:Name="Columns" Orientation="Vertical" Span="3" HorizontalItemSpacing="10" VerticalItemSpacing="10" />
             </CollectionView.ItemsLayout>
@@ -89,5 +90,8 @@
                 <BoxView HeightRequest="{t:Size 40}" Color="Transparent" />
             </CollectionView.Footer>
         </CollectionView>
+
+        <!-- Cards dissolve under the search row as they scroll out (as on the Songs tab). -->
+        <controls:ScrollShade x:Name="HeaderShade" Grid.Row="2" HeightRequest="{t:Size 28}" />
     </Grid>
 </ContentPage>

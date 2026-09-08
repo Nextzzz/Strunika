@@ -74,9 +74,6 @@ public partial class LibraryView : ContentView
                 // songs come and go, and the page is patched in place, never
                 // rebuilt — LibraryViewModel.ApplyPage).
                 vm.ListReset += (_, _) => ScrollToTop();
-                ApplyShade();
-                Services.AppSettings.Changed += (_, key) => { if (key == nameof(Services.AppSettings.Theme)) ApplyShade(); };
-                if (Application.Current != null) Application.Current.RequestedThemeChanged += (_, _) => ApplyShade();
                 // Width is known only after the first layout; labels change with the
                 // language and sizes with the size class (Theme.Refit covers both).
                 QuickRow.SizeChanged += (_, _) => LayoutQuickRow(vm);
@@ -101,39 +98,12 @@ public partial class LibraryView : ContentView
         {
             if (Vm is { Items.Count: > 0 })
                 List.ScrollTo(0, position: ScrollToPosition.Start, animate: false);
-            SetShade(0);
+            HeaderShade.Follow(0);
         });
     }
 
-    /// <summary>The shade under the header is there only while cards are under
-    /// it: it fades in over the first shade-height of scrolling, as the hairline
-    /// under a large title does on iOS, so the first card at rest is untouched.</summary>
-    private void OnListScrolled(object? sender, ItemsViewScrolledEventArgs e) => SetShade(e.VerticalOffset);
-
-    private double _shade = -1;
-
-    private void SetShade(double offset)
-    {
-        double depth = Math.Max(1, HeaderShade.Height > 0 ? HeaderShade.Height : Theme.Metrics.Instance.Size(28));
-        double shade = Math.Clamp(offset / depth, 0, 1);
-        if (Math.Abs(shade - _shade) < 0.01) return;      // one native write per visible step, not per scroll event
-        _shade = shade;
-        HeaderShade.Opacity = shade;
-    }
-
-    /// <summary>Short shade under the header: page background dissolving over 28 pt.</summary>
-    private void ApplyShade()
-    {
-        var bg = Theme.Tokens.Current("Bg");
-        HeaderShade.Background = new LinearGradientBrush(
-            new GradientStopCollection
-            {
-                new GradientStop(bg, 0f),
-                new GradientStop(bg.WithAlpha(0.7f), 0.4f),
-                new GradientStop(bg.WithAlpha(0f), 1f),
-            },
-            new Point(0, 0), new Point(0, 1));
-    }
+    /// <summary>The shade under the header is there only while cards are under it (Controls/ScrollShade).</summary>
+    private void OnListScrolled(object? sender, ItemsViewScrolledEventArgs e) => HeaderShade.Follow(e.VerticalOffset);
 
     private static Page? Host => Application.Current?.Windows.FirstOrDefault()?.Page;
 

@@ -185,7 +185,7 @@
         <Label Grid.Row="1" Style="{StaticResource Subhead}" Text="{Binding NoMatchesText}" IsVisible="{Binding NoMatches}"
                HorizontalTextAlignment="Center" VerticalOptions="Center" Padding="36,0,36,104" InputTransparent="True" />
 
-        <Border x:Name="HeaderShade" Grid.Row="1" VerticalOptions="Start" HeightRequest="{t:Size 28}" Opacity="0" InputTransparent="True" StrokeThickness="0" StrokeShape="Rectangle" BackgroundColor="Transparent" />
+        <controls:ScrollShade x:Name="HeaderShade" Grid.Row="1" HeightRequest="{t:Size 28}" />
 
         <!-- Header: title, quick ways of adding, search, filters. 14 pt under it before the first card. -->
         <Grid x:Name="Header" Padding="20,0,20,14" RowDefinitions="44,Auto,Auto,Auto" RowSpacing="0">

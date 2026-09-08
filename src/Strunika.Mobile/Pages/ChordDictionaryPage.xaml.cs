@@ -49,6 +49,8 @@ public partial class ChordDictionaryPage : ContentPage
 
     private async void OnBackTapped(object? sender, TappedEventArgs e) => await Navigation.PopAsync(animated: true);
 
+    private void OnListScrolled(object? sender, ItemsViewScrolledEventArgs e) => HeaderShade.Follow(e.VerticalOffset);
+
     private void OnSimpleTapped(object? sender, TappedEventArgs e) => _vm.Simple = !_vm.Simple;
 
     private async void OnChordTapped(object? sender, TappedEventArgs e)

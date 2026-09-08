@@ -20,10 +20,14 @@ public partial class WelcomePage : ContentPage
         _services = services;
         InitializeComponent();
 #if IOS
-        // The page's root is a scroll view, which pads nothing by itself: it
-        // keeps the status-bar and home-indicator insets like the legacy
-        // Page.UseSafeArea did (the layouts on the other pages do this on their own).
-        Scroller.SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container);
+        // The page keeps the status-bar and home-indicator insets itself, as the
+        // legacy Page.UseSafeArea did, so the scroll view is the safe rectangle
+        // and the grid's minimum height (bound to the scroll view's) is exactly
+        // the visible height. The insets were put on the scroll view for a
+        // while: there they become a content inset inside a full-screen scroll
+        // view, the grid grew by the insets' height, and the Start button sat
+        // on the screen's bottom edge with nothing under it.
+        SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container);
 #endif
         ApplyGreeting();
         Loc.Instance.PropertyChanged += (_, _) => ApplyGreeting();
