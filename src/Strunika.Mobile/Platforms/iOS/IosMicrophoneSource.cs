@@ -89,6 +89,9 @@ public sealed class IosMicrophoneSource : IMicrophoneSource
         _engine = null;
         _converter?.Dispose();
         _converter = null;
+        // Back to the playback state at once, not when the next sound needs it:
+        // that later change is what pauses a video already playing.
+        AudioSessions.ForPlayback();
     }
 
     public void Dispose() => Stop();

@@ -20,9 +20,10 @@ public sealed class IosSoundPlayer : ISoundPlayer
         await Task.Yield();   // let the caller's animation start first
         try
         {
-            AVAudioSession.SharedInstance().SetCategory(AVAudioSessionCategory.Ambient, AVAudioSessionCategoryOptions.MixWithOthers);
-            AVAudioSession.SharedInstance().SetActive(true);
-            AudioSessions.Changed();
+            // The same mixable playback session as everything else: a category
+            // of its own here (Ambient) was the one a later sound had to change
+            // back, and that change paused a running video.
+            AudioSessions.ForPlayback();
             // The previous player is released here, before the next one starts,
             // and nowhere else. Disposing it inside its own FinishedPlaying aborts
             // the process ("the player object was Dispose()d during the callback"),

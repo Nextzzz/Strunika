@@ -30,6 +30,12 @@ public static class MauiProgram
             });
 
 #if IOS
+        // The session is put into its playback state before anything plays, so
+        // that nothing changes it under a running YouTube video: the web view
+        // shares the app's session, and a category change while it plays is an
+        // interruption — the video paused when the "More" sheet was opened soon
+        // after play (the first sound to set the category did it).
+        Platforms.iOS.AudioSessions.ForPlayback();
         builder.Services.AddSingleton<IMicrophoneSource, Platforms.iOS.IosMicrophoneSource>();
         builder.Services.AddSingleton<IAudioDecoder, Platforms.iOS.IosAudioDecoder>();
         builder.Services.AddSingleton<ISoundPlayer, Platforms.iOS.IosSoundPlayer>();

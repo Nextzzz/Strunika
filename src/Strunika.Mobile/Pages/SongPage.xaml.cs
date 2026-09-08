@@ -52,6 +52,7 @@ public partial class SongPage : ContentPage
 
         ApplyPanelSpacing(around: false);
 #if IOS
+        Platforms.iOS.AudioSessions.ForPlayback();               // before the video starts, never during it
         // Edge to edge at the bottom (MAUI 10 pads layouts by the safe area on
         // its own): the transport sits 8 pt above the home indicator instead of
         // 20 pt above the safe area, and the sheet and its scrim reach the
