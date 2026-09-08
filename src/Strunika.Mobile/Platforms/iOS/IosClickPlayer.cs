@@ -83,19 +83,24 @@ public sealed class IosClickPlayer : IClickPlayer
                     if (!Ensure()) return;
                     _node.Volume = volume;
                     double remaining = delaySeconds - System.Diagnostics.Stopwatch.GetElapsedTime(asked).TotalSeconds;
-                    var now = _node.LastRenderTime;
+                    // A schedule time is in the player's own timeline (samples since
+                    // its Play), not the node's render clock: the render clock is
+                    // host samples in the billions, and a tick placed there was a
+                    // day away — the first build made no sound. LastRenderTime is
+                    // converted with PlayerTimeForNodeTime.
+                    var nodeNow = _node.LastRenderTime;
+                    var playerNow = nodeNow != null && nodeNow.SampleTimeValid ? _node.GetPlayerTimeFromNodeTime(nodeNow) : null;
                     AVAudioTime? at = null;
-                    if (remaining > 0.002 && now != null && now.SampleTimeValid)
+                    if (remaining > 0.002 && playerNow != null && playerNow.SampleTimeValid)
                     {
-                        // The node's clock is in host samples: its own sample rate, not the buffer's.
-                        double rate = now.SampleRate > 0 ? now.SampleRate : SampleRate;
-                        at = new AVAudioTime(now.SampleTime + (long)(remaining * rate), rate);
+                        double rate = playerNow.SampleRate > 0 ? playerNow.SampleRate : SampleRate;
+                        at = new AVAudioTime(playerNow.SampleTime + (long)(remaining * rate), rate);
                     }
                     _node.ScheduleBuffer(buffer, at, AVAudioPlayerNodeBufferOptions.Interrupts, null);
                     if (_logged < 3)
                     {
                         _logged++;
-                        Strunika.Core.Diagnostics.FileLog.Info($"click: scheduled in {remaining * 1000:0} ms (asked {delaySeconds * 1000:0}), clock {(now?.SampleTimeValid == true ? now.SampleTime.ToString() : "invalid")}, engine {_engine.Running}, node {_node.Playing}");
+                        Strunika.Core.Diagnostics.FileLog.Info($"click: scheduled in {remaining * 1000:0} ms (asked {delaySeconds * 1000:0}), player time {(playerNow?.SampleTimeValid == true ? $"{playerNow.SampleTime} @ {playerNow.SampleRate:0}" : "invalid")}, engine {_engine.Running}, node {_node.Playing}");
                     }
                 }
                 catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("click", ex); }
