@@ -293,9 +293,18 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+#if WINDOWS
+            // WinUI's picker throws E_FAIL from an elevated process (Visual
+            // Studio run as administrator); the classic dialog does not mind.
+            FileLog.Error("file picker (falling back to the classic dialog)", ex);
+            var path = Platforms.Windows.Win32FileDialog.Open(Loc.Get("Library_FromFile"), "Audio",
+                new[] { ".mp3", ".m4a", ".wav", ".aac", ".wma", ".aiff", ".flac" });
+            picked = path == null ? null : new FileResult(path);
+#else
             FileLog.Error("file picker", ex);
             Message?.Invoke(this, Loc.Get("Library_Err_File"));
             return false;
+#endif
         }
         if (picked == null) return false;
 

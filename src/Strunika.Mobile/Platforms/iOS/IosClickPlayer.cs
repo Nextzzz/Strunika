@@ -47,6 +47,11 @@ public sealed class IosClickPlayer : IClickPlayer
         return buffer;
     }
 
+    private static double OutputLatency()
+    {
+        try { return AVAudioSession.SharedInstance().OutputLatency; } catch { return 0; }
+    }
+
     /// <summary>The engine running and the node playing, on the mixable
     /// playback session; true when a tick can be scheduled.</summary>
     private bool Ensure()
@@ -82,7 +87,10 @@ public sealed class IosClickPlayer : IClickPlayer
                 {
                     if (!Ensure()) return;
                     _node.Volume = volume;
-                    double remaining = delaySeconds - System.Diagnostics.Stopwatch.GetElapsedTime(asked).TotalSeconds;
+                    // The session's output latency (what the hardware adds after the
+                    // engine renders) comes off the delay, so the tick is heard, not
+                    // merely rendered, on the beat.
+                    double remaining = delaySeconds - System.Diagnostics.Stopwatch.GetElapsedTime(asked).TotalSeconds - OutputLatency();
                     // A schedule time is in the player's own timeline (samples since
                     // its Play), not the node's render clock: the render clock is
                     // host samples in the billions, and a tick placed there was a

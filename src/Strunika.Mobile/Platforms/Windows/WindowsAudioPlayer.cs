@@ -83,17 +83,26 @@ public sealed class WindowsClickPlayer : IClickPlayer
         _mixer.AddMixerInput(new VolumeSampleProvider(source) { Volume = (float)Math.Clamp(Volume, 0, 1) });
     }
 
-    private int _generation;
+    /// <summary>What the output pipeline adds between a sample entering the
+    /// mixer and it being heard: the two 30 ms buffers of a 60 ms WaveOut
+    /// (30–60 ms, 45 on average) and the device's own few milliseconds. Taken
+    /// off every tick's delay; a timer on top of this was a beat late.</summary>
+    private const double OutputLatency = 0.05;
 
-    /// <summary>The dev head: a timer is as exact as it gets here.</summary>
-    public async void ClickAt(double delaySeconds, bool accent)
+    /// <summary>The tick is placed in the mixer now, behind exactly as much
+    /// silence as is left of the delay once the pipeline's latency is taken
+    /// off: sample-accurate, no timer, no thread.</summary>
+    public void ClickAt(double delaySeconds, bool accent)
     {
-        int generation = _generation;
-        if (delaySeconds > 0.002) await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
-        if (generation == _generation) Click(accent);
+        double lead = delaySeconds - OutputLatency;
+        if (lead <= 0.001) { Click(accent); return; }
+        var data = accent ? _accent : _tick;
+        var source = new RawSourceWaveStream(new MemoryStream(FloatBytes(data)), WaveFormat.CreateIeeeFloatWaveFormat(44100, 1)).ToSampleProvider();
+        var delayed = new OffsetSampleProvider(source) { DelayBy = TimeSpan.FromSeconds(lead) };
+        _mixer.AddMixerInput(new VolumeSampleProvider(delayed) { Volume = (float)Math.Clamp(Volume, 0, 1) });
     }
 
-    public void Cancel() => _generation++;
+    public void Cancel() => _mixer.RemoveAllMixerInputs();
 
     private static byte[] FloatBytes(float[] samples)
     {
