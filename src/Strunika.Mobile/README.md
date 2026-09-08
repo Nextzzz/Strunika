@@ -151,14 +151,17 @@ from Swift — but that needs a Mac and is not planned.
   Their `Position` is the sample being heard (Windows: the reader's head less what WaveOut still holds; iOS: blocks
   consumed less the time-pitch, IO-buffer and output latency).
 - The metronome for a YouTube song (whose audio is WebKit's) goes through `IClickPlayer`: synthesized ticks
-  (`Services/MetronomeClick.Render`) placed on the device clock — iOS: `IosClickPlayer` fixes the moment as a host time
-  in `ClickAt` and converts it to a sample on the node's render clock (`AVAudioTime.ExtrapolateTimeFromAnchor`), taking
-  only the session's `OutputLatency` off; Windows: `WindowsClickPlayer` writes the tick at an absolute frame of its
-  output stream (`WaveOutEvent.GetPosition` + delay). `IClickPlayer.Latency` (speaker 10–20 ms, AirPods ~170 ms) grows
-  the view-model's lookahead, so a tick can always be placed. Lessons of 2026-09-08: the earlier "delay minus session
-  latency, measured on the worker" went negative on AirPods and every tick played at once, 65 ms late; a 60 ms cap made
-  YouTube ticks 100 ms late and file ticks 60 ms early instead. The YouTube page's `getCurrentTime()` is continuous to
-  ±5 ms (measured in Chrome), so the probe's only error is its round trip, half of which the view-model adds back.
+  (`Services/MetronomeClick.Render`) placed on the device clock — iOS: `IosClickPlayer` is an `AVAudioSourceNode` that
+  renders its own stream of silence with the ticks written at absolute frames; each render block's `AudioTimeStamp`
+  (frame, host time) is the stream's clock, so a tick asked for a host time is just a frame number, less the session's
+  `OutputLatency`. Windows: `WindowsClickPlayer` does the same over `WaveOutEvent.GetPosition`. `IClickPlayer.Latency`
+  (speaker 10–20 ms, AirPods ~170 ms) grows the view-model's lookahead, so a tick can always be placed. Lessons of
+  2026-09-08/09: "delay minus session latency, measured on the worker" went negative on AirPods and every tick played at
+  once, 65 ms late; a 60 ms cap made YouTube ticks 100 ms late and file ticks 60 ms early; scheduling on
+  `AVAudioPlayerNode.LastRenderTime` never got a valid host/sample pair on the device and played every tick a lookahead
+  early. The YouTube page's `getCurrentTime()` is continuous to ±5 ms (measured in Chrome), so the probe's only error is
+  its round trip, half of which the view-model adds back. The song's player node and time-pitch belong to
+  `SharedAudioEngine` and stay attached: detaching them on every song-page exit crashed the app (2026-09-09).
 - **The song page stuttered ~100 ms once a second on the Windows head.** Cause (from the runtime GC events):
   `gen2 InducedNotForced` collections on the UI thread — WinUI/CsWinRT induces full collections when native objects
   churn (Win2D text layouts and brushes per redraw, a WinUI `Slider.Value` update ten times a second, MAUI creating a

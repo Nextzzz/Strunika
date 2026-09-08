@@ -16,15 +16,17 @@ namespace Strunika.Mobile.Platforms.iOS;
 /// the hardware's timeline while the ticks were placed as "heard" time, and
 /// the two disagreed by exactly the Bluetooth latency.
 /// <para>Blocks are 2048 frames (~46 ms) with four in flight, so the metronome
-/// switch, the volume and the speed take effect within ~200 ms.</para>
+/// switch, the volume and the speed take effect within ~200 ms. The nodes are
+/// the engine's own (<see cref="SharedAudioEngine.SongNode"/>): a player
+/// instance borrows them for its song and leaves them attached.</para>
 /// </summary>
 public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
 {
     private const uint ChunkFrames = 2048;
     private const int InFlight = 4;
 
-    private readonly AVAudioPlayerNode _node = new();
-    private readonly AVAudioUnitTimePitch _pitch = new();
+    private static AVAudioPlayerNode _node => SharedAudioEngine.SongNode;
+    private static AVAudioUnitTimePitch _pitch => SharedAudioEngine.SongPitch;
     private AVAudioFile? _file;
     private AVAudioFormat? _format;
     private AVAudioPcmBuffer[] _ring = Array.Empty<AVAudioPcmBuffer>();
@@ -40,7 +42,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
     private long _consumedAt;          // Stopwatch stamp of that completion
     private int _queued;               // blocks scheduled and not yet consumed
     private int _generation;           // bumped by every seek/stop: completions of the blocks before it are ignored
-    private bool _playing, _ended, _attached;
+    private bool _playing, _ended;
     private double _rate = 1.0, _volume = 1.0, _heardLag;
     private double _pausedInto;        // real seconds into the current block when paused, so the position holds still
     private readonly Action _onEngineStopped;
@@ -72,15 +74,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
             _ring = new AVAudioPcmBuffer[InFlight];
             for (int i = 0; i < InFlight; i++) _ring[i] = new AVAudioPcmBuffer(_format, ChunkFrames);
 
-            var engine = SharedAudioEngine.Engine;
-            if (!_attached)
-            {
-                engine.AttachNode(_node);
-                engine.AttachNode(_pitch);
-                _attached = true;
-            }
-            engine.Connect(_node, _pitch, _format);
-            engine.Connect(_pitch, engine.MainMixerNode, _format);
+            SharedAudioEngine.ConnectSong(_format);
             _pitch.Rate = (float)_rate;
 
             _cursor = 0; _consumed = 0; _queued = 0; _ended = _length == 0; _playing = false;
@@ -89,12 +83,14 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
         return Task.CompletedTask;
     }
 
+    /// <summary>Stops the node and lets go of the file. The block buffers are
+    /// left to the collector: the node may still hold one for a moment, and
+    /// releasing it under the render thread is not worth 64 KB.</summary>
     private void Unload()
     {
-        _generation++;
-        if (_attached) _node.Stop();
+        _generation++;                                           // before Stop: it may fire the old completions
+        try { _node.Stop(); } catch (Exception ex) { FileLog.Error("song player stop", ex); }
         _queued = 0;
-        foreach (var b in _ring) b.Dispose();
         _ring = Array.Empty<AVAudioPcmBuffer>();
         _file?.Dispose();
         _file = null;
@@ -291,29 +287,25 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
             if (_file == null) return;
             bool playing = _playing;
             long frame = (long)Math.Round(Position * _sampleRate);
-            Reposition(frame);
-            if (playing) FileLog.Info($"song player: paused at {frame / (double)_sampleRate:0.00} s by a route change");
+            // Only the bookkeeping here, on the notification's thread: the node
+            // is stopped, the cursor moves to where the sound was, and the next
+            // Play reads the blocks again from there.
+            _generation++;
+            _node.Stop();
+            _queued = 0;
+            _cursor = frame;
+            _consumed = frame;
+            _pausedInto = 0;
+            _ended = frame >= _length;
+            _playing = false;
+            if (playing) FileLog.Info($"song player: paused at {frame / (double)_sampleRate:0.00} s, the engine stopped");
         }
     }
 
+    /// <summary>The song is let go; the nodes stay on the engine for the next one.</summary>
     public void Dispose()
     {
         SharedAudioEngine.Stopped -= _onEngineStopped;
-        lock (SharedAudioEngine.Gate)
-        {
-            Unload();
-            if (_attached)
-            {
-                try
-                {
-                    SharedAudioEngine.Engine.DetachNode(_node);
-                    SharedAudioEngine.Engine.DetachNode(_pitch);
-                }
-                catch (Exception ex) { FileLog.Error("song player detach", ex); }
-                _attached = false;
-            }
-            _node.Dispose();
-            _pitch.Dispose();
-        }
+        lock (SharedAudioEngine.Gate) Unload();
     }
 }
