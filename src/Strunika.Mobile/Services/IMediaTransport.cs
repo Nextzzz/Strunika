@@ -22,6 +22,10 @@ public interface IMediaTransport : IDisposable
     bool SupportsRate { get; }
     /// <summary>False while a YouTube page is still loading its player.</summary>
     bool IsReady { get; }
+    /// <summary>The transport mixes the metronome into its own stream, tick at
+    /// the beat's sample (file players). Null when ticks have to be placed on
+    /// the device clock instead (YouTube).</summary>
+    ITickTrack? Ticks { get; }
 }
 
 public sealed class FileTransport : IMediaTransport
@@ -36,6 +40,7 @@ public sealed class FileTransport : IMediaTransport
     public Task<TransportState> PollAsync() => Task.FromResult(new TransportState(_player.Position, _player.Duration, _player.IsPlaying, false));
     public bool SupportsRate => DeviceInfo.Platform == DevicePlatform.iOS;
     public bool IsReady => true;
+    public ITickTrack? Ticks => _player as ITickTrack;
     public void Dispose() => _player.Dispose();
 }
 
@@ -77,5 +82,6 @@ public sealed class YouTubeTransport : IMediaTransport
     }
 
     public bool SupportsRate => true;
+    public ITickTrack? Ticks => null;
     public void Dispose() { }
 }

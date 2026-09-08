@@ -37,6 +37,10 @@ public sealed partial class SongViewModel : ObservableObject
     private int _nextBeat;
     private bool _scrubbing, _wasPlaying, _probing;
     private double _predicted, _sinceProbe, _lastProbe = -1;
+    /// <summary>Ticks placed on the device clock and not yet due: the beat and
+    /// the Stopwatch stamp it sounds at. A corrected position places them again.</summary>
+    private readonly List<(int Beat, long Due)> _inAir = new();
+    private int _probeLogs = 10;
     // After a seek the transport keeps reporting the old time for a probe or two
     // (YouTube seeks asynchronously; a probe in flight predates the seek). Until
     // the player confirms the target, its position is not adopted.
@@ -168,7 +172,15 @@ public sealed partial class SongViewModel : ObservableObject
     public bool ShowClickOffset => Metronome && AppSettings.Expert;
     public string ClickOffsetText => string.Format(Loc.Get("Song_ClickOffset_Value"), ClickOffsetMs);
     partial void OnClickOffsetMsChanged(int value) { AppSettings.ClickOffsetMs = value; OnPropertyChanged(nameof(ClickOffsetText)); }
-    partial void OnMetronomeChanged(bool value) => OnPropertyChanged(nameof(ShowClickOffset));
+    partial void OnMetronomeChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowClickOffset));
+        _nextBeat = NextBeatAfter(Position);                     // never a pile of old beats when it comes on
+        PushTicks();
+        if (_transport?.Ticks != null) return;
+        if (value) _click.Prepare();
+        else { _click.Cancel(); _inAir.Clear(); }
+    }
     [RelayCommand] private void ClickEarlier() => ClickOffsetMs = Math.Min(150, ClickOffsetMs + 5);
     [RelayCommand] private void ClickLater() => ClickOffsetMs = Math.Max(-150, ClickOffsetMs - 5);
 
@@ -213,6 +225,7 @@ public sealed partial class SongViewModel : ObservableObject
         _transport?.Dispose();
         _transport = transport;
         _predicted = Position;
+        PushTicks();
         CanPlay = transport.IsReady;                             // YouTube: off until its page answers
 #if IOS
         if (DeviceVolume) { Volume = Platforms.iOS.SystemVolume.Get(); return; }   // the slider shows the device's level
@@ -249,14 +262,29 @@ public sealed partial class SongViewModel : ObservableObject
         try
         {
             long sequence = _seekSequence;
+            long asked = System.Diagnostics.Stopwatch.GetTimestamp();
             var (pos, dur, playing, pending) = await transport.PollAsync();
+            double trip = System.Diagnostics.Stopwatch.GetElapsedTime(asked).TotalSeconds;
             if (_transport != transport) return;                 // the page moved on
             CanPlay = transport.IsReady;
             if (dur > 0 && Math.Abs(dur - Duration) > 0.5) Duration = dur;
             if (sequence != _seekSequence) return;               // answered a question asked before a seek
+            if (IsPlaying && !playing) { _click.Cancel(); _inAir.Clear(); }   // the player paused itself: no tick for a beat it will not play
             IsPlaying = playing;
             Starting = pending;
             if (_scrubbing) return;
+            // The YouTube page read its clock somewhere inside the round trip
+            // (tens of ms through a WebView on the phone), so the reading is
+            // that much behind by the time it is here; half the trip is the
+            // best guess. A file player answers at once and gets nothing.
+            // (The page's own clock is continuous to ±5 ms — measured 2026-09-08 —
+            // so the trip is the whole error.)
+            double heard = playing ? pos + trip * 0.5 * Speed : pos;
+            if (_probeLogs > 0 && playing)
+            {
+                _probeLogs--;
+                FileLog.Info($"probe: t {pos:0.000} trip {trip * 1000:0} ms, prediction {_predicted - heard:+0.000;-0.000} s off");
+            }
             if (_seekTarget >= 0)
             {
                 // The old time keeps coming back for a while after a seek —
@@ -285,41 +313,75 @@ public sealed partial class SongViewModel : ObservableObject
             _lastProbe = pos;
             // Snap on a real jump, otherwise ease the prediction towards the
             // truth so the conveyor never visibly steps.
-            if (!playing || stalled || Math.Abs(pos - _predicted) > 0.35) _predicted = pos;
-            else _predicted += (pos - _predicted) * 0.25;
+            if (!playing || stalled || Math.Abs(heard - _predicted) > 0.35)
+            {
+                double before = _predicted;
+                _predicted = stalled ? pos : heard;
+                if (playing && Math.Abs(_predicted - before) > 0.015) ResyncTicks();
+            }
+            else _predicted += (heard - _predicted) * 0.25;
         }
         catch (Exception ex) { FileLog.Error("song probe", ex); }
         finally { _probing = false; }
     }
 
-    /// <summary>How far ahead a tick is placed on the audio clock. Longer than
-    /// a frame and the player's start-up; short enough that a pause or a seek
-    /// rarely has a tick already in the air.</summary>
+    /// <summary>How far ahead a tick is placed on the audio clock, on top of
+    /// the player's own latency: longer than a frame and the worker's trip;
+    /// short enough that a pause or a seek rarely has a tick already in the air.</summary>
     private const double ClickLookahead = 0.12;
+
+    /// <summary>A file player mixes the ticks into its own stream (exact by
+    /// construction); it gets the beats, the switch and the level, and the
+    /// clock scheduling below stays out of its way.</summary>
+    private void PushTicks() => _transport?.Ticks?.SetTicks(_beats, Metronome, ClickVolume);
 
     private void SetPosition(double pos, bool fromTransport)
     {
-        if (Metronome && fromTransport && IsPlaying)
+        if (Metronome && fromTransport && IsPlaying && _transport?.Ticks == null)
         {
             // Every beat inside the lookahead is scheduled now for its exact
             // moment (song seconds to real seconds through the speed). Ticking
             // when a frame found the beat already behind it was a frame late,
             // then the start-up on top — audibly behind the beat squares.
             // The lead (set by ear) moves the tick earlier so it is heard on the
-            // beat through whatever the player and the device add on the way.
-            double lead = AppSettings.ClickOffsetMs / 1000.0;      // set under Expert settings
-            double horizon = pos + (ClickLookahead + Math.Max(0, lead)) * Speed;
+            // beat through whatever the player adds on the way; the click
+            // player's own route latency is not the lead's job — the horizon
+            // grows by it, and the player takes it off itself.
+            double lead = ClickOffsetMs / 1000.0;
+            double horizon = pos + (ClickLookahead + Math.Max(0, lead) + _click.Latency) * Speed;
+            long now = System.Diagnostics.Stopwatch.GetTimestamp();
+            _inAir.RemoveAll(t => t.Due <= now);
             while (_nextBeat < _beats.Length && _beats[_nextBeat] <= horizon)
             {
                 double delay = (_beats[_nextBeat] - pos) / Math.Max(0.1, Speed) - lead;
-                // Only beats we are actually crossing now (not a pile left behind by a seek).
-                // One sound for every beat (user decision 2026-09-08): the higher,
-                // louder downbeat read as a second instrument.
-                if (delay > -0.25) _click.ClickAt(Math.Max(0, delay), accent: false);
+                // A beat already behind us is skipped, not played late: a late
+                // tick is what the ear hears as wrong (this allowed −250 ms once,
+                // and a forward correction played a pile of them).
+                if (delay > -0.02)
+                {
+                    _click.ClickAt(Math.Max(0, delay), accent: false);
+                    _inAir.Add((_nextBeat, now + (long)(Math.Max(0, delay) * System.Diagnostics.Stopwatch.Frequency)));
+                }
                 _nextBeat++;
             }
         }
         Position = pos;
+    }
+
+    /// <summary>The position just jumped (a stall, a buffering player, a real
+    /// seek by the page): ticks placed for the old timeline and not yet heard
+    /// are dropped and their beats are placed again from the new one. Beats
+    /// that already sounded are not repeated, beats now behind us are skipped.</summary>
+    private void ResyncTicks()
+    {
+        if (_transport?.Ticks != null) return;
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        _inAir.RemoveAll(t => t.Due <= now);
+        if (_inAir.Count == 0) { _nextBeat = Math.Max(_nextBeat, NextBeatAfter(_predicted)); return; }
+        _click.Cancel();
+        int first = _inAir.Min(t => t.Beat);
+        _inAir.Clear();
+        _nextBeat = Math.Max(first, NextBeatAfter(_predicted));
     }
 
     partial void OnPositionChanged(double value)
@@ -348,6 +410,7 @@ public sealed partial class SongViewModel : ObservableObject
         else
         {
             _nextBeat = NextBeatAfter(Position);
+            if (Metronome && transport.Ticks == null) _click.Prepare();   // the engine is up before the first beat
             if (Duration > 0 && Position >= Duration - 0.2) { await transport.SeekAsync(0); NoteSeek(0); _predicted = 0; }
             Starting = true;                                    // the conveyor waits for the player's word
             await transport.PlayAsync();
@@ -359,7 +422,8 @@ public sealed partial class SongViewModel : ObservableObject
     {
         var transport = _transport;
         if (transport == null || !IsPlaying) return;
-        _click.Cancel();                                         // a tick already in the air stays there
+        _click.Cancel();                                         // ticks in the air are dropped
+        _inAir.Clear();
         await transport.PauseAsync();
         IsPlaying = false;
     }
@@ -472,6 +536,7 @@ public sealed partial class SongViewModel : ObservableObject
     {
         AppSettings.ClickVolume = value;
         _click.Volume = value;
+        PushTicks();
     }
 
     partial void OnVolumeChanged(double value)
@@ -583,7 +648,6 @@ public sealed partial class SongViewModel : ObservableObject
     private void ToggleMetronome()
     {
         Metronome = !Metronome;
-        _nextBeat = NextBeatAfter(Position);
         if (Metronome && _beats.Length == 0)
             Message?.Invoke(this, Loc.Get("Song_NoBeats"));
     }

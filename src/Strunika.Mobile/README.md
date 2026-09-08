@@ -144,9 +144,21 @@ from Swift — but that needs a Mac and is not planned.
   (`playsinline=1` is in the embed URL too) — **verify on device**; if the embed still refuses `play()`, subclass
   `WebViewHandler` and override `CreatePlatformView` with your own configuration.
 - File playback: `Platforms/Windows/WindowsAudioPlayer` (NAudio `WaveOutEvent` + `AudioFileReader`; no rate change —
-  the page says so) and `Platforms/iOS/IosAudioPlayer` (AVAudioPlayer with `EnableRate`, Playback session) — the iOS
-  one is unverified like the decoder. `IClickPlayer` mixes synthesized clicks (`Services/MetronomeClick.Render`) into
-  a `MixingSampleProvider` on Windows / a second AVAudioPlayer on iOS.
+  the page says so) and `Platforms/iOS/IosAudioPlayer` (the file read in 2048-frame blocks onto an `AVAudioPlayerNode`
+  behind an `AVAudioUnitTimePitch`, on the shared `SharedAudioEngine`). **Both file players are `ITickTrack`s: the
+  metronome's ticks are written into the song's own samples at the beats' frames (`Services/TickMixer`)**, so no
+  buffer, route latency or speed can move a tick off its beat — nothing to place on a clock, nothing to calibrate.
+  Their `Position` is the sample being heard (Windows: the reader's head less what WaveOut still holds; iOS: blocks
+  consumed less the time-pitch, IO-buffer and output latency).
+- The metronome for a YouTube song (whose audio is WebKit's) goes through `IClickPlayer`: synthesized ticks
+  (`Services/MetronomeClick.Render`) placed on the device clock — iOS: `IosClickPlayer` fixes the moment as a host time
+  in `ClickAt` and converts it to a sample on the node's render clock (`AVAudioTime.ExtrapolateTimeFromAnchor`), taking
+  only the session's `OutputLatency` off; Windows: `WindowsClickPlayer` writes the tick at an absolute frame of its
+  output stream (`WaveOutEvent.GetPosition` + delay). `IClickPlayer.Latency` (speaker 10–20 ms, AirPods ~170 ms) grows
+  the view-model's lookahead, so a tick can always be placed. Lessons of 2026-09-08: the earlier "delay minus session
+  latency, measured on the worker" went negative on AirPods and every tick played at once, 65 ms late; a 60 ms cap made
+  YouTube ticks 100 ms late and file ticks 60 ms early instead. The YouTube page's `getCurrentTime()` is continuous to
+  ±5 ms (measured in Chrome), so the probe's only error is its round trip, half of which the view-model adds back.
 - **The song page stuttered ~100 ms once a second on the Windows head.** Cause (from the runtime GC events):
   `gen2 InducedNotForced` collections on the UI thread — WinUI/CsWinRT induces full collections when native objects
   churn (Win2D text layouts and brushes per redraw, a WinUI `Slider.Value` update ten times a second, MAUI creating a
