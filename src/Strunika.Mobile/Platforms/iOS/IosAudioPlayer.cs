@@ -95,12 +95,14 @@ public sealed class IosClickPlayer : IClickPlayer
         var pool = accent ? _accents : _ticks;
         var p = pool[_next++ % pool.Length];
         float volume = (float)Math.Clamp(Volume, 0, 1);
-        // The moment is fixed on the audio clock now, on this thread; the start
-        // itself goes off the frame (AVAudioPlayer's start takes milliseconds
-        // on the main thread and the conveyor stuttered on every tick). The
-        // session is made the mixable one first, or the video under the tick
-        // pauses.
-        double at = delaySeconds > 0.002 ? p.DeviceCurrentTime + delaySeconds : 0;
+        // The start goes off the frame (AVAudioPlayer's start takes
+        // milliseconds on the main thread and the conveyor stuttered on every
+        // tick); the moment is fixed on the device's audio clock there. That
+        // clock is read only after PrepareToPlay: a player that has finished a
+        // tick is no longer prepared and reports 0, which put the moment in the
+        // past and the tick never sounded. The session is made the mixable one
+        // first, or the video under the tick pauses.
+        long scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
         ThreadPool.QueueUserWorkItem(_ =>
         {
             try
@@ -108,11 +110,16 @@ public sealed class IosClickPlayer : IClickPlayer
                 AudioSessions.ForPlayback();
                 p.Volume = volume;
                 p.CurrentTime = 0;
-                if (at > 0) p.PlayAtTime(at); else p.Play();
+                p.PrepareToPlay();
+                double remaining = delaySeconds - System.Diagnostics.Stopwatch.GetElapsedTime(scheduled).TotalSeconds;
+                bool ok = remaining > 0.002 ? p.PlayAtTime(p.DeviceCurrentTime + remaining) : p.Play();
+                if (!ok && !_reported) { _reported = true; Strunika.Core.Diagnostics.FileLog.Error($"click: the player refused (remaining {remaining:0.000} s, clock {p.DeviceCurrentTime:0.000})"); }
             }
             catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("click", ex); }
         });
     }
+
+    private bool _reported;
 
     public void Cancel()
     {
