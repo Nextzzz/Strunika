@@ -52,14 +52,14 @@ public static class AudioSessions
     {
         if (_watching) return;
         _watching = true;
-        AVAudioSession.Notifications.ObserveInterruption((_, e) =>
+        Observers.Keep(AVAudioSession.Notifications.ObserveInterruption((_, e) =>
         {
             Strunika.Core.Diagnostics.FileLog.Info($"audio session interruption: {e.InterruptionType} reason {e.Notification.UserInfo?[new Foundation.NSString("AVAudioSessionInterruptionReasonKey")]} options {e.Option}");
             // An interruption deactivates the session: the next sound activates it again.
             lock (Gate) _playback = false;
-        });
-        AVAudioSession.Notifications.ObserveRouteChange((_, e) =>
-            Strunika.Core.Diagnostics.FileLog.Info($"audio route change: {e.Reason}"));
+        }));
+        Observers.Keep(AVAudioSession.Notifications.ObserveRouteChange((_, e) =>
+            Strunika.Core.Diagnostics.FileLog.Info($"audio route change: {e.Reason}")));
     }
 
     /// <summary>Something else set the category (the tuner took the microphone).</summary>

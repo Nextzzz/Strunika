@@ -29,21 +29,22 @@ internal static class SharedAudioEngine
 
     static SharedAudioEngine()
     {
-        AVAudioEngine.Notifications.ObserveConfigurationChange((_, _) =>
+        // The tokens are kept for the life of the app: see Observers.
+        Observers.Keep(AVAudioEngine.Notifications.ObserveConfigurationChange((_, _) =>
         {
             lock (Gate) { try { Engine.Stop(); } catch { /* already gone */ } }
             FileLog.Info("audio engine: configuration changed, stopped");
             Stopped?.Invoke();                                   // outside the gate: listeners take it themselves
-        });
+        }));
         // A call or another app's audio stops the engine as well, without a
         // configuration change: the song pauses where it was, like every player.
-        AVAudioSession.Notifications.ObserveInterruption((_, e) =>
+        Observers.Keep(AVAudioSession.Notifications.ObserveInterruption((_, e) =>
         {
             if (e.InterruptionType != AVAudioSessionInterruptionType.Began) return;
             lock (Gate) { try { Engine.Stop(); } catch { /* already gone */ } }
             FileLog.Info("audio engine: interrupted, stopped");
             Stopped?.Invoke();
-        });
+        }));
     }
 
     /// <summary>Running, on the mixable playback session. Call under <see cref="Gate"/>.</summary>

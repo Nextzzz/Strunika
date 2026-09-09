@@ -53,6 +53,7 @@ public static class SystemVolume
         try
         {
             Ensure();
+            AddToWindow();
             if (_observer != null) return;
             // outputVolume only reports while a session is active — the mixable
             // one: activating any other pauses the video this slider sits over.
@@ -70,31 +71,33 @@ public static class SystemVolume
         catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("system volume attach", ex); }
     }
 
-    /// <summary>Our slider is gone: give the overlay back to the system.</summary>
+    /// <summary>Our slider is gone: give the overlay back to the system. The
+    /// volume view leaves the window but is never destroyed, and neither is the
+    /// observer: an MPVolumeView keeps watchers of its own on the route and the
+    /// session, and disposing one under them crashes later, somewhere else
+    /// (the same lesson as Observers). Out of the window it does nothing and
+    /// costs nothing.</summary>
     public static void Detach()
     {
         _changed = null;
-        try
-        {
-            _observer?.Dispose();
-            _observer = null;
-            _view?.RemoveFromSuperview();
-            _view?.Dispose();
-            _view = null;
-            _slider = null;
-        }
+        try { _view?.RemoveFromSuperview(); }
         catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("system volume detach", ex); }
     }
 
     private static void Ensure()
     {
         if (_view != null && _slider != null) return;
-        var window = UIApplication.SharedApplication.ConnectedScenes.OfType<UIWindowScene>()
-            .SelectMany(s => s.Windows).FirstOrDefault(w => w.IsKeyWindow);
-        if (window == null) return;
         // Off screen and out of the way: it has to be in a window to work.
         _view = new MPVolumeView(new CGRect(-2000, -2000, 120, 40)) { Alpha = 0.01f };   // the slider is what it shows by default
-        window.AddSubview(_view);
+        AddToWindow();
         _slider = _view.Subviews.OfType<UISlider>().FirstOrDefault();
+    }
+
+    private static void AddToWindow()
+    {
+        if (_view == null || _view.Superview != null) return;
+        var window = UIApplication.SharedApplication.ConnectedScenes.OfType<UIWindowScene>()
+            .SelectMany(s => s.Windows).FirstOrDefault(w => w.IsKeyWindow);
+        window?.AddSubview(_view);
     }
 }

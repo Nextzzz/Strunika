@@ -9,13 +9,15 @@ namespace Strunika.Mobile.Pages;
 /// Built-in YouTube: the user searches and opens a video like in the app,
 /// and an "Add to library" bar appears as soon as a /watch page is open.
 /// YouTube is a single-page app, so besides <c>Navigated</c> the address has
-/// to be watched — pushState navigations never raise an event. On Windows
-/// the page polls <c>location.href</c>; on iOS the poll never came back (the
-/// device log had not one line from it), so there a script in the page
-/// reports the address and title itself, through a WebKit message handler,
-/// and nothing is asked of the page from outside. The video itself is added
-/// through the normal YouTube path (metadata + audio extraction); nothing is
-/// scraped from the page except its title.
+/// to be watched — pushState navigations never raise an event. On Windows the
+/// page polls <c>location.href</c>. On iOS nothing is asked of the page at
+/// all: the web view's own <c>URL</c> and <c>title</c> are observed, which
+/// WebKit updates through pushState as well. Asking the page had been tried
+/// twice and failed twice — <c>EvaluateJavaScriptAsync</c> never came back,
+/// and an injected reporting script worked here but not on a tester's phone
+/// (2026-09-09), leaving no way to add the song he was looking at. The video
+/// itself is added through the normal YouTube path (metadata + audio
+/// extraction); nothing is scraped from the page except its title.
 /// </summary>
 public partial class YouTubeBrowserPage : ContentPage
 {
@@ -35,55 +37,41 @@ public partial class YouTubeBrowserPage : ContentPage
         _poll.Interval = TimeSpan.FromMilliseconds(700);
         _poll.Tick += async (_, _) => await ProbeAsync();
 #if IOS
-        Web.HandlerChanged += (_, _) =>
-        {
-            if (Web.Handler?.PlatformView is not WebKit.WKWebView wk || _wired) return;
-            _wired = true;
-            // A link that wants a new window (target=_blank) goes nowhere in a
-            // bare WKWebView — there is no second window to open. Load it here.
-            wk.UIDelegate = _popups;
-            // The page reports its own address: a script, injected into every
-            // document, posts "href\ntitle" whenever either changes.
-            var controller = wk.Configuration.UserContentController;
-            controller.AddScriptMessageHandler(new AddressWatcher(OnAddress), "strunika");
-            controller.AddUserScript(new WebKit.WKUserScript(new Foundation.NSString(AddressScript), WebKit.WKUserScriptInjectionTime.AtDocumentStart, true));
-            // The first load may already be under way without the script: load again.
-            wk.LoadRequest(new Foundation.NSUrlRequest(new Foundation.NSUrl("https://m.youtube.com/")));
-            Strunika.Core.Diagnostics.FileLog.Info("youtube browser: wired");
-        };
+        Web.HandlerChanged += (_, _) => Wire();
+        Wire();
 #endif
     }
 
 #if IOS
     private readonly PopupDelegate _popups = new();
-    private bool _wired;
+    private WebKit.WKWebView? _native;
+    private IDisposable? _address, _heading;
 
-    private const string AddressScript = """
-        (function () {
-          var last = '';
-          function tick() {
-            var now = location.href + '\n' + document.title;
-            if (now === last) return;
-            last = now;
-            try { window.webkit.messageHandlers.strunika.postMessage(now); } catch (e) {}
-          }
-          setInterval(tick, 500);
-          tick();
-        })();
-        """;
-
-    private void OnAddress(string href, string title) =>
-        MainThread.BeginInvokeOnMainThread(() => Apply(href, title));
-
-    private sealed class AddressWatcher(Action<string, string> onAddress) : WebKit.WKScriptMessageHandler
+    /// <summary>The web view exists: take its popups, and watch where it goes.
+    /// Both tokens are kept and given back in <see cref="OnDisappearing"/> —
+    /// an observation outliving its object is a crash (Platforms/iOS/Observers).</summary>
+    private void Wire()
     {
-        public override void DidReceiveScriptMessage(WebKit.WKUserContentController userContentController, WebKit.WKScriptMessage message)
-        {
-            var body = message.Body?.ToString() ?? "";
-            int cut = body.IndexOf('\n');
-            if (cut < 0) onAddress(body, "");
-            else onAddress(body[..cut], body[(cut + 1)..]);
-        }
+        if (Web.Handler?.PlatformView is not WebKit.WKWebView wk || _native != null) return;
+        _native = wk;
+        // A link that wants a new window (target=_blank) goes nowhere in a bare
+        // WKWebView — there is no second window to open. Load it here.
+        wk.UIDelegate = _popups;
+        // URL and title are KVO properties of the web view itself, and WebKit
+        // updates them on a pushState too: no script in the page, nothing to
+        // ask it, nothing to fail silently.
+        _address = wk.AddObserver("URL", Foundation.NSKeyValueObservingOptions.New, _ => Moved());
+        _heading = wk.AddObserver("title", Foundation.NSKeyValueObservingOptions.New, _ => Moved());
+        Strunika.Core.Diagnostics.FileLog.Info("youtube browser: watching the web view");
+        Moved();
+    }
+
+    private void Moved()
+    {
+        if (_native == null) return;
+        string? href = _native.Url?.AbsoluteString, title = _native.Title;
+        if (MainThread.IsMainThread) Apply(href, title);
+        else MainThread.BeginInvokeOnMainThread(() => Apply(href, title));
     }
 
     private sealed class PopupDelegate : WebKit.WKUIDelegate
@@ -123,15 +111,19 @@ public partial class YouTubeBrowserPage : ContentPage
     {
         base.OnDisappearing();
         _poll.Stop();
+#if IOS
+        _address?.Dispose();
+        _heading?.Dispose();
+        _address = _heading = null;
+        _native = null;
+#endif
     }
 
     private async void OnNavigated(object? sender, WebNavigatedEventArgs e)
     {
         Strunika.Core.Diagnostics.FileLog.Info($"youtube browser: navigated {e.Result} {e.Url}");
 #if IOS
-        // The script reports; but a plain navigation carries its address here
-        // too, so the bar keeps up even if the script were ever silent.
-        if (!string.IsNullOrEmpty(e.Url)) Apply(e.Url, "");
+        Moved();
 #else
         await ProbeAsync();
 #endif
