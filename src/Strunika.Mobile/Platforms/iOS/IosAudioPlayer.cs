@@ -19,6 +19,11 @@ namespace Strunika.Mobile.Platforms.iOS;
 /// switch, the volume and the speed take effect within ~200 ms. The nodes are
 /// the engine's own (<see cref="SharedAudioEngine.SongNode"/>): a player
 /// instance borrows them for its song and leaves them attached.</para>
+/// <para>The node's completion handler never waits for anything: it posts to
+/// a queue, and the refill thread does the reading under the gate. The node
+/// calls the handlers while holding its own mutex, and Stop() takes that
+/// mutex — a handler blocked on our gate while Stop() ran under it was the
+/// deadlock of 2026-09-09 (a frozen page, then the watchdog).</para>
 /// </summary>
 public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
 {
@@ -46,11 +51,21 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
     private double _rate = 1.0, _volume = 1.0, _heardLag;
     private double _pausedInto;        // real seconds into the current block when paused, so the position holds still
     private readonly Action _onEngineStopped;
+    /// <summary>Blocks the node has consumed, as (generation, slot, frames), handed
+    /// from the node's completion queue to the refill thread.</summary>
+    private readonly System.Collections.Concurrent.BlockingCollection<(int Generation, int Slot, int Frames)> _consumedBlocks = new();
 
     public IosAudioPlayer()
     {
         _onEngineStopped = OnEngineStopped;
         SharedAudioEngine.Stopped += _onEngineStopped;
+        var refill = new Thread(() =>
+        {
+            foreach (var block in _consumedBlocks.GetConsumingEnumerable())
+                try { OnConsumed(block.Generation, block.Slot, block.Frames); }
+                catch (Exception ex) { FileLog.Error("song refill", ex); }
+        }) { IsBackground = true, Name = "song refill", Priority = ThreadPriority.AboveNormal };
+        refill.Start();
     }
 
     public Task LoadAsync(string path)
@@ -134,11 +149,19 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
             }
         }
         _queued++;
+        // The handler only posts: see the class remarks.
         _node.ScheduleBuffer(buffer, null, 0, AVAudioPlayerNodeCompletionCallbackType.Consumed,
-            _ => OnConsumed(generation, slot, frames));
+            _ =>
+            {
+                // Never throw into the node (an exception here aborts the process).
+                try { if (!_consumedBlocks.IsAddingCompleted) _consumedBlocks.Add((generation, slot, frames)); }
+                catch (Exception) { /* disposed under us: nothing left to refill */ }
+            });
         return true;
     }
 
+    /// <summary>On the refill thread: the block's frames are counted and the
+    /// slot is filled and scheduled again.</summary>
     private void OnConsumed(int generation, int slot, int frames)
     {
         lock (SharedAudioEngine.Gate)
@@ -307,5 +330,6 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
     {
         SharedAudioEngine.Stopped -= _onEngineStopped;
         lock (SharedAudioEngine.Gate) Unload();
+        _consumedBlocks.CompleteAdding();                       // the refill thread ends
     }
 }
