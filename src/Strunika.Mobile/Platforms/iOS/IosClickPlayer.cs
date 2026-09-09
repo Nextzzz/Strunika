@@ -56,7 +56,7 @@ public sealed class IosClickPlayer : IClickPlayer
 
     public IosClickPlayer()
     {
-        _tick = MetronomeClick.Render(MetronomeClick.TickHz, 0.95f);
+        _tick = MetronomeClick.Render(MetronomeClick.TickHz, 1.0f);
         _accent = MetronomeClick.Render(MetronomeClick.AccentHz, 1.0f);
         var format = new AVAudioFormat(AVAudioCommonFormat.PCMFloat32, SampleRate, 1, false);
         _render = Render;

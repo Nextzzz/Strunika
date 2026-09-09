@@ -140,7 +140,7 @@ public sealed class WindowsClickPlayer : IClickPlayer
 
     public WindowsClickPlayer()
     {
-        _tick = MetronomeClick.Render(MetronomeClick.TickHz, 0.95f);
+        _tick = MetronomeClick.Render(MetronomeClick.TickHz, 1.0f);
         _accent = MetronomeClick.Render(MetronomeClick.AccentHz, 1.0f);
         Open();
     }
