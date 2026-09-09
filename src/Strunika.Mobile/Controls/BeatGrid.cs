@@ -47,9 +47,9 @@ public sealed class BeatGrid : Grid
     public static readonly BindableProperty OnAccentProperty =
         BindableProperty.Create(nameof(OnAccent), typeof(Color), typeof(BeatGrid), Colors.Black, propertyChanged: Redraw);
     public static readonly BindableProperty LoopStartProperty =
-        BindableProperty.Create(nameof(LoopStart), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
+        BindableProperty.Create(nameof(LoopStart), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Reloop);
     public static readonly BindableProperty LoopEndProperty =
-        BindableProperty.Create(nameof(LoopEnd), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
+        BindableProperty.Create(nameof(LoopEnd), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Reloop);
 
     /// <summary>Beats in a bar (the time signature's top number): a row holds
     /// whole bars, so this decides where the rows break.</summary>
@@ -66,6 +66,32 @@ public sealed class BeatGrid : Grid
     /// worked on. There is no editing here — that lives on the conveyor.</summary>
     public double LoopStart { get => (double)GetValue(LoopStartProperty); set => SetValue(LoopStartProperty, value); }
     public double LoopEnd { get => (double)GetValue(LoopEndProperty); set => SetValue(LoopEndProperty, value); }
+
+    /// <summary>
+    /// The loop is redrawn once it stops moving, not while it moves. Its ends
+    /// are dragged on the conveyor, which hands over a new pair a hundred times
+    /// a second, and every one of those invalidated every band of this grid —
+    /// a dozen canvases the reader is not even looking at, since the conveyor
+    /// is what is on screen. That was the drag going to pieces after a visit to
+    /// the grid, and only after one: before it there are no bands to invalidate
+    /// (user report 2026-09-09).
+    /// </summary>
+    private static void Reloop(BindableObject b, object? o, object? n) => ((BeatGrid)b).LoopSettles();
+
+    private IDispatcherTimer? _loopSettle;
+
+    private void LoopSettles()
+    {
+        if (_bands.Count == 0) return;                            // nothing drawn yet: Layout will draw it
+        if (_loopSettle == null)
+        {
+            _loopSettle = Dispatcher.CreateTimer();
+            _loopSettle.Interval = TimeSpan.FromMilliseconds(120);
+            _loopSettle.Tick += (_, _) => { _loopSettle?.Stop(); Redraw(); };
+        }
+        _loopSettle.Stop();
+        _loopSettle.Start();
+    }
 
     private bool InLoop(double time)
     {

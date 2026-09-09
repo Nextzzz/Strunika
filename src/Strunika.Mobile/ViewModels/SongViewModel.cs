@@ -438,32 +438,46 @@ public sealed partial class SongViewModel : ObservableObject
         IsPlaying = false;
     }
 
-    /// <summary>« — back to the start of this chord; pressed again within 1.5 s
-    /// (or right after the chord began) it steps to the previous one, the way
-    /// track skip behaves.</summary>
+    /// <summary>
+    /// Where « and » land: the start of every chord, and the two ends of the
+    /// loop when there is one — an end of a loop is a place in the song like
+    /// any chord, and the arrows stop there (user request 2026-09-09). In
+    /// order, with anything within a hair of the stop before it dropped.
+    /// </summary>
+    private List<double> Stops()
+    {
+        var segments = Segments;
+        var stops = new List<double>(segments.Count + 2);
+        foreach (var segment in segments) stops.Add(segment.Start);
+        if (HasLoop) { stops.Add(LoopStart); stops.Add(LoopEnd); }
+        stops.Sort();
+        for (int i = stops.Count - 1; i > 0; i--)
+            if (stops[i] - stops[i - 1] < 0.02) stops.RemoveAt(i);
+        return stops;
+    }
+
+    /// <summary>« — back to the stop this moment belongs to; pressed again
+    /// within 1.5 s (or right after that stop) it steps to the one before, the
+    /// way track skip behaves.</summary>
     [RelayCommand]
     private Task PrevChordAsync()
     {
         long now = Environment.TickCount64;
         bool again = now - _lastPrevPress < 1500;
         _lastPrevPress = now;
-        var segs = Segments;
-        int i = IndexAt(Position);
-        double target = 0;
-        if (i > 0 && (again || Position - segs[i].Start < 1.0)) target = segs[i - 1].Start;
-        else if (i >= 0) target = segs[i].Start;
-        return SeekAsync(target);
+        var stops = Stops();
+        int i = stops.FindLastIndex(t => t <= Position + 1e-6);
+        if (i < 0) return SeekAsync(0);                          // before the first stop: the song's own start
+        if (i > 0 && (again || Position - stops[i] < 1.0)) i--;
+        return SeekAsync(stops[i]);
     }
 
-    /// <summary>» — to the start of the next chord.</summary>
+    /// <summary>» — to the next stop.</summary>
     [RelayCommand]
     private Task NextChordAsync()
     {
-        var segs = Segments;
-        int i = IndexAt(Position);
-        if (i >= 0 && i + 1 < segs.Count) return SeekAsync(segs[i + 1].Start);
-        foreach (var seg in segs)
-            if (seg.Start > Position) return SeekAsync(seg.Start);
+        foreach (double stop in Stops())
+            if (stop > Position + 1e-6) return SeekAsync(stop);
         return SeekAsync(Duration);
     }
 
