@@ -23,6 +23,8 @@ public static class Icons
         ["star"] = new(new[] { "M12 3.5 L14.6 9.1 L20.7 9.8 L16.2 14 L17.4 20 L12 17 L6.6 20 L7.8 14 L3.3 9.8 L9.4 9.1 Z" }, Array.Empty<(float, float, float)>()),
         ["trash"] = new(new[] { "M4 7h16", "M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2", "M6 7l1 13h10l1-13", "M10 11v6M14 11v6" }, Array.Empty<(float, float, float)>()),
         ["link"] = new(new[] { "M10 13a5 5 0 0 0 7.5 0.5l3-3a5 5 0 0 0-7-7l-1.5 1.5", "M14 11a5 5 0 0 0-7.5-0.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" }, Array.Empty<(float, float, float)>()),
+        // The playhead: a marker over a line, the thing the editor's "follow" chip points at.
+        ["head"] = new(new[] { "M12 8v12" }, Array.Empty<(float, float, float)>(), new[] { "M6.5 3.5h11l-5.5 5z" }),
         ["conveyor"] = new(new[] { "M4 15V9M8 18V6M12 14.5V9.5M16 17V7M20 15V9" }, Array.Empty<(float, float, float)>()),
         ["grid4"] = new(new[] { "M4.5 4.5h6v6h-6z", "M13.5 4.5h6v6h-6z", "M4.5 13.5h6v6h-6z", "M13.5 13.5h6v6h-6z" }, Array.Empty<(float, float, float)>()),
         ["chevL"] = new(new[] { "M15 5l-7 7 7 7" }, Array.Empty<(float, float, float)>()),

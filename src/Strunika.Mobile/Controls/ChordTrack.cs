@@ -145,7 +145,50 @@ public sealed class ChordTrack : Grid
     /// from that (user decision 2026-09-10). The playhead is paged back into
     /// view when it reaches an edge.</summary>
     private double _viewTime;
-    private bool _viewSet;
+    private bool _viewSet, _following = true;
+
+    /// <summary>The track is riding along with the song. It does so until the
+    /// reader touches it — after that the window is theirs and the song runs on
+    /// without it, until they ask to be taken back (user decision 2026-09-10).</summary>
+    public bool Following
+    {
+        get => _following;
+        private set { if (_following == value) return; _following = value; FollowingChanged?.Invoke(this, value); }
+    }
+
+    public event EventHandler<bool>? FollowingChanged;
+
+    /// <summary>The window's first moment and how much of the song it shows —
+    /// what the map over the track draws.</summary>
+    public double ViewStart => ViewAt - Width * PlayheadAt / Math.Max(1, PixelsPerSecond);
+    public double ViewSpan => Width / Math.Max(1, PixelsPerSecond);
+
+    /// <summary>Look here; the song is left where it is.</summary>
+    public void LookAt(double middle)
+    {
+        Following = false;
+        _viewSet = true;
+        _viewTime = Math.Clamp(middle, 0, Math.Max(0, Duration));
+        Follow();
+    }
+
+    /// <summary>Back to the song, and along with it from now on.</summary>
+    public void FollowNow()
+    {
+        _viewTime = Position;
+        _viewSet = true;
+        Following = true;
+        Follow();
+    }
+
+    /// <summary>The reader has taken the window: stop riding along.</summary>
+    private void Untether()
+    {
+        if (!Editing || !Following) return;
+        _viewTime = ViewAt;
+        _viewSet = true;
+        Following = false;
+    }
     private Color? _beatTick, _barTick, _playedBar;
 
     // ---- the A–B loop ------------------------------------------------------
@@ -213,6 +256,7 @@ public sealed class ChordTrack : Grid
             {
                 if (_dragging != 0) return;                      // a loop end has the finger
                 _panning = true;
+                Untether();
                 _panStart = _panAt = ViewAt;
                 // Editing, the finger moves the track and not the song, so the
                 // song is left playing.
@@ -331,15 +375,14 @@ public sealed class ChordTrack : Grid
         double w = Width;
         if (w <= 0) return;
         double pps = PixelsPerSecond, v = w / pps, px = w * PlayheadAt;
-        if (!Editing) _viewSet = false;
-        else if (!_viewSet) { _viewTime = Position; _viewSet = true; }
-        if (Editing)
+        if (!Editing) { _viewSet = false; _following = true; }
+        else
         {
-            // The song runs across a still track; when it reaches an edge the
-            // track turns the page, so the playhead is never lost and never
-            // drags the work along with it.
-            double head = px + (Position - _viewTime) * pps;
-            if (head > w - 28 || head < 6) _viewTime = Position;
+            // Riding along, the window is the song's; let go of, it is the
+            // reader's and stays exactly where they left it — the song simply
+            // runs out of the frame, and the map over the track says where it
+            // has gone.
+            if (!_viewSet || Following) { _viewTime = Position; _viewSet = true; }
             NativeTransform.TranslateX(_playhead, px + (Position - _viewTime) * pps - 2);
         }
         double pos = ViewAt;
@@ -728,6 +771,7 @@ public sealed class ChordTrack : Grid
     {
         var segments = Segments;
         if (!Editing || segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
+        Untether();
         _clipDragging = true;
         _clipIndex = clip.Index;
         _clipDx = 0;
@@ -820,7 +864,7 @@ public sealed class ChordTrack : Grid
             {
                 // In the editor a chord is chosen, not jumped to: the playhead is
                 // the reader's to move and the chord being worked on is theirs to keep.
-                if (Editing) SelectionRequested?.Invoke(this, index);
+                if (Editing) { Untether(); SelectionRequested?.Invoke(this, index); }
                 else SeekRequested?.Invoke(this, start);
                 return;
             }

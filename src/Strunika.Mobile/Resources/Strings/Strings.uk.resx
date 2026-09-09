@@ -480,6 +480,9 @@
   <data name="Song_Editor_Nothing" xml:space="preserve">
     <value>Обери акорд на доріжці</value>
   </data>
+  <data name="Song_Editor_Follow" xml:space="preserve">
+    <value>Слідкувати</value>
+  </data>
   <data name="Song_Editor_Insert" xml:space="preserve">
     <value>Додати</value>
   </data>

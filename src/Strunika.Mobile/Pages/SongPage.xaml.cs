@@ -47,6 +47,8 @@ public partial class SongPage : ContentPage
         Track.ScrubEnded += (_, t) => _ = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
         Track.SelectionRequested += (_, index) => _vm.Selected = index;
+        Track.FollowingChanged += (_, following) => FollowChip.IsVisible = _vm.Editing && !following;
+        Map.ViewRequested += (_, middle) => Track.LookAt(middle);
         Track.SegmentMoved += (_, at) => _ = _vm.SetSegmentAsync(at.Index, at.Start, at.End);
         Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
         Track.LoopChanging += (_, loop) => _vm.LoopEditMoved(loop.Start, loop.End);
@@ -249,6 +251,7 @@ public partial class SongPage : ContentPage
             // control, no layout in the frame.
             if (Math.Abs(Track.Position - _vm.Position) > 0.002) Track.Position = _vm.Position;
             if (_gridView) BeatsView.Position = _vm.Position;    // a comparison unless the beat changed
+            else if (_vm.Editing) Map.Show(_vm.Position, Track.ViewStart, Track.ViewSpan);
             if (++_frame % 3 == 0)
             {
                 Seeker.Position = _vm.Position;
@@ -330,7 +333,13 @@ public partial class SongPage : ContentPage
     {
         bool editing = _vm.Editing;
         Panel.IsVisible = !_gridView && !editing;
-        Body.RowDefinitions[3].Height = editing && !_gridView ? new GridLength(0) : new GridLength(3, GridUnitType.Star);
+        // The chord diagrams give their row to the map of the song; in the beat
+        // view there is no track to map, so the row goes altogether.
+        MapRow.IsVisible = editing && !_gridView;
+        FollowChip.IsVisible = editing && !_gridView && !Track.Following;
+        Body.RowDefinitions[3].Height = editing
+            ? (_gridView ? new GridLength(0) : GridLength.Auto)
+            : new GridLength(3, GridUnitType.Star);
         PlayerChevron.IsVisible = !editing;
         if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
     }
@@ -342,6 +351,9 @@ public partial class SongPage : ContentPage
         if (!_gridView && _vm.BeatTimes.Length == 0) return;      // nothing to grid without beats
         ApplyViewMode(!_gridView, save: true);
     }
+
+    /// <summary>Back to the playhead, and along with it from here on.</summary>
+    private void OnFollowTapped(object? sender, TappedEventArgs e) => Track.FollowNow();
 
     private async void OnEditDelete(object? sender, TappedEventArgs e) => await _vm.DeleteSelectedAsync();
 

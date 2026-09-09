@@ -96,6 +96,22 @@
             <controls:YouTubeEmbedView x:Name="Player" />
         </Border>
 
+        <!-- The whole song at a glance, over the editor's track: where the chords
+             are, where the playhead is, and which slice the track is looking at.
+             Beside it, the way back to the playhead when the track has been let
+             go of (user request 2026-09-10). -->
+        <Grid Grid.Row="3" x:Name="MapRow" ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="20,4,20,6" Margin="{t:ContentInset}" IsVisible="False">
+            <controls:SongMap x:Name="Map" Duration="{Binding Duration}" Segments="{Binding Segments}"
+                              RailColor="{t:Theme Separator}" MarkColor="{t:Theme Dim}" Accent="{t:Theme Accent}" />
+            <Border Grid.Column="1" x:Name="FollowChip" Style="{StaticResource Chip}" HeightRequest="{t:Size 34, Min=34}" Padding="10,0" VerticalOptions="Center" IsVisible="False">
+                <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
+                    <controls:IconView Name="head" Size="{t:Size 15}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <Label Text="{loc:Str Song_Editor_Follow}" FontSize="13" FontAttributes="Bold" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnFollowTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
         <!-- The beat grid (the other view of the same rows: chords by beat, tap to jump) -->
         <ScrollView Grid.Row="3" Grid.RowSpan="2" x:Name="GridHost" IsVisible="False" Padding="20,0" VerticalScrollBarVisibility="Default"
                     Margin="{t:ContentInset Top=18, Bottom=16}">

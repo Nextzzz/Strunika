@@ -480,6 +480,9 @@
   <data name="Song_Editor_Nothing" xml:space="preserve">
     <value>Pick a chord on the track</value>
   </data>
+  <data name="Song_Editor_Follow" xml:space="preserve">
+    <value>Follow</value>
+  </data>
   <data name="Song_Editor_Insert" xml:space="preserve">
     <value>Add</value>
   </data>
