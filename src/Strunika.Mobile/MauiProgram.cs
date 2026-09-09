@@ -42,18 +42,18 @@ public static class MauiProgram
         builder.Services.AddTransient<IAudioPlayer, Platforms.iOS.IosAudioPlayer>();
         builder.Services.AddSingleton<IClickPlayer, Platforms.iOS.IosClickPlayer>();
         builder.Services.AddSingleton<IChordAudio, Platforms.iOS.IosChordAudio>();
-        // UISwitch's off track is a faint grey that vanishes on the warm surfaces:
-        // paint it with the Separator token (rounded background under the track).
+        // Switches: a UISwitch that keeps its brand colours through UIKit's own
+        // restyling (Platforms/iOS/BrandSwitch), painted by SwitchPaint — the
+        // Separator token on the off track, the Fill token as the on tint. MAUI's
+        // mappings for IsOn and TrackColor are replaced whole: the stock ones paint
+        // the track under the knob with the on colour, the instant IsOn changes
+        // (a jump over the switch's animation) and, when the switch is off, at
+        // every theme change (a gold track under a knob that is off).
+        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<Switch, Platforms.iOS.BrandSwitchHandler>());
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping("OffTrack", (handler, _) => SwitchPaint.Track(handler.PlatformView));
-        // MAUI repaints the track's own view the instant IsOn changes, over the
-        // switch's animation: turning on looked like a jump. The state change
-        // is left to the switch and the track colour is animated alongside.
         Microsoft.Maui.Handlers.SwitchHandler.Mapper.ModifyMapping(nameof(ISwitch.IsOn), (handler, view, _) =>
-        {
-            handler.PlatformView.SetState(view.IsOn, animated: true);
-            SwitchPaint.Paint(handler.PlatformView, animated: true);
-        });
-        Microsoft.Maui.Handlers.SwitchHandler.Mapper.AppendToMapping(nameof(ISwitch.TrackColor), (handler, _) => SwitchPaint.Paint(handler.PlatformView, animated: false));
+            handler.PlatformView.SetState(view.IsOn, animated: true));
+        Microsoft.Maui.Handlers.SwitchHandler.Mapper.ModifyMapping(nameof(ISwitch.TrackColor), (handler, _, _) => SwitchPaint.Paint(handler.PlatformView));
         // A song card's swipe and the list's scroll are one or the other, decided
         // by the first movement: MAUI lets its pan recognise together with the
         // scroll view's, so a vertical scroll with a little sideways drift started

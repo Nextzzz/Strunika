@@ -78,26 +78,28 @@ public static class SwitchPaint
     {
         Watch();
         Live.Add(new WeakReference<UIKit.UISwitch>(view));
-        Paint(view, animated: false);
+        Paint(view);
     }
 
-    private static void Paint(UIKit.UISwitch view) => Paint(view, animated: false);
-
-    /// <summary>The track is the view UISwitch keeps under its knob (MAUI paints
-    /// the same one). Off it wears the Separator token: the system's faint grey
-    /// vanished on the warm surfaces and left the knob floating on nothing, on
-    /// the light theme in particular. On it wears the on colour, like the
-    /// switch's own tint layer that animates over it. A toggle animates the
-    /// colour rather than snapping it, in step with the knob.</summary>
-    public static void Paint(UIKit.UISwitch view, bool animated)
+    /// <summary>The on colour is the switch's own tint (the Fill token, what the
+    /// shared style says for the other head); the track — the view UISwitch
+    /// keeps under its knob — wears the Separator token, always: the system's
+    /// faint grey vanished on the warm surfaces and left the knob floating on
+    /// nothing, on the light theme above all. When the switch is on, its tint
+    /// layer covers the track, so the track is never painted the on colour —
+    /// turning on and off are the switch's own animations over a track that
+    /// does not change. (Animating the track to the on colour alongside, as
+    /// before, ran a second animation under the switch's, and the knob's edge
+    /// flickered on the way on.) Cheap when nothing changed: it runs after
+    /// every layout (Platforms/iOS/BrandSwitch).</summary>
+    public static void Paint(UIKit.UISwitch view)
     {
+        var on = Theme.Tokens.Current("Fill").ToPlatform();
+        if (view.OnTintColor?.Equals(on) != true) view.OnTintColor = on;
         var track = view.Subviews.FirstOrDefault()?.Subviews.FirstOrDefault();
         if (track == null) return;
-        var target = view.On
-            ? view.OnTintColor ?? Theme.Tokens.Current("Fill").ToPlatform()
-            : Theme.Tokens.Current("Separator").ToPlatform();
-        if (animated) UIKit.UIView.Animate(0.25, () => track.BackgroundColor = target);
-        else track.BackgroundColor = target;
+        var off = Theme.Tokens.Current("Separator").ToPlatform();
+        if (track.BackgroundColor?.Equals(off) != true) track.BackgroundColor = off;
     }
 #endif
 }
