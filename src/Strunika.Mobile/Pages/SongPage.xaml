@@ -98,6 +98,7 @@
                     Margin="{t:ContentInset Top=18, Bottom=16}">
             <controls:BeatGrid x:Name="BeatsView"
                                Beats="{Binding BeatTimes}" Segments="{Binding Segments}" BeatsPerBar="{Binding BeatsPerBar}"
+                               LoopStart="{Binding LoopStart}" LoopEnd="{Binding LoopEnd}"
                                Accent="{t:Theme Accent}" OnAccent="{t:Theme OnAccent}" CellColor="{t:Theme Surface1}"
                                ChordCellColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}" />
         </ScrollView>
@@ -111,7 +112,7 @@
         <controls:ChordTrack Grid.Row="4" x:Name="Track" Margin="0,8,0,14" MinimumHeightRequest="{t:Size 110, Min=44}"
                              Segments="{Binding Segments}" Beats="{Binding BeatTimes}" Peaks="{Binding Peaks}"
                              Duration="{Binding Duration}"
-                             LoopStart="{Binding LoopStart}" LoopEnd="{Binding LoopEnd}"
+                             LoopStart="{Binding LoopStart}" LoopEnd="{Binding LoopEnd}" LoopArmed="{Binding LoopArmed}"
                              Accent="{t:Theme Accent}" OnAccent="{t:Theme OnAccent}" WaveColor="{t:Theme Surface2}"
                              PillColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}"
                              PinnedColor="{t:Theme Surface1}" PinnedTextColor="{t:Theme TextSec}" LineColor="{t:Theme Dim}" />
@@ -131,16 +132,16 @@
         <!-- Transport: metronome · chord skip · play · A–B -->
         <Grid Grid.Row="6" x:Name="Transport" Padding="18,10,18,16" Margin="{t:ContentInset}">
             <Grid VerticalOptions="Center" HorizontalOptions="Start">
-                <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 46, Min=44}" Padding="16,0">
+                <Border x:Name="LoopChip" Style="{StaticResource Chip}" HeightRequest="{t:Size 46, Min=44}" Padding="16,0">
                     <Border.Triggers>
-                        <DataTrigger TargetType="Border" Binding="{Binding HasLoop}" Value="True">
+                        <DataTrigger TargetType="Border" Binding="{Binding LoopActive}" Value="True">
                             <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
                             <Setter Property="Stroke" Value="{t:Theme Fill}" />
                         </DataTrigger>
                     </Border.Triggers>
                     <Label Text="{Binding LoopText}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" VerticalOptions="Center">
                         <Label.Triggers>
-                            <DataTrigger TargetType="Label" Binding="{Binding HasLoop}" Value="True">
+                            <DataTrigger TargetType="Label" Binding="{Binding LoopActive}" Value="True">
                                 <Setter Property="TextColor" Value="{t:Theme OnFill}" />
                             </DataTrigger>
                         </Label.Triggers>

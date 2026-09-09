@@ -35,7 +35,7 @@ public static class NativeTransform
 #if WINDOWS
             if (Composite(view) is { } ct) { if (ct.ScaleX != s) ct.ScaleX = s; return; }
 #endif
-            view.AnchorX = 0;
+            if (view.AnchorX != 0) view.AnchorX = 0;
             if (view.ScaleX != s) view.ScaleX = s;
         }
         catch (Exception ex) when (IsTearDown(ex)) { }

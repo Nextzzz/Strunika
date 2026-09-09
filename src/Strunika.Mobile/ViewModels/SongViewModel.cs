@@ -197,7 +197,12 @@ public sealed partial class SongViewModel : ObservableObject
     public string CapoText => string.Format(Loc.Get("Song_Capo"), Capo);
     public string SpeedText => $"{Speed:0.0#}×";
     public bool HasLoop => LoopStart >= 0 && LoopEnd > LoopStart;
-    public string LoopText => HasLoop ? "A–B ✓" : "A–B";
+    /// <summary>The start is taken and the end is not: the next tap on the chip
+    /// sets it, and the conveyor draws the loop growing meanwhile.</summary>
+    public bool LoopArmed => LoopStart >= 0 && LoopEnd < 0;
+    /// <summary>Either of the two: the chip is lit.</summary>
+    public bool LoopActive => LoopStart >= 0;
+    public string LoopText => HasLoop ? "A–B ✓" : LoopArmed ? "B" : "A–B";
     /// <summary>The stepper's readout: semitones from the original, 0 / +1 / -2.</summary>
     public string TransposeText => TransposeSteps == 0 ? "0" : $"{TransposeSteps:+0;-0}";
     public string CapoNumberText => Capo.ToString();
@@ -554,8 +559,47 @@ public sealed partial class SongViewModel : ObservableObject
         AppSettings.SongVolume = value;
         _ = (_transport?.SetVolumeAsync(value) ?? Task.CompletedTask);
     }
-    partial void OnLoopStartChanged(double value) { OnPropertyChanged(nameof(HasLoop)); OnPropertyChanged(nameof(LoopText)); }
-    partial void OnLoopEndChanged(double value) { OnPropertyChanged(nameof(HasLoop)); OnPropertyChanged(nameof(LoopText)); }
+    partial void OnLoopStartChanged(double value) => LoopChanged();
+    partial void OnLoopEndChanged(double value) => LoopChanged();
+
+    private void LoopChanged()
+    {
+        OnPropertyChanged(nameof(HasLoop));
+        OnPropertyChanged(nameof(LoopArmed));
+        OnPropertyChanged(nameof(LoopActive));
+        OnPropertyChanged(nameof(LoopText));
+    }
+
+    /// <summary>An end of the loop has been taken hold of on the conveyor: the
+    /// song stops and stays stopped. Starting it again is the player's to do —
+    /// they are setting a loop, not listening (user decision 2026-09-09).</summary>
+    public async Task LoopEditStartAsync()
+    {
+        await PauseAsync();
+        _scrubbing = true;
+        _seekSequence++;                                         // readings already in flight are about the old place
+    }
+
+    /// <summary>The loop while an end is being dragged.</summary>
+    public void LoopEditMoved(double start, double end)
+    {
+        LoopStart = start;
+        LoopEnd = end;
+    }
+
+    /// <summary>The end was let go: the player follows the view, which may have
+    /// scrolled while the end was held against the edge.</summary>
+    public async Task LoopEditEndAsync(double position)
+    {
+        var transport = _transport;
+        position = Math.Clamp(position, 0, Math.Max(0, Duration));
+        NoteSeek(position);
+        _predicted = position;
+        _nextBeat = NextBeatAfter(position);
+        SetPosition(position, fromTransport: false);
+        if (transport != null) await transport.SeekAsync(position);
+        _scrubbing = false;
+    }
     partial void OnNextChordChanged(string value) => OnPropertyChanged(nameof(HasNext));
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(ShowPause));
     partial void OnStartingChanged(bool value) => OnPropertyChanged(nameof(ShowPause));
@@ -671,7 +715,8 @@ public sealed partial class SongViewModel : ObservableObject
     {
         if (LoopLocked) { ProRequired?.Invoke(this, Feature.ABLoop); return; }
         if (LoopStart < 0) { LoopStart = Position; LoopEnd = -1; }
-        else if (LoopEnd < 0) { if (Position > LoopStart + 0.5) LoopEnd = Position; else LoopStart = -1; }
+        // A second tap too soon is a change of mind, not a loop nobody could play.
+        else if (LoopEnd < 0) { if (Position > LoopStart + Controls.ChordTrack.MinLoopSeconds) LoopEnd = Position; else LoopStart = -1; }
         else { LoopStart = -1; LoopEnd = -1; }
         Haptics.Default.Selection();
     }

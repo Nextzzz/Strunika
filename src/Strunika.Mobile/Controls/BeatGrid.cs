@@ -46,6 +46,10 @@ public sealed class BeatGrid : Grid
         BindableProperty.Create(nameof(Accent), typeof(Color), typeof(BeatGrid), Colors.Goldenrod, propertyChanged: Redraw);
     public static readonly BindableProperty OnAccentProperty =
         BindableProperty.Create(nameof(OnAccent), typeof(Color), typeof(BeatGrid), Colors.Black, propertyChanged: Redraw);
+    public static readonly BindableProperty LoopStartProperty =
+        BindableProperty.Create(nameof(LoopStart), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
+    public static readonly BindableProperty LoopEndProperty =
+        BindableProperty.Create(nameof(LoopEnd), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
 
     /// <summary>Beats in a bar (the time signature's top number): a row holds
     /// whole bars, so this decides where the rows break.</summary>
@@ -58,6 +62,16 @@ public sealed class BeatGrid : Grid
     public Color Accent { get => (Color)GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
     /// <summary>The chord name on the accent square.</summary>
     public Color OnAccent { get => (Color)GetValue(OnAccentProperty); set => SetValue(OnAccentProperty, value); }
+    /// <summary>The A–B loop, so the squares inside it read as the part being
+    /// worked on. There is no editing here — that lives on the conveyor.</summary>
+    public double LoopStart { get => (double)GetValue(LoopStartProperty); set => SetValue(LoopStartProperty, value); }
+    public double LoopEnd { get => (double)GetValue(LoopEndProperty); set => SetValue(LoopEndProperty, value); }
+
+    private bool InLoop(double time)
+    {
+        double a = LoopStart, b = LoopEnd;
+        return a >= 0 && b > a && time >= a - 1e-6 && time < b - 1e-6;
+    }
 
     /// <summary>How many squares fit a row at this width, always whole bars.</summary>
     public int Columns { get; private set; } = 4;
@@ -345,12 +359,21 @@ public sealed class BeatGrid : Grid
     /// and — for the beat being played — the chord still being held, in the
     /// corner. Every canvas calls this, which is what keeps them identical.
     /// </summary>
-    private void DrawCell(ICanvas canvas, float x, float y, string? starts, string? holding, bool active)
+    private void DrawCell(ICanvas canvas, float x, float y, string? starts, string? holding, bool active, bool loop = false)
     {
         canvas.FillColor = active ? Accent : starts != null ? ChordCellColor : CellColor.WithAlpha(0.45f);
         canvas.FillRoundedRectangle(x, y, _cell, _cell, Corner);
+        if (loop && !active)
+        {
+            // Inside the A–B loop: the accent laid over the square's own ground,
+            // so a chord square inside it still reads as a chord square.
+            canvas.FillColor = Accent.WithAlpha(0.18f);
+            canvas.FillRoundedRectangle(x, y, _cell, _cell, Corner);
+        }
         canvas.StrokeSize = Stroke;
-        canvas.StrokeColor = active ? Accent : Accent.WithAlpha(starts != null ? 0.85f : 0.35f);
+        float outline = starts != null ? 0.85f : 0.35f;
+        if (loop) outline = Math.Max(outline, 0.7f);
+        canvas.StrokeColor = active ? Accent : Accent.WithAlpha(outline);
         canvas.DrawRoundedRectangle(x + Stroke / 2, y + Stroke / 2, _cell - Stroke, _cell - Stroke, Corner);
 
         var ink = active ? OnAccent : TextColor;
@@ -400,7 +423,7 @@ public sealed class BeatGrid : Grid
                 {
                     int local = i - first;
                     grid.DrawCell(canvas, local % grid.Columns * step, local / grid.Columns * step,
-                                  grid._labels[i], null, active: false);
+                                  grid._labels[i], null, active: false, loop: grid.InLoop(beats[i]));
                 }
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
             }

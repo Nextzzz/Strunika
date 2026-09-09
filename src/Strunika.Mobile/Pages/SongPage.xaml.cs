@@ -46,6 +46,13 @@ public partial class SongPage : ContentPage
         Track.Scrubbing += (_, t) => _vm.Scrubbing(t);
         Track.ScrubEnded += (_, t) => _ = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
+        Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
+        Track.LoopChanging += (_, loop) => _vm.LoopEditMoved(loop.Start, loop.End);
+        Track.LoopEditEnded += (_, at) => _ = _vm.LoopEditEndAsync(at);
+        // While the start is taken and the end is not, the chip breathes: with
+        // the band growing on the conveyor it leaves no doubt the loop is being
+        // taken (user request 2026-09-09).
+        _vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SongViewModel.LoopArmed)) BreatheLoopChip(); };
 
         Seeker.DragStarted += (_, _) => _ = _vm.ScrubStartAsync();
         Seeker.Dragging += (_, t) => _vm.Scrubbing(t);
@@ -373,6 +380,22 @@ public partial class SongPage : ContentPage
             if (animate) await PlayerHost.FadeToAsync(0, 150); else PlayerHost.Opacity = 0;
             PlayerHost.HeightRequest = 1;
         }
+    }
+
+    private bool _breathing;
+
+    private async void BreatheLoopChip()
+    {
+        if (!_vm.LoopArmed) { _breathing = false; LoopChip.Opacity = 1; return; }
+        if (_breathing || Motion.Reduced) return;
+        _breathing = true;
+        while (_breathing && !_unloaded && _vm.LoopArmed)
+        {
+            await LoopChip.FadeToAsync(0.45, 480, Easing.SinInOut);
+            await LoopChip.FadeToAsync(1, 480, Easing.SinInOut);
+        }
+        _breathing = false;
+        LoopChip.Opacity = 1;
     }
 
     /// <summary>The "more" sheet slides up over the song: key, capo, speed,
