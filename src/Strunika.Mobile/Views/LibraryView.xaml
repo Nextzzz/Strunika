@@ -116,17 +116,30 @@
                                     <Label Text="{Binding Title}" FontSize="17" FontAttributes="Bold" TextColor="{t:Theme TextPri}" LineBreakMode="TailTruncation" MaxLines="1" />
                                     <Label Text="{Binding Subtitle}" FontSize="14" TextColor="{t:Theme TextSec}" LineBreakMode="TailTruncation" MaxLines="1" />
 
-                                    <!-- ready: key · ♩ bpm · duration · edited -->
-                                    <HorizontalStackLayout Spacing="6" IsVisible="{Binding IsReady}">
-                                        <Label Text="{Binding KeyText}" FontFamily="Display" FontSize="14" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
-                                        <Label Text="{Binding MetaText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
-                                        <Border IsVisible="{Binding Edited}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="7,1" VerticalOptions="Center">
+                                    <!-- ready: key · ♩ bpm · duration · edited.
+                                         One label across the column, not a stack that measures its
+                                         children: a card whose analysis finished while it was on
+                                         screen kept the widths it was measured with, and the row
+                                         came out with room for one letter of the key ("B" of "Bm")
+                                         and none at all for the length (user report 2026-09-09).
+                                         Filling a star column, the text has its room whatever the
+                                         last measure said. -->
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" IsVisible="{Binding IsReady}">
+                                        <Label LineBreakMode="TailTruncation" MaxLines="1" VerticalOptions="Center">
+                                            <Label.FormattedText>
+                                                <FormattedString>
+                                                    <Span Text="{Binding KeyText}" FontFamily="Display" FontSize="14" TextColor="{t:Theme AccentText}" />
+                                                    <Span Text="{Binding MetaText}" FontSize="12" TextColor="{t:Theme TextSec}" />
+                                                </FormattedString>
+                                            </Label.FormattedText>
+                                        </Label>
+                                        <Border Grid.Column="1" IsVisible="{Binding Edited}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="7,1" VerticalOptions="Center">
                                             <HorizontalStackLayout Spacing="3">
                                                 <controls:IconView Name="pencil" Size="{t:Size 11}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                                                 <Label Text="{loc:Str Library_Edited}" FontSize="11" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
                                             </HorizontalStackLayout>
                                         </Border>
-                                    </HorizontalStackLayout>
+                                    </Grid>
 
                                     <!-- analysing: bar + stage -->
                                     <VerticalStackLayout Spacing="5" IsVisible="{Binding IsAnalyzing}">

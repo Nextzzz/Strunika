@@ -58,13 +58,17 @@ public sealed partial class SongItem : ObservableObject
         Thumbnail = string.IsNullOrEmpty(s.ThumbnailPath) ? null : Path.Combine(FileSystem.AppDataDirectory, s.ThumbnailPath);
         HasThumbnail = Thumbnail != null && File.Exists(Thumbnail);
 
-        IsReady = s.Status == SongStatus.Ready;
-        IsAnalyzing = s.Status == SongStatus.Analyzing || (s.Status == SongStatus.Pending && s.Error == null);
-        IsFailed = s.Status == SongStatus.Failed || (s.Status == SongStatus.Pending && s.Error != null);
-        IsWaiting = false;
+        // What a row says before the row is shown: a row made visible while its
+        // labels still held the last song's text was measured for that text.
+        bool ready = s.Status == SongStatus.Ready;
+        bool failed = s.Status == SongStatus.Failed || (s.Status == SongStatus.Pending && s.Error != null);
         KeyText = s.Key ?? "";
-        MetaText = IsReady ? Meta(s) : "";
-        FailText = IsFailed ? Loc.Get("Library_Err_" + (s.Error ?? "Unknown")) : "";
+        MetaText = ready ? Meta(s) : "";
+        FailText = failed ? Loc.Get("Library_Err_" + (s.Error ?? "Unknown")) : "";
+        IsReady = ready;
+        IsAnalyzing = s.Status == SongStatus.Analyzing || (s.Status == SongStatus.Pending && s.Error == null);
+        IsFailed = failed;
+        IsWaiting = false;
         if (IsAnalyzing && Progress == 0)
             ProgressText = Loc.Get("Library_Stage_Queued");
     }
@@ -88,7 +92,9 @@ public sealed partial class SongItem : ObservableObject
         var parts = new List<string>();
         if (s.Bpm > 0) parts.Add($"♩ {s.Bpm:0}");
         if (s.DurationSec > 0) parts.Add(Duration(s.DurationSec));
-        return string.Join("  ·  ", parts);
+        string meta = string.Join("  ·  ", parts);
+        // The key and this share one label, so the separator between them is here.
+        return meta.Length > 0 && !string.IsNullOrEmpty(s.Key) ? "  ·  " + meta : meta;
     }
 
     public static string Duration(double seconds)
