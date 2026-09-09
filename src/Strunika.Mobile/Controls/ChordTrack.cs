@@ -89,8 +89,6 @@ public sealed class ChordTrack : Grid
     /// <summary>A chord on the track was tapped: the owner makes it the one
     /// being worked on.</summary>
     public event EventHandler<int>? SelectionRequested;
-    /// <summary>A chord was taken hold of: the owner pauses and stays paused.</summary>
-    public event EventHandler? EditDragStarted;
     /// <summary>Where the chord was let go — its new place in the song.</summary>
     public event EventHandler<(int Index, double Start, double End)>? SegmentMoved;
     /// <summary>A loop end was taken hold of: the owner pauses and stays paused.</summary>
@@ -140,6 +138,14 @@ public sealed class ChordTrack : Grid
     private readonly Dictionary<int, float> _pillShift = new();
     private double _panStart, _panAt;
     private bool _panning;
+    /// <summary>Where the track is looking. Playing a song, that is wherever the
+    /// song is; editing one, it is the reader's own and stays put while the song
+    /// runs across it — a track that rode along with the playhead could not be
+    /// worked on at all, and having to stop the song for every drag followed
+    /// from that (user decision 2026-09-10). The playhead is paged back into
+    /// view when it reaches an edge.</summary>
+    private double _viewTime;
+    private bool _viewSet;
     private Color? _beatTick, _barTick, _playedBar;
 
     // ---- the A–B loop ------------------------------------------------------
@@ -207,27 +213,30 @@ public sealed class ChordTrack : Grid
             {
                 if (_dragging != 0) return;                      // a loop end has the finger
                 _panning = true;
-                _panStart = _panAt = Position;
-                ScrubStarted?.Invoke(this, EventArgs.Empty);
+                _panStart = _panAt = ViewAt;
+                // Editing, the finger moves the track and not the song, so the
+                // song is left playing.
+                if (!Editing) ScrubStarted?.Invoke(this, EventArgs.Empty);
             },
             Moved = dx =>
             {
                 if (!_panning) return;
-                // Never assign Position here: the owner applies it and it comes back.
                 _panAt = Math.Clamp(_panStart - dx / PixelsPerSecond, 0, Math.Max(0, Duration));
+                if (Editing) { _viewTime = _panAt; Follow(); return; }
+                // Never assign Position here: the owner applies it and it comes back.
                 Scrubbing?.Invoke(this, _panAt);
             },
             Ended = () =>
             {
                 if (!_panning) return;
                 _panning = false;
-                ScrubEnded?.Invoke(this, _panAt);
+                if (!Editing) ScrubEnded?.Invoke(this, _panAt);
             },
             Tapped = pt =>
             {
                 if (_dragging != 0) return;
                 // A press that did not move: the scrub ends where it began, then the tap seeks.
-                if (_panning) { _panning = false; ScrubEnded?.Invoke(this, _panAt); }
+                if (_panning) { _panning = false; if (!Editing) ScrubEnded?.Invoke(this, _panAt); }
                 TapAt(pt);
             },
         });
@@ -246,6 +255,9 @@ public sealed class ChordTrack : Grid
     }
 
     /// <summary>Re-render every ribbon and the pinned pill (data or colours changed).</summary>
+    /// <summary>The moment at the playhead's place on screen.</summary>
+    private double ViewAt => Editing ? _viewTime : Position;
+
     public void Redraw()
     {
         _pillShift.Clear();
@@ -318,7 +330,19 @@ public sealed class ChordTrack : Grid
     {
         double w = Width;
         if (w <= 0) return;
-        double pps = PixelsPerSecond, v = w / pps, px = w * PlayheadAt, pos = Position;
+        double pps = PixelsPerSecond, v = w / pps, px = w * PlayheadAt;
+        if (!Editing) _viewSet = false;
+        else if (!_viewSet) { _viewTime = Position; _viewSet = true; }
+        if (Editing)
+        {
+            // The song runs across a still track; when it reaches an edge the
+            // track turns the page, so the playhead is never lost and never
+            // drags the work along with it.
+            double head = px + (Position - _viewTime) * pps;
+            if (head > w - 28 || head < 6) _viewTime = Position;
+            NativeTransform.TranslateX(_playhead, px + (Position - _viewTime) * pps - 2);
+        }
+        double pos = ViewAt;
         int back = 1 - _active;
         double t0a = _t0[_active];
         bool farOutside = !double.IsNaN(t0a) && (pos < t0a - 0.25 * v || pos > t0a + (BufferSpan + 0.25) * v);
@@ -371,7 +395,7 @@ public sealed class ChordTrack : Grid
         _tx = px - (pos - _t0[_active]) * pps - Lead;
 
         var segments = Segments;
-        int current = IndexAt(pos), next = NextAfter(pos);
+        int current = IndexAt(Position), next = NextAfter(Position);
         if (current != _currentIndex)
         {
             // Only the small canvas changes; the ribbons stay as they are.
@@ -386,7 +410,7 @@ public sealed class ChordTrack : Grid
             var seg = segments[_currentIndex];
             float pillW = _labels.TryGetValue(seg.Label, out var cm) ? cm.Width : 46f;
             float shift = _pillShift.TryGetValue(_currentIndex, out var sh) ? sh : -pillW / 2;
-            NativeTransform.TranslateX(_current, px + (seg.Start - pos) * pps + shift);
+            NativeTransform.TranslateX(_current, px + (seg.Start - ViewAt) * pps + shift);
         }
         UpdateLoop();
         PlaceClips();
@@ -498,7 +522,7 @@ public sealed class ChordTrack : Grid
         {
             double w = Width;
             if (w <= 0) return;
-            double a = LoopStart, b = LoopEnd, pps = PixelsPerSecond, px = w * PlayheadAt, pos = Position;
+            double a = LoopStart, b = LoopEnd, pps = PixelsPerSecond, px = w * PlayheadAt, pos = ViewAt;
             bool taking = a >= 0 && b <= a && LoopArmed;         // the end is still to come
             bool whole = a >= 0 && b > a;
             bool show = taking || whole;
@@ -719,7 +743,6 @@ public sealed class ChordTrack : Grid
             if (Math.Abs(_clipDx) < 3) return;                   // a finger settling, not a move
             _clipMoved = true;
             SelectionRequested?.Invoke(this, clip.Index);
-            EditDragStarted?.Invoke(this, EventArgs.Empty);
             clip.Name.Text = Segments is { } list && clip.Index < list.Count ? list[clip.Index].Label : "";
             clip.Ghost.IsVisible = true;
         }
@@ -750,7 +773,7 @@ public sealed class ChordTrack : Grid
                 if (clip.Host.IsVisible) { clip.Host.IsVisible = false; clip.Index = -1; }
             return;
         }
-        double w = Width, pps = PixelsPerSecond, px = w * PlayheadAt, pos = Position;
+        double w = Width, pps = PixelsPerSecond, px = w * PlayheadAt, pos = ViewAt;
         int used = 0;
         for (int i = 0; i < segments.Count && used < MostClips; i++)
         {
@@ -774,7 +797,7 @@ public sealed class ChordTrack : Grid
         if (segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
         double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
         double shift = _clipMoved ? -width / 2 : _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
-        double x = Width * PlayheadAt + (start - Position) * PixelsPerSecond + shift;
+        double x = Width * PlayheadAt + (start - ViewAt) * PixelsPerSecond + shift;
         if (Math.Abs(clip.Host.WidthRequest - width) > 0.5) clip.Host.WidthRequest = width;
         if (!clip.Host.IsVisible) clip.Host.IsVisible = true;
         NativeTransform.TranslateX(clip.Host, x);
@@ -802,7 +825,7 @@ public sealed class ChordTrack : Grid
                 return;
             }
         if (Editing) SelectionRequested?.Invoke(this, -1);        // beside the chords: none of them
-        double t = Position + (p.Value.X - Width * PlayheadAt) / PixelsPerSecond;
+        double t = ViewAt + (p.Value.X - Width * PlayheadAt) / PixelsPerSecond;
         SeekRequested?.Invoke(this, Math.Clamp(t, 0, Math.Max(0, Duration)));
     }
 

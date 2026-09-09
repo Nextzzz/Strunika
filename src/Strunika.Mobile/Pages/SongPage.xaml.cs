@@ -47,7 +47,6 @@ public partial class SongPage : ContentPage
         Track.ScrubEnded += (_, t) => _ = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
         Track.SelectionRequested += (_, index) => _vm.Selected = index;
-        Track.EditDragStarted += (_, _) => _ = _vm.PauseAsync();  // a chord is moved on a still song
         Track.SegmentMoved += (_, at) => _ = _vm.SetSegmentAsync(at.Index, at.Start, at.End);
         Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
         Track.LoopChanging += (_, loop) => _vm.LoopEditMoved(loop.Start, loop.End);
