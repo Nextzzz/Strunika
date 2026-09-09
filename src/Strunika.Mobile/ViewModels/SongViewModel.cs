@@ -472,13 +472,21 @@ public sealed partial class SongViewModel : ObservableObject
         return SeekAsync(stops[i]);
     }
 
-    /// <summary>» — to the next stop.</summary>
+    /// <summary>» — to the next stop, and no further than the end of the loop:
+    /// stepping up to B stops the song there (user request 2026-09-09). It has
+    /// to — playing on from the end of a loop is thrown straight back to its
+    /// start, so the step would never be seen.</summary>
     [RelayCommand]
-    private Task NextChordAsync()
+    private async Task NextChordAsync()
     {
         foreach (double stop in Stops())
-            if (stop > Position + 1e-6) return SeekAsync(stop);
-        return SeekAsync(Duration);
+            if (stop > Position + 1e-6)
+            {
+                if (HasLoop && Math.Abs(stop - LoopEnd) < 1e-6) await PauseAsync();
+                await SeekAsync(stop);
+                return;
+            }
+        await SeekAsync(Duration);
     }
 
     public async Task SeekAsync(double seconds)

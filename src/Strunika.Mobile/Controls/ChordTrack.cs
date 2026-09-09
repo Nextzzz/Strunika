@@ -150,6 +150,7 @@ public sealed class ChordTrack : Grid
     private double _handleAx, _handleBx;
     private int _dragging;                                       // 0 none, 1 the start, 2 the end
     private double _dragFrom, _dragPressX, _dragDx, _scrolled, _posAtPress, _snapped = double.NaN;
+    private long _edgeSince;
     private IDispatcherTimer? _scroller;
 
     public ChordTrack()
@@ -524,6 +525,7 @@ public sealed class ChordTrack : Grid
         _dragDx = 0;
         _scrolled = 0;
         _snapped = double.NaN;
+        _edgeSince = 0;
         _posAtPress = Position;
         // The finger is on the grip, which is the middle of the handle: that is
         // the point the edge-scrolling watches.
@@ -580,11 +582,19 @@ public sealed class ChordTrack : Grid
         double w = Width;
         if (_dragging == 0 || w <= 0) return;
         const double Zone = 64, Fastest = 280;                   // points, points per second
+        const double Patience = 3, Impatient = 4;                // seconds, then up to this many times as fast
         double x = _dragPressX + _dragDx;
         double speed = x < Zone ? -Fastest * Math.Min(1, (Zone - x) / Zone)
                      : x > w - Zone ? Fastest * Math.Min(1, (x - (w - Zone)) / Zone)
                      : 0;
-        if (speed == 0) return;
+        if (speed == 0) { _edgeSince = 0; return; }
+        // Held at the edge, the song moves at its own pace for three seconds and
+        // then loses patience, climbing to four times that over the three after
+        // it: a loop end can be carried the length of a song without lifting the
+        // finger, and a short move is still exact (user request 2026-09-09).
+        if (_edgeSince == 0) _edgeSince = Environment.TickCount64;
+        double held = (Environment.TickCount64 - _edgeSince) / 1000.0;
+        if (held > Patience) speed *= Math.Min(Impatient, 1 + (held - Patience));
         double at = _posAtPress + _scrolled;
         double next = Math.Clamp(at + speed * 0.05 / PixelsPerSecond, 0, Math.Max(0, Duration));
         if (Math.Abs(next - at) < 1e-6) return;                  // the song has no more to give that way
@@ -600,6 +610,7 @@ public sealed class ChordTrack : Grid
         _dragging = 0;
         _scroller?.Stop();
         _snapped = double.NaN;
+        _edgeSince = 0;
         if (!Services.Motion.Reduced) _ = grip.ScaleToAsync(1, 220, Easing.SpringOut);
         LoopEditEnded?.Invoke(this, Position);
     }
