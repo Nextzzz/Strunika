@@ -286,6 +286,7 @@ public partial class SongPage : ContentPage
         Panel.IsVisible = !grid;
         Track.IsVisible = !grid;
         GridHost.IsVisible = grid;
+        BeatsView.SetOnScreen(grid);                             // hidden, it draws nothing and remembers instead
         GridShade.IsVisible = grid;
         if (grid) ApplyGridShade();
         ModeRow.IsVisible = _vm.BeatTimes.Length > 0;            // nothing to grid without beats

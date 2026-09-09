@@ -47,9 +47,9 @@ public sealed class BeatGrid : Grid
     public static readonly BindableProperty OnAccentProperty =
         BindableProperty.Create(nameof(OnAccent), typeof(Color), typeof(BeatGrid), Colors.Black, propertyChanged: Redraw);
     public static readonly BindableProperty LoopStartProperty =
-        BindableProperty.Create(nameof(LoopStart), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Reloop);
+        BindableProperty.Create(nameof(LoopStart), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
     public static readonly BindableProperty LoopEndProperty =
-        BindableProperty.Create(nameof(LoopEnd), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Reloop);
+        BindableProperty.Create(nameof(LoopEnd), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
 
     /// <summary>Beats in a bar (the time signature's top number): a row holds
     /// whole bars, so this decides where the rows break.</summary>
@@ -67,30 +67,25 @@ public sealed class BeatGrid : Grid
     public double LoopStart { get => (double)GetValue(LoopStartProperty); set => SetValue(LoopStartProperty, value); }
     public double LoopEnd { get => (double)GetValue(LoopEndProperty); set => SetValue(LoopEndProperty, value); }
 
+    private bool _onScreen, _stale;
+
     /// <summary>
-    /// The loop is redrawn once it stops moving, not while it moves. Its ends
-    /// are dragged on the conveyor, which hands over a new pair a hundred times
-    /// a second, and every one of those invalidated every band of this grid —
-    /// a dozen canvases the reader is not even looking at, since the conveyor
-    /// is what is on screen. That was the drag going to pieces after a visit to
-    /// the grid, and only after one: before it there are no bands to invalidate
-    /// (user report 2026-09-09).
+    /// The page says which of the two views of the song is on screen. Hidden,
+    /// the grid draws nothing at all: it remembers that something changed and
+    /// catches up in one redraw the moment it is shown.
+    /// <para>It is not the same view that is hidden — the scroll view around
+    /// the grid is — so the grid cannot see this for itself. And it matters:
+    /// invalidating a canvas still crosses into the native layer with nothing
+    /// to show for it, and while the conveyor is on screen every loop end
+    /// dragged there was doing that a dozen times over, which is what tore the
+    /// drag apart after a visit to the grid (user report 2026-09-09).</para>
     /// </summary>
-    private static void Reloop(BindableObject b, object? o, object? n) => ((BeatGrid)b).LoopSettles();
-
-    private IDispatcherTimer? _loopSettle;
-
-    private void LoopSettles()
+    public void SetOnScreen(bool onScreen)
     {
-        if (_bands.Count == 0) return;                            // nothing drawn yet: Layout will draw it
-        if (_loopSettle == null)
-        {
-            _loopSettle = Dispatcher.CreateTimer();
-            _loopSettle.Interval = TimeSpan.FromMilliseconds(120);
-            _loopSettle.Tick += (_, _) => { _loopSettle?.Stop(); Redraw(); };
-        }
-        _loopSettle.Stop();
-        _loopSettle.Start();
+        _onScreen = onScreen;
+        if (!onScreen || !_stale) return;
+        _stale = false;
+        Redraw();
     }
 
     private bool InLoop(double time)
@@ -127,7 +122,15 @@ public sealed class BeatGrid : Grid
         grid.Layout(grid.Width);
     }
 
-    private static void Redraw(BindableObject b, object? o, object? n) => ((BeatGrid)b).Redraw();
+    /// <summary>Redraw when there is somebody to see it; otherwise remember to
+    /// (see <see cref="SetOnScreen"/>).</summary>
+    private static void Redraw(BindableObject b, object? o, object? n)
+    {
+        var grid = (BeatGrid)b;
+        if (grid._bands.Count == 0) return;                      // nothing drawn yet: Layout will draw it
+        if (grid._onScreen) grid.Redraw();
+        else grid._stale = true;
+    }
 
     private void Redraw()
     {
