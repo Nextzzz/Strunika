@@ -116,11 +116,16 @@
                              PillColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}"
                              PinnedColor="{t:Theme Surface1}" PinnedTextColor="{t:Theme TextSec}" LineColor="{t:Theme Dim}" />
 
-        <!-- Position slider -->
+        <!-- Position slider. Each clock shares its cell with an invisible ghost of the
+             widest clock the song can show, so the cell keeps one width: the font's
+             digits are proportional (1:11 is narrower than 0:00) and the bar between the
+             clocks used to stretch and shrink with every second. -->
         <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Padding="22,0,22,0" Margin="{t:ContentInset}">
-            <Label Text="{Binding PositionText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+            <Label Text="{Binding TimeMask}" FontSize="12" Opacity="0" InputTransparent="True" VerticalOptions="Center" />
+            <Label Text="{Binding PositionText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" HorizontalOptions="End" />
             <controls:SeekBar Grid.Column="1" x:Name="Seeker" Duration="{Binding Duration}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" />
-            <Label Grid.Column="2" Text="{Binding DurationText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" />
+            <Label Grid.Column="2" Text="{Binding TimeMask}" FontSize="12" Opacity="0" InputTransparent="True" VerticalOptions="Center" />
+            <Label Grid.Column="2" Text="{Binding DurationText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" HorizontalOptions="Start" />
         </Grid>
 
         <!-- Transport: metronome · chord skip · play · A–B -->

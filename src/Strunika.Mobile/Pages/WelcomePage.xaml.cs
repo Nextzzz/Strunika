@@ -27,7 +27,11 @@ public partial class WelcomePage : ContentPage
         // while: there they become a content inset inside a full-screen scroll
         // view, the grid grew by the insets' height, and the Start button sat
         // on the screen's bottom edge with nothing under it.
-        SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container);
+        SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.None);
+        // The bottom edge is laid out by hand: the Start button and its note sit
+        // on the bottom of the screen, 12 pt above the home indicator (user
+        // request 2026-09-09 — the safe area plus the old 32 pt read as a gap).
+        Root.Padding = new Thickness(24, 40, 24, SafeArea.Bottom > 0 ? SafeArea.Bottom + 12 : 20);
 #endif
         ApplyGreeting();
         Loc.Instance.PropertyChanged += (_, _) => ApplyGreeting();

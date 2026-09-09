@@ -13,7 +13,7 @@
          spread the blocks on a tall phone; on a short one (SE) it overflows and
          the ScrollView takes over. -->
     <ScrollView x:Name="Scroller" VerticalScrollBarVisibility="Default">
-    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}" Padding="24,40,24,32" RowDefinitions="Auto,*,Auto,*,Auto" RowSpacing="0" Opacity="0"
+    <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}" Padding="24,40,24,20" RowDefinitions="Auto,*,Auto,*,Auto" RowSpacing="0" Opacity="0"
           MinimumHeightRequest="{Binding Height, Source={x:Reference Scroller}}">
 
         <VerticalStackLayout Grid.Row="0" Spacing="6" HorizontalOptions="Center">

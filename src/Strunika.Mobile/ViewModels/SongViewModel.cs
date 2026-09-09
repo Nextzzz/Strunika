@@ -189,6 +189,10 @@ public sealed partial class SongViewModel : ObservableObject
 
     public string PositionText => SongItem.Duration(Position);
     public string DurationText => SongItem.Duration(Duration);
+    /// <summary>The widest clock this song can show ("0:00", "00:00", "0:00:00"):
+    /// a ghost of it holds the clock columns' width, so the bar between them
+    /// stops stretching as the digits change.</summary>
+    public string TimeMask => string.Concat(DurationText.Select(c => char.IsDigit(c) ? '0' : c));
     public double SliderMax => Math.Max(1, Duration);
     public string CapoText => string.Format(Loc.Get("Song_Capo"), Capo);
     public string SpeedText => $"{Speed:0.0#}×";
@@ -394,6 +398,7 @@ public sealed partial class SongViewModel : ObservableObject
     partial void OnDurationChanged(double value)
     {
         OnPropertyChanged(nameof(DurationText));
+        OnPropertyChanged(nameof(TimeMask));
         OnPropertyChanged(nameof(SliderMax));
     }
 
