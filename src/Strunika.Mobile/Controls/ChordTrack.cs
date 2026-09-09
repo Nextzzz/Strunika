@@ -39,6 +39,11 @@ public sealed class ChordTrack : Grid
     /// <summary>The start is set and the end is not: the band grows from the
     /// start to the playhead as the song runs, so it is plain that the loop is
     /// being taken.</summary>
+    /// <summary>The editor is on: a chord is a block over the time it lasts,
+    /// with a hold on it, instead of a badge at the moment it starts.</summary>
+    public static readonly BindableProperty EditingProperty = BindableProperty.Create(nameof(Editing), typeof(bool), typeof(ChordTrack), false, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t.Redraw(); t.Follow(); });
+    /// <summary>Which chord is being worked on, by its place in the song.</summary>
+    public static readonly BindableProperty SelectedProperty = BindableProperty.Create(nameof(Selected), typeof(int), typeof(ChordTrack), -1, propertyChanged: (b, _, _) => ((ChordTrack)b).Redraw());
     public static readonly BindableProperty LoopArmedProperty = BindableProperty.Create(nameof(LoopArmed), typeof(bool), typeof(ChordTrack), false, propertyChanged: Reloop);
     public static readonly BindableProperty AccentProperty = BindableProperty.Create(nameof(Accent), typeof(Color), typeof(ChordTrack), Colors.Goldenrod, propertyChanged: (b, _, _) => ((ChordTrack)b).ApplyColours());
     public static readonly BindableProperty OnAccentProperty = BindableProperty.Create(nameof(OnAccent), typeof(Color), typeof(ChordTrack), Colors.Black, propertyChanged: (b, _, _) => ((ChordTrack)b).ApplyColours());
@@ -60,6 +65,8 @@ public sealed class ChordTrack : Grid
     public double LoopStart { get => (double)GetValue(LoopStartProperty); set => SetValue(LoopStartProperty, value); }
     public double LoopEnd { get => (double)GetValue(LoopEndProperty); set => SetValue(LoopEndProperty, value); }
     public bool LoopArmed { get => (bool)GetValue(LoopArmedProperty); set => SetValue(LoopArmedProperty, value); }
+    public bool Editing { get => (bool)GetValue(EditingProperty); set => SetValue(EditingProperty, value); }
+    public int Selected { get => (int)GetValue(SelectedProperty); set => SetValue(SelectedProperty, value); }
     public Color Accent { get => (Color)GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
     public Color OnAccent { get => (Color)GetValue(OnAccentProperty); set => SetValue(OnAccentProperty, value); }
     public Color WaveColor { get => (Color)GetValue(WaveColorProperty); set => SetValue(WaveColorProperty, value); }
@@ -79,6 +86,13 @@ public sealed class ChordTrack : Grid
     public event EventHandler<double>? ScrubEnded;
     /// <summary>A tap: the start of the chord that was tapped, or the time under the finger.</summary>
     public event EventHandler<double>? SeekRequested;
+    /// <summary>A chord on the track was tapped: the owner makes it the one
+    /// being worked on.</summary>
+    public event EventHandler<int>? SelectionRequested;
+    /// <summary>A chord was taken hold of: the owner pauses and stays paused.</summary>
+    public event EventHandler? EditDragStarted;
+    /// <summary>Where the chord was let go — its new place in the song.</summary>
+    public event EventHandler<(int Index, double Start, double End)>? SegmentMoved;
     /// <summary>A loop end was taken hold of: the owner pauses and stays paused.</summary>
     public event EventHandler? LoopEditStarted;
     /// <summary>The loop while an end is being dragged; the owner applies it and it comes back.</summary>
@@ -105,7 +119,7 @@ public sealed class ChordTrack : Grid
     private readonly GraphicsView[] _played = new GraphicsView[2], _coming = new GraphicsView[2];
     private readonly double[] _t0 = { double.NaN, double.NaN };
     private readonly double[] _drawnPlayed = { double.NaN, double.NaN }, _drawnComing = { double.NaN, double.NaN };
-    private readonly List<(RectF Rect, double Start)>[] _pills = { new(), new() };   // ribbon coordinates, per buffer
+    private readonly List<(RectF Rect, double Start, int Index)>[] _pills = { new(), new() };   // ribbon coordinates, per buffer
     private int _active;
     private bool _pendingSwap, _pinnedShown;
     private int _pendingFrames;
@@ -133,6 +147,14 @@ public sealed class ChordTrack : Grid
     private const double LoopTop = PillTop + PillHeight + 4;
     /// <summary>The room a finger gets around a loop end.</summary>
     private const double HandleWidth = 44;
+    /// <summary>The chord name on a block: bigger than a badge's, there is room.</summary>
+    private const float EditorFont = 20f;
+    /// <summary>The grip at either end of a block, and the shortest block that
+    /// can have both and still be taken hold of in the middle.</summary>
+    private const double ClipEdge = 26;
+    /// <summary>Nothing shorter than this is worth a chord of its own.</summary>
+    private const double MinClip = 0.15;
+    private const int MostClips = 24;
     /// <summary>No loop shorter than this, whether tapped out or dragged.</summary>
     public const double MinLoopSeconds = 1.0;
     /// <summary>How near a chord a dragged end must come to take its moment —
@@ -372,6 +394,13 @@ public sealed class ChordTrack : Grid
             NativeTransform.TranslateX(_current, px + (seg.Start - pos) * pps + shift);
         }
         UpdateLoop();
+        PlaceClips();
+        if (Editing)
+        {
+            if (_current.IsVisible) _current.IsVisible = false;   // the blocks say it better
+            if (_pinned.IsVisible) { _pinned.IsVisible = false; _pinnedShown = false; }
+            return;
+        }
         if (next != _nextIndex) { _nextIndex = next; _pinnedShown = false; _pinned.Invalidate(); }
         if (next >= 0 && segments != null)
         {
@@ -615,6 +644,168 @@ public sealed class ChordTrack : Grid
         LoopEditEnded?.Invoke(this, Position);
     }
 
+    // ---- the editor's blocks ------------------------------------------------
+
+    /// <summary>A chord's block: what the finger actually touches. Three strips —
+    /// each end and the middle — because a pan gesture on iOS never says where it
+    /// began, so the place of the touch has to be a view of its own. The border
+    /// is the chord as it is being dragged; the ribbon draws the rest.</summary>
+    private sealed class Block
+    {
+        public required Grid Host;
+        public required Border Ghost;
+        public required Label Name;
+        public required BoxView Left, Body, Right;
+        public int Index = -1;
+    }
+
+    private readonly List<Block> _clips = new();
+    private int _clipDrag;                                        // 0 none, 1 the whole block, 2 its start, 3 its end
+    private int _clipIndex = -1;
+    private bool _clipMoved;
+    private double _clipFrom, _clipTo, _clipDx, _clipStart, _clipEnd;
+
+    private Block NewClip()
+    {
+        var name = new Label
+        {
+            FontFamily = "DisplayBold", FontSize = EditorFont, TextColor = OnAccent,
+            VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Start,
+            Margin = new Thickness(9, 0, 0, 0), LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 1,
+        };
+        var ghost = new Border
+        {
+            BackgroundColor = Accent, StrokeThickness = 0, Padding = 0, IsVisible = false, InputTransparent = true,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 11 },
+            Margin = new Thickness(1, PillTop, 1, 0), HeightRequest = PillHeight, VerticalOptions = LayoutOptions.Start,
+            Content = name,
+        };
+        var left = new BoxView { Color = Colors.Transparent, WidthRequest = ClipEdge };
+        var body = new BoxView { Color = Colors.Transparent };
+        var right = new BoxView { Color = Colors.Transparent, WidthRequest = ClipEdge };
+        var host = new Grid
+        {
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
+            HeightRequest = PillTop + PillHeight + 4,
+            VerticalOptions = LayoutOptions.Start, HorizontalOptions = LayoutOptions.Start,
+            IsVisible = false,
+        };
+        host.Add(left, 0, 0);
+        host.Add(body, 1, 0);
+        host.Add(right, 2, 0);
+        host.Add(ghost, 0, 0);
+        Grid.SetColumnSpan(ghost, 3);
+        var clip = new Block { Host = host, Ghost = ghost, Name = name, Left = left, Body = body, Right = right };
+        Hold(clip, left, 2);
+        Hold(clip, body, 1);
+        Hold(clip, right, 3);
+        Add(host);
+        _clips.Add(clip);
+        return clip;
+    }
+
+    private void Hold(Block clip, View surface, int kind) =>
+        PointerDrag.Attach(surface, new PointerDrag.Callbacks
+        {
+            Started = _ => BeginClip(clip, kind),
+            Moved = dx => { if (_clipDrag != 0 && _clipIndex == clip.Index) { _clipDx = dx; DragClip(clip); } },
+            Ended = () => EndClip(clip),
+            // A press that did not move is a choice, not a move.
+            Tapped = _ => { _clipDrag = 0; SelectionRequested?.Invoke(this, clip.Index); },
+        });
+
+    private void BeginClip(Block clip, int kind)
+    {
+        var segments = Segments;
+        if (!Editing || segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
+        _clipDrag = kind;
+        _clipIndex = clip.Index;
+        _clipDx = 0;
+        _clipMoved = false;
+        _clipFrom = _clipStart = segments[clip.Index].Start;
+        _clipTo = _clipEnd = segments[clip.Index].End;
+    }
+
+    private void DragClip(Block clip)
+    {
+        if (!_clipMoved)
+        {
+            if (Math.Abs(_clipDx) < 3) return;                   // a finger settling, not a move
+            _clipMoved = true;
+            SelectionRequested?.Invoke(this, clip.Index);
+            EditDragStarted?.Invoke(this, EventArgs.Empty);
+            clip.Name.Text = Segments is { } list && clip.Index < list.Count ? list[clip.Index].Label : "";
+            clip.Ghost.IsVisible = true;
+        }
+        double delta = _clipDx / PixelsPerSecond;
+        double start = _clipFrom, end = _clipTo;
+        if (_clipDrag == 1)
+        {
+            double moved = Snap(start + delta, end: false);
+            end += moved - start;
+            start = moved;
+        }
+        else if (_clipDrag == 2)
+        {
+            start = Math.Min(Snap(start + delta, end: false), end - MinClip);
+        }
+        else
+        {
+            end = Math.Max(Snap(end + delta, end: true), start + MinClip);
+        }
+        _clipStart = Math.Max(0, start);
+        _clipEnd = Math.Max(_clipStart + MinClip, end);
+        PlaceClip(clip, _clipStart, _clipEnd);
+    }
+
+    private void EndClip(Block clip)
+    {
+        if (_clipDrag == 0) return;
+        _clipDrag = 0;
+        if (!_clipMoved) return;
+        _clipMoved = false;
+        clip.Ghost.IsVisible = false;
+        SegmentMoved?.Invoke(this, (clip.Index, _clipStart, _clipEnd));
+    }
+
+    /// <summary>Every chord on screen gets its block; the rest wait their turn.
+    /// Nothing moves while one is being dragged — the song is stopped for it.</summary>
+    private void PlaceClips()
+    {
+        if (_clipDrag != 0) return;
+        var segments = Segments;
+        if (!Editing || segments == null || Width <= 0)
+        {
+            foreach (var clip in _clips)
+                if (clip.Host.IsVisible) { clip.Host.IsVisible = false; clip.Index = -1; }
+            return;
+        }
+        double w = Width, pps = PixelsPerSecond, px = w * PlayheadAt, pos = Position;
+        int used = 0;
+        for (int i = 0; i < segments.Count && used < MostClips; i++)
+        {
+            double x0 = px + (segments[i].Start - pos) * pps, x1 = px + (segments[i].End - pos) * pps;
+            if (x1 < -24 || x0 > w + 24) continue;
+            var clip = used < _clips.Count ? _clips[used] : NewClip();
+            used++;
+            clip.Index = i;
+            PlaceClip(clip, segments[i].Start, segments[i].End);
+        }
+        for (int k = used; k < _clips.Count; k++)
+            if (_clips[k].Host.IsVisible) { _clips[k].Host.IsVisible = false; _clips[k].Index = -1; }
+    }
+
+    private void PlaceClip(Block clip, double start, double end)
+    {
+        double pps = PixelsPerSecond, px = Width * PlayheadAt, pos = Position;
+        double x = px + (start - pos) * pps, width = Math.Max(12, (end - start) * pps);
+        if (Math.Abs(clip.Host.WidthRequest - width) > 0.5) clip.Host.WidthRequest = width;
+        bool edges = width >= 3 * ClipEdge;
+        if (clip.Left.IsVisible != edges) clip.Left.IsVisible = clip.Right.IsVisible = edges;
+        if (!clip.Host.IsVisible) clip.Host.IsVisible = true;
+        NativeTransform.TranslateX(clip.Host, x);
+    }
+
     private void TapAt(Point point0)
     {
         Point? p = point0;
@@ -627,8 +818,16 @@ public sealed class ChordTrack : Grid
         }
         // Pills on the ribbon (ribbon coordinates = screen minus the translation).
         var point = new PointF((float)(p.Value.X - _tx), (float)p.Value.Y);
-        foreach (var (rect, start) in _pills[_active])
-            if (rect.Contains(point)) { SeekRequested?.Invoke(this, start); return; }
+        foreach (var (rect, start, index) in _pills[_active])
+            if (rect.Contains(point))
+            {
+                // In the editor a chord is chosen, not jumped to: the playhead is
+                // the reader's to move and the chord being worked on is theirs to keep.
+                if (Editing) SelectionRequested?.Invoke(this, index);
+                else SeekRequested?.Invoke(this, start);
+                return;
+            }
+        if (Editing) SelectionRequested?.Invoke(this, -1);        // beside the chords: none of them
         double t = Position + (p.Value.X - Width * PlayheadAt) / PixelsPerSecond;
         SeekRequested?.Invoke(this, Math.Clamp(t, 0, Math.Max(0, Duration)));
     }
@@ -789,7 +988,36 @@ public sealed class ChordTrack : Grid
             var pills = t._pills[index];
             pills.Clear();
             var segments = t.Segments;
-            if (segments is { Count: > 0 })
+            if (segments is { Count: > 0 } && t.Editing)
+            {
+                // The editor shows a chord as what it is: a block over the time it
+                // lasts. That is the thing a finger takes hold of, and its width is
+                // the chord's length — the one shape a chord editor needs.
+                canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    var seg = segments[i];
+                    float x0 = X(seg.Start), x1 = X(seg.End);
+                    if (x1 < rect.Left - 8 || x0 > rect.Right + 8) continue;
+                    float width = Math.Max(10f, x1 - x0 - 2f);
+                    bool chosen = i == t.Selected;
+                    var block = new RectF(x0 + 1, PillTop, width, PillHeight);
+                    canvas.FillColor = chosen ? t.Accent : t.PillColor;
+                    canvas.FillRoundedRectangle(block, 11f);
+                    canvas.StrokeSize = chosen ? 2.5f : 1f;
+                    canvas.StrokeColor = chosen ? t.Accent : t.LineColor.WithAlpha(0.5f);
+                    canvas.DrawRoundedRectangle(block.X + 1, block.Y + 1, block.Width - 2, block.Height - 2, 10f);
+                    if (seg.Label != "—" && width > 20)
+                    {
+                        canvas.FontSize = EditorFont;
+                        canvas.FontColor = chosen ? t.OnAccent : t.TextColor;
+                        canvas.DrawString(seg.Label, block.X + 9, block.Y, block.Width - 14, block.Height, HorizontalAlignment.Left, VerticalAlignment.Center);
+                    }
+                    pills.Add((new RectF(x0, 0, Math.Max(10f, x1 - x0), PillTop + PillHeight + 6f), seg.Start, i));
+                }
+                canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+            }
+            else if (segments is { Count: > 0 })
             {
                 canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
                 float lastRight = float.MinValue;
@@ -805,7 +1033,7 @@ public sealed class ChordTrack : Grid
                     lastRight = left + w;
                     t._pillShift[i] = left - x;
                     t.DrawPill(canvas, left, seg.Label, current: false);   // the current one is the overlay's
-                    pills.Add((new RectF(left, 0, w, PillTop + PillHeight + 8f), seg.Start));
+                    pills.Add((new RectF(left, 0, w, PillTop + PillHeight + 8f), seg.Start, i));
                 }
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
             }

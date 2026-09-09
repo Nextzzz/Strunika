@@ -46,6 +46,9 @@ public partial class SongPage : ContentPage
         Track.Scrubbing += (_, t) => _vm.Scrubbing(t);
         Track.ScrubEnded += (_, t) => _ = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
+        Track.SelectionRequested += (_, index) => _vm.Selected = index;
+        Track.EditDragStarted += (_, _) => _ = _vm.PauseAsync();  // a chord is moved on a still song
+        Track.SegmentMoved += (_, at) => _ = _vm.SetSegmentAsync(at.Index, at.Start, at.End);
         Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
         Track.LoopChanging += (_, loop) => _vm.LoopEditMoved(loop.Start, loop.End);
         Track.LoopEditEnded += (_, at) => _ = _vm.LoopEditEndAsync(at);
@@ -86,7 +89,13 @@ public partial class SongPage : ContentPage
 
         // Leaving the tree: stop the ticker; release the player unless a sheet is
         // merely covering the page (it comes back through OnAppearing).
-        Loaded += (_, _) => _unloaded = false;
+        // Back in the tree — from a sheet, above all. The ticker is started here
+        // and not only in OnAppearing: on Windows a modal unloads the page, and
+        // OnAppearing runs *before* Loaded on the way back, so the frames it
+        // started were stopped again by the first tick, which still saw the page
+        // as gone. The song froze until it was left and opened again (user
+        // report 2026-09-10).
+        Loaded += (_, _) => { _unloaded = false; StartFrames(); };
         Unloaded += (_, _) =>
         {
             _unloaded = true;
@@ -180,8 +189,11 @@ public partial class SongPage : ContentPage
 
     // A 16 ms animation restarted on every tick fired twice per vsync (120 calls
     // a second on the dev head); a long one just rides the ticker.
-    private void StartFrames() =>
+    private void StartFrames()
+    {
+        this.AbortAnimation(FramesHandle);                       // never two tickers
         new Animation(_ => OnFrame()).Commit(this, FramesHandle, length: 3_600_000, repeat: () => true);
+    }
 
     private void StopFrames() => this.AbortAnimation(FramesHandle);
 
@@ -300,6 +312,7 @@ public partial class SongPage : ContentPage
         GridSeg.BackgroundColor = grid ? on : Colors.Transparent;
         ConveyorIcon.Color = grid ? off : onIcon;
         GridIcon.Color = grid ? onIcon : off;
+        ViewSwitchIcon.Name = grid ? "conveyor" : "grid4";        // what the tap will bring, not what is here
         if (grid) BeatsView.Position = _vm.Position;
         ApplyEditor();
     }
@@ -323,9 +336,13 @@ public partial class SongPage : ContentPage
         if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
     }
 
-    private async void OnEditMoveBack(object? sender, TappedEventArgs e) => await _vm.NudgeSelectedAsync(-1);
-
-    private async void OnEditMoveOn(object? sender, TappedEventArgs e) => await _vm.NudgeSelectedAsync(1);
+    /// <summary>In the editor the sheet's place goes to the switch between the
+    /// two views of the song, one tap instead of three.</summary>
+    private void OnViewSwitchTapped(object? sender, TappedEventArgs e)
+    {
+        if (!_gridView && _vm.BeatTimes.Length == 0) return;      // nothing to grid without beats
+        ApplyViewMode(!_gridView, save: true);
+    }
 
     private async void OnEditDelete(object? sender, TappedEventArgs e) => await _vm.DeleteSelectedAsync();
 
@@ -333,7 +350,7 @@ public partial class SongPage : ContentPage
     private async void OnEditAdd(object? sender, TappedEventArgs e)
     {
         _sheetOpen = true;
-        await ChordPickerSheet.ShowAsync(_vm.CurrentChord, offerAll: false, (label, _) => _vm.AddChordAsync(label));
+        await ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: false, (label, _) => _vm.AddChordAsync(label));
     }
 
     /// <summary>Another chord in place of the one under the playhead.</summary>
@@ -341,7 +358,7 @@ public partial class SongPage : ContentPage
     {
         if (!_vm.HasSelection) return;
         _sheetOpen = true;
-        await ChordPickerSheet.ShowAsync(_vm.CurrentChord, offerAll: true, (label, all) => _vm.SetSelectedAsync(label, all));
+        await ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: true, (label, all) => _vm.SetSelectedAsync(label, all));
     }
 
     /// <summary>The fade over the last rows: the page background at alpha 0

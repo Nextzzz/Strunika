@@ -477,6 +477,18 @@
   <data name="Song_Editor_All" xml:space="preserve">
     <value>Replace every {0} in the song</value>
   </data>
+  <data name="Song_Editor_Nothing" xml:space="preserve">
+    <value>Pick a chord on the track</value>
+  </data>
+  <data name="Song_Editor_Insert" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Song_Editor_Replace" xml:space="preserve">
+    <value>Replace</value>
+  </data>
+  <data name="Song_Editor_Root" xml:space="preserve">
+    <value>Root</value>
+  </data>
   <data name="Song_Editor_Pick" xml:space="preserve">
     <value>Chord</value>
   </data>

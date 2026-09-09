@@ -7,34 +7,42 @@
              x:Class="Strunika.Mobile.Pages.ChordPickerSheet"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,24" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="0" Margin="{t:ContentInset}">
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,20" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
 
         <Grid ColumnDefinitions="*,Auto">
-            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
-                <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Song_Editor_Pick}" />
-                <Label x:Name="Now" Style="{StaticResource Footnote}" />
-            </VerticalStackLayout>
+            <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Song_Editor_Pick}" VerticalOptions="Center" />
             <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
                 <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>
 
-        <!-- One chord or every one of its name: asked before the choice, so the
-             answer is already given when a chord is tapped. -->
-        <Border Grid.Row="1" x:Name="AllRow" Style="{StaticResource Card}" Padding="14,8" Margin="0,12,0,0" IsVisible="False">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <Label x:Name="AllLabel" FontSize="15" TextColor="{t:Theme TextPri}" VerticalOptions="Center" LineBreakMode="WordWrap" />
-                <Switch Grid.Column="1" x:Name="AllSwitch" VerticalOptions="Center" />
-            </Grid>
-        </Border>
+        <!-- The root is a choice of its own, and looks like one: round keys on a
+             rail, nothing like the chord chips below (user report 2026-09-10). -->
+        <VerticalStackLayout Grid.Row="1" Spacing="6" Margin="0,10,0,0">
+            <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Song_Editor_Root}" />
+            <Border Style="{StaticResource Card}" Padding="8,8">
+                <FlexLayout x:Name="RootRow" Wrap="Wrap" Direction="Row" JustifyContent="Start" />
+            </Border>
+        </VerticalStackLayout>
 
-        <!-- The root first, then what is built on it: two dozen chips instead of
-             a wall of two hundred, and one tap each. -->
-        <FlexLayout Grid.Row="2" x:Name="RootRow" Wrap="Wrap" Direction="Row" Margin="0,14,0,4" />
-
-        <ScrollView Grid.Row="3" VerticalScrollBarVisibility="Default">
-            <FlexLayout x:Name="QualityRow" Wrap="Wrap" Direction="Row" Margin="0,6,0,0" />
+        <ScrollView Grid.Row="2" Margin="0,12,0,0" VerticalScrollBarVisibility="Default">
+            <FlexLayout x:Name="QualityRow" Wrap="Wrap" Direction="Row" />
         </ScrollView>
+
+        <!-- What the choice will look like under the fingers -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" ColumnSpacing="14" Margin="0,8,0,10">
+            <controls:ChordDiagram x:Name="Preview" ShowFrets="True" WidthRequest="{t:Size 78, Hero=True}" HeightRequest="{t:Size 112, Hero=True}"
+                                   LineColor="{t:Theme TextPri}" DotColor="{t:Theme Accent}" MutedColor="{t:Theme Dim}" FretTextColor="{t:Theme TextSec}" TitleColor="{t:Theme AccentText}" />
+            <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                <Label x:Name="Chosen" FontFamily="DisplayBold" FontSize="{t:Size 30, Hero=True}" TextColor="{t:Theme AccentText}" />
+                <Grid x:Name="AllRow" ColumnDefinitions="*,Auto" ColumnSpacing="10" IsVisible="False">
+                    <Label x:Name="AllLabel" FontSize="14" TextColor="{t:Theme TextSec}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                    <Switch Grid.Column="1" x:Name="AllSwitch" VerticalOptions="Center" />
+                </Grid>
+            </VerticalStackLayout>
+        </Grid>
+
+        <Button Grid.Row="4" x:Name="Confirm" Clicked="OnConfirm" />
     </Grid>
 </ContentPage>

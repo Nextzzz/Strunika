@@ -465,13 +465,35 @@ public sealed partial class SongViewModel : ObservableObject
     /// <summary>The editor is on: the chord under the playhead is the one being
     /// worked on, and the page gives its room to the editor's own row.</summary>
     [ObservableProperty] private bool _editing;
-    /// <summary>There is a chord under the playhead to work on.</summary>
-    [ObservableProperty] private bool _hasSelection;
+    /// <summary>The chord being worked on, by its place in the song — chosen by
+    /// the reader on the track and left alone by the playhead. A chord that
+    /// changed under the finger every time the song moved was the editor's
+    /// worst habit (user report 2026-09-10).</summary>
+    [ObservableProperty] private int _selected = -1;
+
+    public bool HasSelection => Selected >= 0 && Selected < Segments.Count;
+    public string SelectedChord => HasSelection ? Segments[Selected].Label : "—";
+    /// <summary>The button in the header: into the editor, then out of it.</summary>
+    public string EditorText => Editing ? Loc.Get("Common_Done") : Loc.Get("Song_Editor_Short");
+    public string EditorGlyph => Editing ? "check" : "pencil";
+
+    partial void OnSelectedChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectedChord));
+    }
 
     /// <summary>Nothing shorter than this is worth a chord of its own.</summary>
     private const double MinSegment = 0.15;
 
-    partial void OnEditingChanged(bool value) => Rebuild();
+    partial void OnEditingChanged(bool value)
+    {
+        // In, on the chord under the playhead — somewhere to start; out, on none.
+        Selected = value ? IndexAt(Position) : -1;
+        OnPropertyChanged(nameof(EditorText));
+        OnPropertyChanged(nameof(EditorGlyph));
+        Rebuild();
+    }
 
     [RelayCommand]
     private void ToggleEditor()
@@ -480,21 +502,20 @@ public sealed partial class SongViewModel : ObservableObject
         Editing = !Editing;
     }
 
-    /// <summary>The chord being worked on moves by one beat, which is to say
-    /// the line between it and the chord before it does: the two are
-    /// neighbours and the song has no gaps.</summary>
-    public Task NudgeSelectedAsync(int direction)
+    /// <summary>Where the chord now lies, as dragged on the track: its
+    /// neighbours give way and the song stays gapless. One call covers a move
+    /// and a pull of either end.</summary>
+    public Task SetSegmentAsync(int index, double start, double end)
     {
-        int i = _currentIndex;
-        if (!Editing || i <= 0 || i >= _raw.Count) return Task.CompletedTask;
-        double start = _raw[i].Start;
-        double target = NextBeat(start, direction) ?? start + direction * 0.25;
-        double lower = _raw[i - 1].Start + MinSegment, upper = _raw[i].End - MinSegment;
-        if (upper < lower) return Task.CompletedTask;
-        target = Math.Clamp(target, lower, upper);
-        if (Math.Abs(target - start) < 1e-4) return Task.CompletedTask;
-        _raw[i] = _raw[i] with { Start = target };
-        _raw[i - 1] = _raw[i - 1] with { End = target };
+        if (!Editing || index < 0 || index >= _raw.Count) return Task.CompletedTask;
+        double floor = index > 0 ? _raw[index - 1].Start + MinSegment : 0;
+        double ceiling = index + 1 < _raw.Count ? _raw[index + 1].End - MinSegment : Math.Max(Duration, _raw[index].End);
+        if (ceiling - floor < 2 * MinSegment) return Task.CompletedTask;
+        start = Math.Clamp(start, floor, ceiling - MinSegment);
+        end = Math.Clamp(end, start + MinSegment, ceiling);
+        _raw[index] = _raw[index] with { Start = start, End = end };
+        if (index > 0) _raw[index - 1] = _raw[index - 1] with { End = start };
+        if (index + 1 < _raw.Count) _raw[index + 1] = _raw[index + 1] with { Start = end };
         return CommitAsync();
     }
 
@@ -502,11 +523,12 @@ public sealed partial class SongViewModel : ObservableObject
     /// through its time (the one after it, if it was the first).</summary>
     public Task DeleteSelectedAsync()
     {
-        int i = _currentIndex;
+        int i = Selected;
         if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
         if (i > 0) _raw[i - 1] = _raw[i - 1] with { End = _raw[i].End };
         else if (_raw.Count > 1) _raw[i + 1] = _raw[i + 1] with { Start = _raw[i].Start };
         _raw.RemoveAt(i);
+        Selected = Math.Min(i, _raw.Count - 1);                  // the neighbour that took its time
         return CommitAsync();
     }
 
@@ -514,7 +536,7 @@ public sealed partial class SongViewModel : ObservableObject
     /// every other chord of the same name in the song.</summary>
     public Task SetSelectedAsync(string label, bool everywhere)
     {
-        int i = _currentIndex;
+        int i = Selected;
         if (!Editing || i < 0 || i >= _raw.Count || string.IsNullOrEmpty(label)) return Task.CompletedTask;
         string was = _raw[i].Label;
         if (everywhere)
@@ -532,7 +554,7 @@ public sealed partial class SongViewModel : ObservableObject
     {
         if (!Editing || string.IsNullOrEmpty(label)) return Task.CompletedTask;
         double at = Position;
-        int i = _currentIndex;
+        int i = IndexAt(at);
         if (i < 0 || i >= _raw.Count)
         {
             // Past the last chord, or in a song with none: a chord of its own
@@ -540,6 +562,7 @@ public sealed partial class SongViewModel : ObservableObject
             double from = _raw.Count > 0 ? Math.Max(at, _raw[^1].End) : Math.Max(0, at);
             double to = Math.Max(from + MinSegment, Duration);
             _raw.Add(new ChordSegmentDto(from, to, label));
+            Selected = _raw.Count - 1;
             return CommitAsync();
         }
         var segment = _raw[i];
@@ -547,6 +570,7 @@ public sealed partial class SongViewModel : ObservableObject
         double split = Math.Clamp(SnapToBeat(at), segment.Start + MinSegment, segment.End - MinSegment);
         _raw[i] = segment with { End = split };
         _raw.Insert(i + 1, new ChordSegmentDto(split, segment.End, label));
+        Selected = i + 1;                                        // the new one is the one being worked on
         return CommitAsync();
     }
 
@@ -784,6 +808,9 @@ public sealed partial class SongViewModel : ObservableObject
             return new ChordSegmentDto(s.Start, s.End, label);
         }).ToList();
         BeatTimes = _beats;
+        if (Selected >= Segments.Count) Selected = Segments.Count - 1;
+        OnPropertyChanged(nameof(SelectedChord));
+        OnPropertyChanged(nameof(HasSelection));
         _currentIndex = -1;
         OnPropertyChanged(nameof(ChordList));
         OnPropertyChanged(nameof(SuggestedCapo));                // the advice follows the transposition
@@ -824,7 +851,6 @@ public sealed partial class SongViewModel : ObservableObject
             NextChord = next;
             NextShape = ShapeFor(next);
         }
-        HasSelection = i >= 0;                                   // the editor works on the chord under the playhead
     }
 
     private void RefreshShapes()

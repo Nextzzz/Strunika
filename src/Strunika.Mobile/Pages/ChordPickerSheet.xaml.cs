@@ -7,23 +7,26 @@ using Strunika.Mobile.Theme;
 namespace Strunika.Mobile.Pages;
 
 /// <summary>
-/// Which chord it should be: the root first, then what is built on it. Two
-/// dozen chips instead of a wall of two hundred, one tap each, and the root
-/// the song already has is the one open when the sheet arrives.
+/// Which chord it should be: the root first, then what is built on it, and the
+/// choice is shown as a diagram before it is made. Two dozen keys instead of a
+/// wall of two hundred, and the root is a choice of its own that looks like one
+/// — a rail of round keys, nothing like the chord chips under it, which is what
+/// made the two impossible to tell apart before (user report 2026-09-10).
 /// <para>Always the whole vocabulary (<see cref="ChordCatalogue"/>), never the
 /// simple one: the editor is behind Pro, so the reader has all of it, and the
 /// song page shows the chords unsimplified while the editor is on.</para>
-/// <para>Where a chord is being replaced the sheet asks first whether every
-/// chord of that name in the song goes with it, so the answer is already given
-/// by the time one is tapped.</para>
+/// <para>Where a chord is being replaced the sheet asks whether every chord of
+/// that name in the song goes with it. Nothing happens until the button at the
+/// bottom is pressed.</para>
 /// </summary>
 public partial class ChordPickerSheet : ContentPage
 {
     private static bool _open;
     private readonly Func<string, bool, Task> _onPick;
     private readonly string _current;
-    private readonly List<Border> _rootChips = new();
-    private string _root;
+    private readonly List<Border> _rootKeys = new();
+    private readonly List<Border> _qualityChips = new();
+    private string _root, _chosen;
     private bool _done;
 
     private ChordPickerSheet(string current, bool offerAll, Func<string, bool, Task> onPick)
@@ -31,7 +34,8 @@ public partial class ChordPickerSheet : ContentPage
         InitializeComponent();
         _onPick = onPick;
         _current = current is null or "—" ? "" : current;
-        Now.Text = _current;
+        _chosen = _current;
+        Confirm.Text = Loc.Get(offerAll ? "Song_Editor_Replace" : "Song_Editor_Insert");
         if (offerAll && _current.Length > 0)
         {
             AllRow.IsVisible = true;
@@ -42,12 +46,12 @@ public partial class ChordPickerSheet : ContentPage
         foreach (var root in ChordCatalogue.Roots)
         {
             string name = root;
-            var chip = Chip(root, name == _root, wide: false);
+            var key = Key(root, name == _root);
             var tap = new TapGestureRecognizer();
             tap.Tapped += (_, _) => ShowRoot(name);
-            chip.GestureRecognizers.Add(tap);
-            _rootChips.Add(chip);
-            RootRow.Add(chip);
+            key.GestureRecognizers.Add(tap);
+            _rootKeys.Add(key);
+            RootRow.Add(key);
         }
         ShowRoot(_root);
     }
@@ -65,27 +69,73 @@ public partial class ChordPickerSheet : ContentPage
     private void ShowRoot(string root)
     {
         _root = root;
-        for (int i = 0; i < _rootChips.Count; i++) Paint(_rootChips[i], ChordCatalogue.Roots[i] == root);
+        for (int i = 0; i < _rootKeys.Count; i++) Paint(_rootKeys[i], ChordCatalogue.Roots[i] == root, key: true);
 
         QualityRow.Clear();
+        _qualityChips.Clear();
         foreach (var quality in ChordCatalogue.Qualities)
         {
             string label = root + quality;
-            var chip = Chip(label, label == _current, wide: true);
+            var chip = Chip(label, label == _chosen);
             var tap = new TapGestureRecognizer();
-            tap.Tapped += async (_, _) => await PickAsync(label);
+            tap.Tapped += (_, _) => Choose(label);
             chip.GestureRecognizers.Add(tap);
+            _qualityChips.Add(chip);
             QualityRow.Add(chip);
         }
+        // A new root and nothing chosen on it yet: the plain triad, so the
+        // diagram always shows something and one tap is enough.
+        if (RootOf(_chosen) != root) Choose(root);
+        else Show(_chosen);
     }
 
-    private static Border Chip(string text, bool on, bool wide)
+    private void Choose(string label)
+    {
+        _chosen = label;
+        for (int i = 0; i < _qualityChips.Count; i++)
+            Paint(_qualityChips[i], _root + ChordCatalogue.Qualities[i] == label, key: false);
+        Show(label);
+        try { Haptics.Default.Selection(); } catch { /* no engine */ }
+    }
+
+    private void Show(string label)
+    {
+        Chosen.Text = label;
+        Preview.Shape = ChordShapes.For(label);
+        Preview.LeftHanded = AppSettings.LeftHanded;
+    }
+
+    private static Border Key(string text, bool on)
+    {
+        double size = Metrics.Instance.Size(46, min: 44);
+        var key = new Border
+        {
+            WidthRequest = size,
+            HeightRequest = size,
+            StrokeThickness = 1,
+            Padding = 0,
+            Margin = new Thickness(0, 0, 6, 6),
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(size / 2) },
+            Content = new Label
+            {
+                Text = text,
+                FontFamily = "DisplayBold",
+                FontSize = 17,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+            },
+        };
+        Paint(key, on, key: true);
+        return key;
+    }
+
+    private static Border Chip(string text, bool on)
     {
         var chip = new Border
         {
             Style = (Style)Application.Current!.Resources["Chip"],
             HeightRequest = Metrics.Instance.Size(44, min: 44),
-            MinimumWidthRequest = Metrics.Instance.Size(wide ? 62 : 52, min: wide ? 62 : 52),
+            MinimumWidthRequest = Metrics.Instance.Size(66, min: 62),
             Padding = new Thickness(12, 0),
             Margin = new Thickness(0, 0, 8, 8),
             Content = new Label
@@ -97,25 +147,24 @@ public partial class ChordPickerSheet : ContentPage
                 VerticalOptions = LayoutOptions.Center,
             },
         };
-        Paint(chip, on);
+        Paint(chip, on, key: false);
         return chip;
     }
 
-    private static void Paint(Border chip, bool on)
+    private static void Paint(Border chip, bool on, bool key)
     {
-        chip.BackgroundColor = on ? Tokens.Current("Fill") : Tokens.Current("Surface1");
+        chip.BackgroundColor = on ? Tokens.Current("Fill") : Tokens.Current(key ? "Surface2" : "Surface1");
         chip.Stroke = on ? Tokens.Current("Fill") : Tokens.Current("Separator");
         if (chip.Content is Label label) label.TextColor = Tokens.Current(on ? "OnFill" : "TextPri");
     }
 
-    private async Task PickAsync(string label)
+    private async void OnConfirm(object? sender, EventArgs e)
     {
-        if (_done) return;
+        if (_done || _chosen.Length == 0) return;
         _done = true;
         bool everywhere = AllRow.IsVisible && AllSwitch.IsToggled;
-        try { Haptics.Default.Selection(); } catch { /* no engine */ }
         await Navigation.PopModalAsync(animated: true);
-        await _onPick(label, everywhere);
+        await _onPick(_chosen, everywhere);
     }
 
     /// <param name="offerAll">Replacing a chord: offer to replace every one of its name.</param>

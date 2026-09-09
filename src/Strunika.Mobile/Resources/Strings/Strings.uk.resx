@@ -477,6 +477,18 @@
   <data name="Song_Editor_All" xml:space="preserve">
     <value>Замінити всі {0} у пісні</value>
   </data>
+  <data name="Song_Editor_Nothing" xml:space="preserve">
+    <value>Обери акорд на доріжці</value>
+  </data>
+  <data name="Song_Editor_Insert" xml:space="preserve">
+    <value>Додати</value>
+  </data>
+  <data name="Song_Editor_Replace" xml:space="preserve">
+    <value>Замінити</value>
+  </data>
+  <data name="Song_Editor_Root" xml:space="preserve">
+    <value>Основа</value>
+  </data>
   <data name="Song_Editor_Pick" xml:space="preserve">
     <value>Акорд</value>
   </data>
