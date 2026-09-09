@@ -16,7 +16,7 @@
          the scrim and the sheet cover everything, safe area included — inside the
          padded body a strip under the sheet stayed undimmed. -->
     <Grid x:Name="Root" BackgroundColor="{t:Theme Bg}">
-    <Grid x:Name="Body" Padding="0,8,0,20" RowDefinitions="44,Auto,Auto,3*,2*,Auto,Auto" RowSpacing="0">
+    <Grid x:Name="Body" Padding="0,8,0,20" RowDefinitions="44,Auto,Auto,3*,2*,Auto,Auto,Auto" RowSpacing="0">
 
         <!-- Header: back · title/artist · Chord Editor -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="8,0,12,0" ColumnSpacing="6" Margin="{t:ContentInset}">
@@ -30,13 +30,16 @@
                 <Label Text="{Binding SubtitleText}" FontSize="12" TextColor="{t:Theme TextSec}" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
                 <VerticalStackLayout.GestureRecognizers><TapGestureRecognizer Tapped="OnTitleTapped" /></VerticalStackLayout.GestureRecognizers>
             </VerticalStackLayout>
-            <Border Grid.Column="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 40}" Padding="13,0" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}" HorizontalOptions="End" VerticalOptions="Center">
-                <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
-                    <controls:IconView Name="pencil" Size="{t:Size 17}" Color="{t:Theme OnFill}" VerticalOptions="Center" />
-                    <Label Text="{loc:Str Song_Editor_Short}" FontSize="14" FontAttributes="Bold" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
-                </HorizontalStackLayout>
-                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditorTapped" /></Border.GestureRecognizers>
-            </Border>
+            <Grid Grid.Column="2" HorizontalOptions="End" VerticalOptions="Center">
+                <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 40}" Padding="13,0" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}">
+                    <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
+                        <controls:IconView Name="pencil" Size="{t:Size 17}" Color="{t:Theme OnFill}" VerticalOptions="Center" />
+                        <Label Text="{loc:Str Song_Editor_Short}" FontSize="14" FontAttributes="Bold" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding ToggleEditorCommand}" /></Border.GestureRecognizers>
+                </Border>
+                <controls:LockBadge IsLocked="{Binding EditorLocked}" Margin="0,-6,-6,0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
+            </Grid>
         </Grid>
 
         <!-- Now playing · what is next: the name sits above its own box -->
@@ -129,9 +132,43 @@
             <Label Grid.Column="2" Text="{Binding DurationText}" FontSize="12" TextColor="{t:Theme TextSec}" VerticalOptions="Center" HorizontalOptions="Start" />
         </Grid>
 
+        <!-- The editor's own row, over the transport: the chord being worked on,
+             with the moves that can be made to it. In the conveyor view the
+             chord diagrams give up their row to pay for it; in the beat view
+             the grid simply shows fewer squares. -->
+        <Grid Grid.Row="6" x:Name="EditorBar" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8"
+              Padding="18,0,18,8" Margin="{t:ContentInset}" IsVisible="{Binding Editing}">
+            <Border Style="{StaticResource Chip}" WidthRequest="{t:Size 46, Min=44}" HeightRequest="{t:Size 46, Min=44}" Padding="0" Opacity="{Binding HasSelection, Converter={StaticResource Faded}}">
+                <controls:IconView Name="chevL" Size="{t:Size 20}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditMoveBack" /></Border.GestureRecognizers>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource Chip}" WidthRequest="{t:Size 46, Min=44}" HeightRequest="{t:Size 46, Min=44}" Padding="0" Opacity="{Binding HasSelection, Converter={StaticResource Faded}}">
+                <controls:IconView Name="chevR" Size="{t:Size 20}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditMoveOn" /></Border.GestureRecognizers>
+            </Border>
+            <!-- The chord being worked on: tap to put another in its place. -->
+            <Border Grid.Column="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 46, Min=44}" Padding="12,0"
+                    BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                    <Label Text="{Binding CurrentChord}" FontFamily="DisplayBold" FontSize="{t:Size 20, Hero=True}" TextColor="{t:Theme OnFill}"
+                           HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                    <controls:IconView Grid.Column="1" Name="pencil" Size="{t:Size 15}" Color="{t:Theme OnFill}" VerticalOptions="Center" />
+                </Grid>
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditChord" /></Border.GestureRecognizers>
+            </Border>
+            <Border Grid.Column="3" Style="{StaticResource Chip}" WidthRequest="{t:Size 46, Min=44}" HeightRequest="{t:Size 46, Min=44}" Padding="0">
+                <controls:IconView Name="plus" Size="{t:Size 22}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditAdd" /></Border.GestureRecognizers>
+            </Border>
+            <Border Grid.Column="4" Style="{StaticResource Chip}" WidthRequest="{t:Size 46, Min=44}" HeightRequest="{t:Size 46, Min=44}" Padding="0" Opacity="{Binding HasSelection, Converter={StaticResource Faded}}">
+                <controls:IconView Name="trash" Size="{t:Size 20}" Color="{t:Theme Error}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditDelete" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
         <!-- Transport: metronome · chord skip · play · A–B -->
-        <Grid Grid.Row="6" x:Name="Transport" Padding="18,10,18,16" Margin="{t:ContentInset}">
-            <Grid VerticalOptions="Center" HorizontalOptions="Start">
+        <Grid Grid.Row="7" x:Name="Transport" Padding="18,10,18,16" Margin="{t:ContentInset}">
+            <Grid VerticalOptions="Center" HorizontalOptions="Start" IsVisible="{Binding Editing, Converter={StaticResource Not}}">
                 <Border x:Name="LoopChip" Style="{StaticResource Chip}" HeightRequest="{t:Size 46, Min=44}" Padding="16,0">
                     <Border.Triggers>
                         <DataTrigger TargetType="Border" Binding="{Binding LoopActive}" Value="True">
@@ -150,6 +187,12 @@
                 </Border>
                 <controls:LockBadge IsLocked="{Binding LoopLocked}" Margin="0,-6,-6,0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
             </Grid>
+            <!-- The A–B chip's place while the editor is on: the way out of it. -->
+            <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 46, Min=44}" Padding="16,0" VerticalOptions="Center" HorizontalOptions="Start"
+                    BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}" IsVisible="{Binding Editing}">
+                <Label Text="{loc:Str Common_Done}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding ToggleEditorCommand}" /></Border.GestureRecognizers>
+            </Border>
 
             <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
             <Border WidthRequest="{t:Size 60, Min=44}" HeightRequest="{t:Size 60, Min=44}" StrokeShape="{t:Round 60, Min=44}" StrokeThickness="0" BackgroundColor="Transparent" Padding="0" VerticalOptions="Center">

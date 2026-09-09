@@ -29,14 +29,14 @@ public sealed class ChordGroup : List<ChordEntry>
 /// </summary>
 public sealed partial class ChordDictionaryViewModel : ObservableObject
 {
-    /// <summary>Roots as the recogniser names them, alphabetically from A.</summary>
-    private static readonly string[] Roots = { "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#" };
+    /// <summary>The one list the dictionary and the editor share.</summary>
+    private static string[] Roots => ChordCatalogue.Roots;
 
     /// <summary>The 14 qualities of the 170-class models, in teaching order.</summary>
-    private static readonly string[] Qualities = { "", "m", "7", "m7", "maj7", "6", "m6", "sus2", "sus4", "dim", "dim7", "m7b5", "aug", "mmaj7" };
+    private static string[] Qualities => ChordCatalogue.Qualities;
 
     /// <summary>What survives <c>ChordLabels.Simplify</c>: triads only.</summary>
-    private static readonly string[] SimpleQualities = { "", "m", "dim", "aug" };
+    private static string[] SimpleQualities => ChordCatalogue.SimpleQualities;
 
     private static readonly ConcurrentDictionary<string, ChordEntry> Cache = new();
 

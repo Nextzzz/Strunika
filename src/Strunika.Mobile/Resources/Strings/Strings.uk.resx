@@ -474,6 +474,12 @@
   <data name="Song_Editor" xml:space="preserve">
     <value>Редактор акордів</value>
   </data>
+  <data name="Song_Editor_All" xml:space="preserve">
+    <value>Замінити всі {0} у пісні</value>
+  </data>
+  <data name="Song_Editor_Pick" xml:space="preserve">
+    <value>Акорд</value>
+  </data>
   <data name="Song_Editor_Short" xml:space="preserve">
     <value>Редактор</value>
   </data>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:t="clr-namespace:Strunika.Mobile.Theme"
+             xmlns:loc="clr-namespace:Strunika.Mobile.Localization"
+             xmlns:controls="clr-namespace:Strunika.Mobile.Controls"
+             x:Class="Strunika.Mobile.Pages.ChordPickerSheet"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,24" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="0" Margin="{t:ContentInset}">
+
+        <Grid ColumnDefinitions="*,Auto">
+            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Song_Editor_Pick}" />
+                <Label x:Name="Now" Style="{StaticResource Footnote}" />
+            </VerticalStackLayout>
+            <Border Grid.Column="1" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" StrokeThickness="0" Padding="0" HorizontalOptions="End" VerticalOptions="Start">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- One chord or every one of its name: asked before the choice, so the
+             answer is already given when a chord is tapped. -->
+        <Border Grid.Row="1" x:Name="AllRow" Style="{StaticResource Card}" Padding="14,8" Margin="0,12,0,0" IsVisible="False">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Label x:Name="AllLabel" FontSize="15" TextColor="{t:Theme TextPri}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                <Switch Grid.Column="1" x:Name="AllSwitch" VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <!-- The root first, then what is built on it: two dozen chips instead of
+             a wall of two hundred, and one tap each. -->
+        <FlexLayout Grid.Row="2" x:Name="RootRow" Wrap="Wrap" Direction="Row" Margin="0,14,0,4" />
+
+        <ScrollView Grid.Row="3" VerticalScrollBarVisibility="Default">
+            <FlexLayout x:Name="QualityRow" Wrap="Wrap" Direction="Row" Margin="0,6,0,0" />
+        </ScrollView>
+    </Grid>
+</ContentPage>

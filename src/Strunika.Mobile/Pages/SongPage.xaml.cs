@@ -52,7 +52,11 @@ public partial class SongPage : ContentPage
         // While the start is taken and the end is not, the chip breathes: with
         // the band growing on the conveyor it leaves no doubt the loop is being
         // taken (user request 2026-09-09).
-        _vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SongViewModel.LoopArmed)) BreatheLoopChip(); };
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SongViewModel.LoopArmed)) BreatheLoopChip();
+            if (e.PropertyName == nameof(SongViewModel.Editing)) ApplyEditor();
+        };
 
         Seeker.DragStarted += (_, _) => _ = _vm.ScrubStartAsync();
         Seeker.Dragging += (_, t) => _vm.Scrubbing(t);
@@ -283,7 +287,6 @@ public partial class SongPage : ContentPage
     {
         _gridView = grid;
         if (save) AppSettings.SongGridView = grid;
-        Panel.IsVisible = !grid;
         Track.IsVisible = !grid;
         GridHost.IsVisible = grid;
         BeatsView.SetOnScreen(grid);                             // hidden, it draws nothing and remembers instead
@@ -298,6 +301,47 @@ public partial class SongPage : ContentPage
         ConveyorIcon.Color = grid ? off : onIcon;
         GridIcon.Color = grid ? onIcon : off;
         if (grid) BeatsView.Position = _vm.Position;
+        ApplyEditor();
+    }
+
+    // ---- the chord editor ------------------------------------------------
+
+    /// <summary>
+    /// The editor is a way of playing the song, not another page: the player,
+    /// the transport and the chord steps stay exactly where they are. What it
+    /// adds is a row of its own over the play button, and what it takes to pay
+    /// for that row is the chord diagrams in the conveyor view — the beat view
+    /// simply shows fewer squares. The YouTube player is folded away and stays
+    /// folded: the song is being read, not watched (user decision 2026-09-09).
+    /// </summary>
+    private void ApplyEditor()
+    {
+        bool editing = _vm.Editing;
+        Panel.IsVisible = !_gridView && !editing;
+        Body.RowDefinitions[3].Height = editing && !_gridView ? new GridLength(0) : new GridLength(3, GridUnitType.Star);
+        PlayerChevron.IsVisible = !editing;
+        if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
+    }
+
+    private async void OnEditMoveBack(object? sender, TappedEventArgs e) => await _vm.NudgeSelectedAsync(-1);
+
+    private async void OnEditMoveOn(object? sender, TappedEventArgs e) => await _vm.NudgeSelectedAsync(1);
+
+    private async void OnEditDelete(object? sender, TappedEventArgs e) => await _vm.DeleteSelectedAsync();
+
+    /// <summary>A chord from this moment on, taking the rest of the one it lands in.</summary>
+    private async void OnEditAdd(object? sender, TappedEventArgs e)
+    {
+        _sheetOpen = true;
+        await ChordPickerSheet.ShowAsync(_vm.CurrentChord, offerAll: false, (label, _) => _vm.AddChordAsync(label));
+    }
+
+    /// <summary>Another chord in place of the one under the playhead.</summary>
+    private async void OnEditChord(object? sender, TappedEventArgs e)
+    {
+        if (!_vm.HasSelection) return;
+        _sheetOpen = true;
+        await ChordPickerSheet.ShowAsync(_vm.CurrentChord, offerAll: true, (label, all) => _vm.SetSelectedAsync(label, all));
     }
 
     /// <summary>The fade over the last rows: the page background at alpha 0
@@ -341,9 +385,6 @@ public partial class SongPage : ContentPage
         await SongInfoSheet.ShowAsync(_vm);
     }
 
-    private async void OnEditorTapped(object? sender, TappedEventArgs e) =>
-        await this.DisplayAlertAsync(Loc.Get("Song_Editor"), Loc.Get("Song_Editor_Soon"), "OK");
-
     private Task OnShapeTappedAsync(string chord)
     {
         if (string.IsNullOrEmpty(chord) || chord == "—") return Task.CompletedTask;
@@ -361,7 +402,11 @@ public partial class SongPage : ContentPage
     /// stays alive while collapsed so playback continues. The player never takes
     /// more than half of what the chords and the conveyor have between them —
     /// otherwise the conveyor slides under the transport.</summary>
-    private async void OnPlayerStripTapped(object? sender, TappedEventArgs e) => await SetPlayerExpandedAsync(!_vm.PlayerExpanded, animate: true);
+    private async void OnPlayerStripTapped(object? sender, TappedEventArgs e)
+    {
+        if (_vm.Editing) return;                                 // folded away for the editor's sake
+        await SetPlayerExpandedAsync(!_vm.PlayerExpanded, animate: true);
+    }
 
     private async Task SetPlayerExpandedAsync(bool expanded, bool animate)
     {

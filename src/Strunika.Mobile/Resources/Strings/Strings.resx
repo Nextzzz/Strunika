@@ -474,6 +474,12 @@
   <data name="Song_Editor" xml:space="preserve">
     <value>Chord Editor</value>
   </data>
+  <data name="Song_Editor_All" xml:space="preserve">
+    <value>Replace every {0} in the song</value>
+  </data>
+  <data name="Song_Editor_Pick" xml:space="preserve">
+    <value>Chord</value>
+  </data>
   <data name="Song_Editor_Short" xml:space="preserve">
     <value>Editor</value>
   </data>

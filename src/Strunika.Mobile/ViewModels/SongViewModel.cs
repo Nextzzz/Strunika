@@ -32,7 +32,10 @@ public sealed partial class SongViewModel : ObservableObject
     /// <summary>Position the player chose for a chord's diagram, by label.</summary>
     private readonly Dictionary<string, int> _shapeChoice = new();
     private IMediaTransport? _transport;
-    private IReadOnlyList<ChordSegmentDto> _raw = Array.Empty<ChordSegmentDto>();
+    /// <summary>The song's own chords, as recognised and as edited — the list
+    /// the editor changes and the one that is saved. What the page shows is
+    /// made from it in <see cref="Rebuild"/>.</summary>
+    private List<ChordSegmentDto> _raw = new();
     private double[] _beats = Array.Empty<double>();
     private int _nextBeat;
     private bool _scrubbing, _wasPlaying, _probing;
@@ -62,7 +65,7 @@ public sealed partial class SongViewModel : ObservableObject
         _songs = songs;
         _pro = pro;
         _click = click;
-        _raw = song.Segments;
+        _raw = song.Segments.ToList();
         _beats = song.Beats;
         Peaks = song.Peaks;
         Duration = song.DurationSec;
@@ -216,6 +219,7 @@ public sealed partial class SongViewModel : ObservableObject
     public bool CapoLocked => !_pro.Has(Feature.TransposeCapo);
     public bool SpeedLocked => !_pro.Has(Feature.Speed);
     public bool LoopLocked => !_pro.Has(Feature.ABLoop);
+    public bool EditorLocked => !_pro.Has(Feature.ChordEditor);
     public bool HasNext => NextChord.Length > 0;
     /// <summary>The button reads "pause" from the moment play is asked for.</summary>
     public bool ShowPause => IsPlaying || Starting;
@@ -456,6 +460,141 @@ public sealed partial class SongViewModel : ObservableObject
         return stops;
     }
 
+    // ---- the chord editor ----------------------------------------------
+
+    /// <summary>The editor is on: the chord under the playhead is the one being
+    /// worked on, and the page gives its room to the editor's own row.</summary>
+    [ObservableProperty] private bool _editing;
+    /// <summary>There is a chord under the playhead to work on.</summary>
+    [ObservableProperty] private bool _hasSelection;
+
+    /// <summary>Nothing shorter than this is worth a chord of its own.</summary>
+    private const double MinSegment = 0.15;
+
+    partial void OnEditingChanged(bool value) => Rebuild();
+
+    [RelayCommand]
+    private void ToggleEditor()
+    {
+        if (!Editing && EditorLocked) { ProRequired?.Invoke(this, Feature.ChordEditor); return; }
+        Editing = !Editing;
+    }
+
+    /// <summary>The chord being worked on moves by one beat, which is to say
+    /// the line between it and the chord before it does: the two are
+    /// neighbours and the song has no gaps.</summary>
+    public Task NudgeSelectedAsync(int direction)
+    {
+        int i = _currentIndex;
+        if (!Editing || i <= 0 || i >= _raw.Count) return Task.CompletedTask;
+        double start = _raw[i].Start;
+        double target = NextBeat(start, direction) ?? start + direction * 0.25;
+        double lower = _raw[i - 1].Start + MinSegment, upper = _raw[i].End - MinSegment;
+        if (upper < lower) return Task.CompletedTask;
+        target = Math.Clamp(target, lower, upper);
+        if (Math.Abs(target - start) < 1e-4) return Task.CompletedTask;
+        _raw[i] = _raw[i] with { Start = target };
+        _raw[i - 1] = _raw[i - 1] with { End = target };
+        return CommitAsync();
+    }
+
+    /// <summary>The chord being worked on goes; the one before it plays on
+    /// through its time (the one after it, if it was the first).</summary>
+    public Task DeleteSelectedAsync()
+    {
+        int i = _currentIndex;
+        if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
+        if (i > 0) _raw[i - 1] = _raw[i - 1] with { End = _raw[i].End };
+        else if (_raw.Count > 1) _raw[i + 1] = _raw[i + 1] with { Start = _raw[i].Start };
+        _raw.RemoveAt(i);
+        return CommitAsync();
+    }
+
+    /// <summary>Another chord in its place — and, if asked, in the place of
+    /// every other chord of the same name in the song.</summary>
+    public Task SetSelectedAsync(string label, bool everywhere)
+    {
+        int i = _currentIndex;
+        if (!Editing || i < 0 || i >= _raw.Count || string.IsNullOrEmpty(label)) return Task.CompletedTask;
+        string was = _raw[i].Label;
+        if (everywhere)
+            for (int k = 0; k < _raw.Count; k++)
+            {
+                if (_raw[k].Label == was) _raw[k] = _raw[k] with { Label = label };
+            }
+        else _raw[i] = _raw[i] with { Label = label };
+        return CommitAsync();
+    }
+
+    /// <summary>A new chord from here on: it takes the rest of the chord it
+    /// lands in, which keeps the time up to this moment.</summary>
+    public Task AddChordAsync(string label)
+    {
+        if (!Editing || string.IsNullOrEmpty(label)) return Task.CompletedTask;
+        double at = Position;
+        int i = _currentIndex;
+        if (i < 0 || i >= _raw.Count)
+        {
+            // Past the last chord, or in a song with none: a chord of its own
+            // from here to whatever end there is.
+            double from = _raw.Count > 0 ? Math.Max(at, _raw[^1].End) : Math.Max(0, at);
+            double to = Math.Max(from + MinSegment, Duration);
+            _raw.Add(new ChordSegmentDto(from, to, label));
+            return CommitAsync();
+        }
+        var segment = _raw[i];
+        if (segment.End - segment.Start < 2 * MinSegment) return Task.CompletedTask;   // no room to split
+        double split = Math.Clamp(SnapToBeat(at), segment.Start + MinSegment, segment.End - MinSegment);
+        _raw[i] = segment with { End = split };
+        _raw.Insert(i + 1, new ChordSegmentDto(split, segment.End, label));
+        return CommitAsync();
+    }
+
+    /// <summary>The song keeps every change as it is made: there is no "save",
+    /// and nothing to lose by leaving the page.</summary>
+    private async Task CommitAsync()
+    {
+        try
+        {
+            Song.Segments = _raw;
+            Song.Edited = true;
+            await _songs.UpdateAsync(Song);
+        }
+        catch (Exception ex) { FileLog.Error("song edit", ex); }
+        Rebuild();
+    }
+
+    /// <summary>The beat next along in that direction, or null with no beats.</summary>
+    private double? NextBeat(double time, int direction)
+    {
+        var beats = _beats;
+        if (beats.Length == 0) return null;
+        if (direction > 0)
+        {
+            foreach (double beat in beats)
+                if (beat > time + 1e-3) return beat;
+        }
+        else
+        {
+            for (int i = beats.Length - 1; i >= 0; i--)
+                if (beats[i] < time - 1e-3) return beats[i];
+        }
+        return null;
+    }
+
+    /// <summary>The nearest beat when there is one within 0.4 s, the moment itself otherwise.</summary>
+    private double SnapToBeat(double time)
+    {
+        var beats = _beats;
+        double best = time, nearest = 0.4;
+        foreach (double beat in beats)
+        {
+            double d = Math.Abs(beat - time);
+            if (d < nearest) { nearest = d; best = beat; }
+        }
+        return best;
+    }
+
     /// <summary>« — back to the stop this moment belongs to; pressed again
     /// within 1.5 s (or right after that stop) it steps to the one before, the
     /// way track skip behaves.</summary>
@@ -631,7 +770,13 @@ public sealed partial class SongViewModel : ObservableObject
         Segments = _raw.Select(s =>
         {
             string label = s.Label;
-            if (label != "—")
+            // The editor shows the song exactly as it is stored: neither
+            // simplified nor transposed. It is behind Pro, so the whole chord
+            // vocabulary is the reader's anyway, and a chord picked there is
+            // the chord that is kept — anything in between would only be a
+            // puzzle (user decision 2026-09-09). Both settings are left alone
+            // and come back on the way out.
+            if (label != "—" && !Editing)
             {
                 if (SimpleChords) label = ChordLabels.Simplify(label);
                 if (TransposeSteps != 0) label = ChordLabels.Transpose(label, TransposeSteps);
@@ -679,6 +824,7 @@ public sealed partial class SongViewModel : ObservableObject
             NextChord = next;
             NextShape = ShapeFor(next);
         }
+        HasSelection = i >= 0;                                   // the editor works on the chord under the playhead
     }
 
     private void RefreshShapes()
@@ -812,7 +958,16 @@ public sealed partial class SongViewModel : ObservableObject
         OnPropertyChanged(nameof(Song));
     }
 
-    private void OnProChanged(object? sender, EventArgs e) => OnPropertyChanged(nameof(IsPro));
+    private void OnProChanged(object? sender, EventArgs e)
+    {
+        // Every lock on the page answers at once: the badges are on screen while
+        // the toggle that grants Pro is a sheet away.
+        OnPropertyChanged(nameof(IsPro));
+        OnPropertyChanged(nameof(EditorLocked));
+        OnPropertyChanged(nameof(LoopLocked));
+        OnPropertyChanged(nameof(CapoLocked));
+        OnPropertyChanged(nameof(SpeedLocked));
+    }
 
     public void Dispose()
     {

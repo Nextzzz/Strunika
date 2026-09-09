@@ -11,6 +11,7 @@
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <conv:NotConverter x:Key="Not" />
+            <conv:FadedConverter x:Key="Faded" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
