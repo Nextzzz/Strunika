@@ -477,6 +477,32 @@ public sealed partial class SongViewModel : ObservableObject
     /// marks it and the chip beside the map goes back to it.</summary>
     public double SelectedStart => HasSelection ? Segments[Selected].Start : -1;
 
+    /// <summary>Whether a chord can be put in at all. On the track, always —
+    /// the cursor stands somewhere. In the beat view only on a beat that has no
+    /// chord of its own, since that is what a beat there means (user rule
+    /// 2026-09-10).</summary>
+    public bool CanAdd => Editing && (!GridView || (ChosenBeat >= 0 && !StartsOn(ChosenBeat)));
+
+    /// <summary>Which view of the song is on screen; the editor's rules differ.</summary>
+    [ObservableProperty] private bool _gridView;
+    /// <summary>The beat the reader last chose in the grid, chord or not.</summary>
+    [ObservableProperty] private int _chosenBeat = -1;
+
+    partial void OnGridViewChanged(bool value) => OnPropertyChanged(nameof(CanAdd));
+    partial void OnChosenBeatChanged(int value) => OnPropertyChanged(nameof(CanAdd));
+
+    /// <summary>When the beat view is on, where a new chord goes.</summary>
+    public double ChosenBeatTime => ChosenBeat >= 0 && ChosenBeat < _beats.Length ? _beats[ChosenBeat] : Position;
+
+    /// <summary>A chord begins on this beat.</summary>
+    private bool StartsOn(int beat)
+    {
+        if (beat < 0 || beat >= _beats.Length) return false;
+        foreach (var segment in Segments)
+            if (Math.Abs(segment.Start - _beats[beat]) < 0.35) return true;
+        return false;
+    }
+
     /// <summary>The beat the chosen chord begins on, for the grid to outline.</summary>
     public int SelectedBeat
     {
@@ -500,7 +526,19 @@ public sealed partial class SongViewModel : ObservableObject
     public void ChooseAtBeat(int beat)
     {
         if (!Editing || beat < 0 || beat >= _beats.Length) return;
-        Selected = IndexAt(_beats[beat] + 1e-3);
+        ChosenBeat = beat;
+        Selected = StartsOn(beat) ? IndexAt(_beats[beat] + 1e-3) : -1;
+    }
+
+    /// <summary>« and » on the panel: the chord's beginning, one beat at a time,
+    /// for when a finger is not exact enough.</summary>
+    public Task NudgeSelectedAsync(int direction)
+    {
+        int i = Selected;
+        if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
+        double start = _raw[i].Start;
+        double target = NextBeat(start, direction) ?? start + direction * 0.25;
+        return SetSegmentAsync(i, target, _raw[i].End);
     }
     /// <summary>The button in the header: into the editor, then out of it.</summary>
     public string EditorText => Editing ? Loc.Get("Common_Done") : Loc.Get("Song_Editor_Short");
@@ -518,6 +556,7 @@ public sealed partial class SongViewModel : ObservableObject
 
     partial void OnEditingChanged(bool value)
     {
+        OnPropertyChanged(nameof(CanAdd));
         // In, on the chord under the playhead — somewhere to start; out, on none.
         Selected = value ? IndexAt(Position) : -1;
         OnPropertyChanged(nameof(EditorText));

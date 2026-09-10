@@ -247,10 +247,10 @@ public sealed class ChordTrack : Grid
         _cursor = new BoxView { WidthRequest = 2, InputTransparent = true, IsVisible = false, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start };
         _cursorMark = new Border
         {
-            WidthRequest = 22, HeightRequest = 22, Padding = 0, StrokeThickness = 0, InputTransparent = true, IsVisible = false,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 11 },
+            WidthRequest = Metrics.Instance.Size(22), HeightRequest = Metrics.Instance.Size(22), Padding = 0, StrokeThickness = 0, InputTransparent = true, IsVisible = false,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(Metrics.Instance.Size(22) / 2) },
             HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start,
-            Content = new IconView { Name = "plus", Size = 14, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center },
+            Content = new IconView { Name = "plus", Size = Metrics.Instance.Size(14), HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center },
         };
         _loopBand = new BoxView
         {
@@ -369,9 +369,10 @@ public sealed class ChordTrack : Grid
         NativeTransform.TranslateX(_playhead, px - 2);
         _cursor.HeightRequest = Math.Max(0, h - PillTop - 6);
         _cursor.Margin = new Thickness(0, PillTop, 0, 0);
-        _cursorMark.Margin = new Thickness(0, Math.Max(0, h - 26), 0, 0);
+        double mark = Metrics.Instance.Size(22);
+        _cursorMark.Margin = new Thickness(0, Math.Max(0, h - mark - 4), 0, 0);
         NativeTransform.TranslateX(_cursor, w / 2 - 1);
-        NativeTransform.TranslateX(_cursorMark, w / 2 - 11);
+        NativeTransform.TranslateX(_cursorMark, w / 2 - mark / 2);
         _loopBand.WidthRequest = w;
         _loopBand.HeightRequest = band;
         _loopBand.Margin = new Thickness(0, LoopTop, 0, 0);
@@ -552,14 +553,14 @@ public sealed class ChordTrack : Grid
         var bars = new HorizontalStackLayout { Spacing = 3, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center };
         for (int i = 0; i < 2; i++)
         {
-            var bar = new BoxView { WidthRequest = 2, HeightRequest = 14, CornerRadius = 1, VerticalOptions = LayoutOptions.Center };
+            var bar = new BoxView { WidthRequest = 2, HeightRequest = Metrics.Instance.Size(14), CornerRadius = 1, VerticalOptions = LayoutOptions.Center };
             _gripBars.Add(bar);
             bars.Add(bar);
         }
         grip = new Border
         {
-            WidthRequest = 18, HeightRequest = 40, Padding = 0, StrokeThickness = 0, InputTransparent = true,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 9 },
+            WidthRequest = Metrics.Instance.Size(18), HeightRequest = Metrics.Instance.Size(40), Padding = 0, StrokeThickness = 0, InputTransparent = true,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(Metrics.Instance.Size(18) / 2) },
             HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center,
             Content = bars,
         };
@@ -801,7 +802,7 @@ public sealed class ChordTrack : Grid
     /// a word, that it can be taken hold of and moved.</summary>
     private BoxView Grip() => new()
     {
-        WidthRequest = 3, HeightRequest = 18, CornerRadius = 1.5, Color = OnAccent.WithAlpha(0.75f),
+        WidthRequest = 3, HeightRequest = Metrics.Instance.Size(18), CornerRadius = 1.5, Color = OnAccent.WithAlpha(0.75f),
         Margin = new Thickness(5, PillTop, 5, 0), IsVisible = false, InputTransparent = true,
         HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center,
     };

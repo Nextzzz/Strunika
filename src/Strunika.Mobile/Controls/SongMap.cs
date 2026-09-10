@@ -46,7 +46,7 @@ public sealed class SongMap : Grid
 
     public SongMap()
     {
-        HeightRequest = 48;                                      // a strip a finger can work with
+        HeightRequest = Theme.Metrics.Instance.Size(48, min: 44);   // a strip a finger can work with
         _rail = new GraphicsView { Drawable = new RailDrawable(this), InputTransparent = true };
         _window = new Border
         {
@@ -81,7 +81,7 @@ public sealed class SongMap : Grid
 
     private static BoxView Grip() => new()
     {
-        WidthRequest = 3, HeightRequest = 16, CornerRadius = 1.5,
+        WidthRequest = 3, HeightRequest = Theme.Metrics.Instance.Size(16), CornerRadius = 1.5,
         HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center, InputTransparent = true,
     };
 

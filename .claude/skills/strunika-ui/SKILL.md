@@ -205,6 +205,7 @@ The app must look right from iPhone SE (375×667 pt) to iPad Pro 13" (1024×1366
 The class is decided by the **shortest side** of the window (`Theme/Metrics.cs`), so rotating a phone does not change it; iPad Split View and a resized dev window do.
 
 **How to write sizes (mandatory):**
+- **Never a magic number where something can be measured.** A sheet is put off the bottom by its own measured height, not by a constant that a taller sheet outgrows (the "…" sheet showed a strip of itself the day the metronome's level row appeared, 2026-09-10); a control created in code takes `Metrics.Instance.Size(…)` exactly as XAML takes `{t:Size}`. Fixed numbers are only right where they are a *physical* match to something else — the launch mark's 256×142 pt matching the static launch image, the welcome page's 342×90 grid mapping the lettering artwork — and each of those carries a comment saying so.
 - Chrome — buttons, chips, icons, thumbnails, sheet rows: `WidthRequest="{t:Size 60}"`, `Size="{t:Size 24}"`. Touch targets: `{t:Size 44, Min=44}` — the sweep adds `Min=44` to anything ≥ 44 automatically; never let a tappable thing go under 44 pt.
 - Round buttons: pair `{t:Size 60}` with `StrokeShape="{t:Round 60}"` so circles stay circles.
 - Hero content — the chord name, its diagram, the tuner note, the big points readout: `{t:Size 140, Hero=True}`. Drawn controls (`ChordDiagram`, `ChordTrack`, `TunerString`, `LevelMeter`, `PillTabBar`) fit their container: give them star rows and they adapt by themselves — prefer this over any fixed size.

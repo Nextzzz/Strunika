@@ -103,6 +103,7 @@
         <VerticalStackLayout Grid.Row="3" x:Name="MapRow" Spacing="6" Padding="20,4,20,6" Margin="{t:ContentInset}" IsVisible="False">
             <controls:SongMap x:Name="Map" Duration="{Binding Duration}" Segments="{Binding Segments}"
                               RailColor="{t:Theme Separator}" MarkColor="{t:Theme Dim}" Accent="{t:Theme Accent}" />
+            <!-- (The beat view scrolls itself, so it gets the chips without the map.) -->
             <!-- The two ways back: to the song, and to the chord being worked on.
                  A row of their own, so the map never shrinks to make room for
                  them (user request 2026-09-10). -->
@@ -156,9 +157,19 @@
              2026-09-10). -->
         <Border Grid.Row="5" x:Name="EditorBar" Style="{StaticResource Card}" Padding="14,12" Margin="{t:ContentInset Plus=True, Top=2, Bottom=6}" IsVisible="{Binding Editing}">
             <VerticalStackLayout Spacing="10">
-                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+                    <!-- A beat at a time, for when a finger is not exact enough.
+                         Only there while a chord is (user request 2026-09-10). -->
+                    <Border Style="{StaticResource Chip}" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 58, Min=54}" Padding="0" IsVisible="{Binding HasSelection}">
+                        <controls:IconView Name="chevL" Size="{t:Size 20}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditNudgeBack" /></Border.GestureRecognizers>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource Chip}" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 58, Min=54}" Padding="0" IsVisible="{Binding HasSelection}">
+                        <controls:IconView Name="chevR" Size="{t:Size 20}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditNudgeOn" /></Border.GestureRecognizers>
+                    </Border>
                     <!-- The chord being worked on: tap to put another in its place. -->
-                    <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 58, Min=54}" Padding="16,0"
+                    <Border Grid.Column="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 58, Min=54}" Padding="16,0"
                             BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                             <Label Text="{Binding SelectedChord}" FontFamily="DisplayBold" FontSize="{t:Size 26, Hero=True}" TextColor="{t:Theme OnFill}"
@@ -169,11 +180,12 @@
                         </Grid>
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditChord" /></Border.GestureRecognizers>
                     </Border>
-                    <Border Grid.Column="1" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0">
+                    <Border Grid.Column="3" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0"
+                            Opacity="{Binding CanAdd, Converter={StaticResource Faded}}">
                         <controls:IconView Name="plus" Size="{t:Size 26}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditAdd" /></Border.GestureRecognizers>
                     </Border>
-                    <Border Grid.Column="2" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0"
+                    <Border Grid.Column="4" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0"
                             Opacity="{Binding HasSelection, Converter={StaticResource Faded}}">
                         <controls:IconView Name="trash" Size="{t:Size 24}" Color="{t:Theme Error}" HorizontalOptions="Center" VerticalOptions="Center" />
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditDelete" /></Border.GestureRecognizers>
@@ -228,12 +240,6 @@
                 </Border>
                 <controls:LockBadge IsLocked="{Binding LoopLocked}" Margin="0,-6,-6,0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
             </Grid>
-            <!-- The A–B chip's place while the editor is on: the way out of it. -->
-            <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 46, Min=44}" Padding="16,0" VerticalOptions="Center" HorizontalOptions="Start"
-                    BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}" IsVisible="{Binding Editing}">
-                <Label Text="{loc:Str Common_Done}" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
-                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding ToggleEditorCommand}" /></Border.GestureRecognizers>
-            </Border>
 
             <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
             <Border WidthRequest="{t:Size 60, Min=44}" HeightRequest="{t:Size 60, Min=44}" StrokeShape="{t:Round 60, Min=44}" StrokeThickness="0" BackgroundColor="Transparent" Padding="0" VerticalOptions="Center">
@@ -280,7 +286,10 @@
         </BoxView>
 
         <!-- Bottom padding is set in code: 24 pt plus the home indicator. -->
-        <Border x:Name="MoreSheet" VerticalOptions="End" TranslationY="600" Margin="{t:ContentInset}"
+        <!-- Put away in code by its own measured height (SongPage.xaml.cs): a
+             flat number here is a guess, and a sheet taller than the guess keeps
+             a strip of itself on screen. -->
+        <Border x:Name="MoreSheet" VerticalOptions="End" Margin="{t:ContentInset}"
                 BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="20,10,20,24"
                 StrokeShape="RoundRectangle 24,24,0,0">
             <Border.Shadow><Shadow Brush="#40000000" Radius="22" Opacity="0.6" Offset="0,-6" /></Border.Shadow>

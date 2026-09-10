@@ -71,7 +71,10 @@ public partial class SongPage : ContentPage
         // flat 600 pt, and a sheet taller than that — the metronome's level row
         // appearing was enough — kept a strip of itself on screen (user report
         // 2026-09-10).
-        MoreSheet.SizeChanged += (_, _) => { if (!_moreOpen) MoreSheet.TranslationY = MoreSheet.Height + 40; };
+        // Before the first measurement the screen's own shortest side is the one
+        // honest guess at "off the bottom"; after it, the sheet's own height is.
+        MoreSheet.TranslationY = Theme.Metrics.Instance.ShortestSide;
+        MoreSheet.SizeChanged += (_, _) => { if (!_moreOpen) MoreSheet.TranslationY = HiddenSheet; };
 
         ApplyPanelSpacing(around: false);
 #if IOS
@@ -92,7 +95,12 @@ public partial class SongPage : ContentPage
 #endif
 
         BeatsView.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
-        BeatsView.BeatChosen += (_, beat) => _vm.ChooseAtBeat(beat);
+        BeatsView.BeatChosen += (_, beat) =>
+        {
+            _vm.ChooseAtBeat(beat);
+            _gridFollowing = false;                              // the beat view is the reader's now
+            FollowChip.IsVisible = _vm.Editing;
+        };
         BeatsView.ActiveMoved += OnActiveBeatMoved;
         ApplyViewMode(AppSettings.SongGridView && _vm.BeatTimes.Length > 0, save: false);
 
@@ -316,6 +324,7 @@ public partial class SongPage : ContentPage
     private void ApplyViewMode(bool grid, bool save)
     {
         _gridView = grid;
+        _vm.GridView = grid;
         if (save) AppSettings.SongGridView = grid;
         Track.IsVisible = !grid;
         GridHost.IsVisible = grid;
@@ -351,9 +360,10 @@ public partial class SongPage : ContentPage
         Panel.IsVisible = !_gridView && !editing;
         // The chord diagrams give their row to the map of the song; in the beat
         // view there is no track to map, so the row goes altogether.
-        MapRow.IsVisible = editing && !_gridView;
+        MapRow.IsVisible = editing;
+        Map.IsVisible = editing && !_gridView;
         BeatsView.Editing = editing;
-        FollowChip.IsVisible = editing && !_gridView && !Track.Following;
+        FollowChip.IsVisible = editing && (_gridView ? !_gridFollowing : !Track.Following);
         Body.RowDefinitions[3].Height = editing
             ? (_gridView ? new GridLength(0) : GridLength.Auto)
             : new GridLength(3, GridUnitType.Star);
@@ -369,14 +379,26 @@ public partial class SongPage : ContentPage
         ApplyViewMode(!_gridView, save: true);
     }
 
-    /// <summary>Back to the playhead, and along with it from here on.</summary>
-    private void OnFollowTapped(object? sender, TappedEventArgs e) => Track.FollowNow();
+    /// <summary>Back to the playhead, and along with it from here on. The beat
+    /// view scrolls itself, so there it is a flag and the next beat brings the
+    /// rows back.</summary>
+    private void OnFollowTapped(object? sender, TappedEventArgs e)
+    {
+        if (_gridView) { _gridFollowing = true; FollowChip.IsVisible = false; ScrollGridToBeat(); }
+        else Track.FollowNow();
+    }
 
     /// <summary>Back to the chord being worked on, wherever the track has wandered.</summary>
     private void OnGoToSelectionTapped(object? sender, TappedEventArgs e)
     {
-        if (_vm.SelectedStart >= 0) Track.LookAt(_vm.SelectedStart);
+        if (_vm.SelectedStart < 0) return;
+        if (_gridView) { _gridFollowing = false; FollowChip.IsVisible = _vm.Editing; ScrollGridToRow(_vm.SelectedBeat); }
+        else Track.LookAt(_vm.SelectedStart);
     }
+
+    private async void OnEditNudgeBack(object? sender, TappedEventArgs e) => await _vm.NudgeSelectedAsync(-1);
+
+    private async void OnEditNudgeOn(object? sender, TappedEventArgs e) => await _vm.NudgeSelectedAsync(1);
 
     private async void OnEditDelete(object? sender, TappedEventArgs e)
     {
@@ -388,7 +410,9 @@ public partial class SongPage : ContentPage
     private async void OnEditAdd(object? sender, TappedEventArgs e)
     {
         _sheetOpen = true;
-        double at = Track.CentreTime;                            // where the cursor stands on the track
+        if (!_vm.CanAdd) return;
+        // On the track the cursor says where; in the beat view the beat chosen does.
+        double at = _gridView ? _vm.ChosenBeatTime : Track.CentreTime;
         await ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: false, (label, _) => _vm.AddChordAsync(label, at));
     }
 
@@ -421,9 +445,28 @@ public partial class SongPage : ContentPage
     /// pitch, so the top row is never half cut — and a row the reader scrolled to
     /// crookedly is squared up again the moment the song moves on.
     /// </summary>
+    /// <summary>The beat view rides along with the song like the track does, and
+    /// lets go the moment the reader chooses a beat in it (user request
+    /// 2026-09-10). The chip over it brings it back.</summary>
+    private bool _gridFollowing = true;
+    private (int Row, double Step) _gridAt;
+
+    private void ScrollGridToBeat() => ScrollGridToRow(_vm.SelectedBeat, own: false);
+
+    private async void ScrollGridToRow(int beat, bool own = true)
+    {
+        if (_gridAt.Step <= 0) return;
+        int row = own && beat >= 0 && BeatsView.Columns > 0 ? beat / BeatsView.Columns : _gridAt.Row;
+        double target = Math.Max(0, (row - 1) * _gridAt.Step);
+        try { await GridHost.ScrollToAsync(0, target, animated: true); }
+        catch (Exception) { }                                    // torn down mid-scroll
+    }
+
     private async void OnActiveBeatMoved(object? sender, (int Row, double Step) at)
     {
+        _gridAt = at;
         if (!_gridView || _unloaded || at.Step <= 0) return;
+        if (_vm.Editing && !_gridFollowing) return;              // the reader is working in it
         // The row being played is the second from the top: one row of history
         // above it, everything that is coming below. At the start of the song
         // there is nothing above, so it simply stays at the top.
@@ -504,6 +547,10 @@ public partial class SongPage : ContentPage
     /// chord vocabulary, A–B and volume — everything not needed every bar.</summary>
     private bool _moreOpen;
 
+    /// <summary>Far enough down to be gone: the sheet's own height and a finger's
+    /// worth over it, so a shadow does not peek either.</summary>
+    private double HiddenSheet => MoreSheet.Height + Theme.Metrics.Instance.Size(40);
+
     private async void OnMoreTapped(object? sender, TappedEventArgs e)
     {
         bool opening = !_moreOpen;
@@ -530,7 +577,7 @@ public partial class SongPage : ContentPage
             Platforms.iOS.SystemVolume.Detach();
 #endif
             _ = MoreScrim.FadeToAsync(0, 160);
-            await MoreSheet.TranslateToAsync(0, MoreSheet.Height + 40, 220, Easing.CubicIn);
+            await MoreSheet.TranslateToAsync(0, HiddenSheet, 220, Easing.CubicIn);
         }
     }
 }

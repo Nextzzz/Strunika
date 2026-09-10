@@ -10,14 +10,14 @@
              NavigationPage.HasNavigationBar="False">
 
     <Grid BackgroundColor="{t:Theme Bg}" RowDefinitions="Auto,*,Auto">
-        <Grid Grid.Row="0" Padding="20,12,20,10" ColumnDefinitions="Auto,*,44" ColumnSpacing="10">
-            <controls:IconView Name="youtube" Size="22" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+        <Grid Grid.Row="0" Padding="20,12,20,10" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <controls:IconView Name="youtube" Size="{t:Size 22}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
             <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                 <Label Text="YouTube" Style="{StaticResource Headline}" />
                 <Label Text="{loc:Str YT_Hint}" Style="{StaticResource Footnote}" LineBreakMode="TailTruncation" MaxLines="1" />
             </VerticalStackLayout>
-            <Border Grid.Column="2" WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Center">
-                <controls:IconView Name="x" Size="18" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+            <Border Grid.Column="2" WidthRequest="{t:Size 36}" HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="End" VerticalOptions="Center">
+                <controls:IconView Name="x" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnCloseTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>
@@ -30,7 +30,7 @@
                     <Label x:Name="VideoTitle" FontSize="15" FontAttributes="Bold" TextColor="{t:Theme TextPri}" LineBreakMode="TailTruncation" MaxLines="2" />
                     <Label x:Name="VideoUrl" Style="{StaticResource Caption}" LineBreakMode="MiddleTruncation" MaxLines="1" />
                 </VerticalStackLayout>
-                <Button Grid.Column="1" x:Name="AddButton" Text="{loc:Str YT_Add}" Clicked="OnAddTapped" HeightRequest="44" Padding="18,0" VerticalOptions="Center" />
+                <Button Grid.Column="1" x:Name="AddButton" Text="{loc:Str YT_Add}" Clicked="OnAddTapped" HeightRequest="{t:Size 44, Min=44}" Padding="18,0" VerticalOptions="Center" />
             </Grid>
         </Border>
     </Grid>

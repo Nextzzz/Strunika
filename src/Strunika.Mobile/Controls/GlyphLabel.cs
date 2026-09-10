@@ -29,7 +29,7 @@ public sealed class GlyphLabel : GraphicsView, IDrawable
     {
         Drawable = this;
         InputTransparent = true;
-        HeightRequest = 20;
+        HeightRequest = Theme.Metrics.Instance.Size(20);
         WidthRequest = 30;
     }
 
