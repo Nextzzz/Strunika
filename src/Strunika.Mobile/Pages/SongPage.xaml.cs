@@ -48,7 +48,13 @@ public partial class SongPage : ContentPage
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
         Track.SelectionRequested += (_, index) => _vm.Selected = index;
         Track.FollowingChanged += (_, following) => FollowChip.IsVisible = _vm.Editing && !following;
-        Map.ViewRequested += (_, middle) => Track.LookAt(middle);
+        // The same map serves both views of the song: on the track it moves the
+        // window, in the beat view it scrolls to the row (user decision 2026-09-10).
+        Map.ViewRequested += (_, middle) =>
+        {
+            if (_gridView) ScrollGridToTime(middle);
+            else Track.LookAt(middle);
+        };
         Track.SegmentMoved += (_, at) => _ = _vm.SetSegmentAsync(at.Index, at.Start, at.End);
         Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
         Track.LoopChanging += (_, loop) => _vm.LoopEditMoved(loop.Start, loop.End);
@@ -102,6 +108,14 @@ public partial class SongPage : ContentPage
             FollowChip.IsVisible = _vm.Editing;
         };
         BeatsView.ActiveMoved += OnActiveBeatMoved;
+        // A chord dragged from one square onto another.
+        BeatsView.ChordDropped += async (_, move) =>
+        {
+            var beats = _vm.BeatTimes;
+            if (move.To < 0 || move.To >= beats.Length) return;
+            await _vm.MoveSelectedToAsync(beats[move.To]);
+            _vm.ChooseAtBeat(move.To);
+        };
         ApplyViewMode(AppSettings.SongGridView && _vm.BeatTimes.Length > 0, save: false);
 
         // Leaving the tree: stop the ticker; release the player unless a sheet is
@@ -269,7 +283,11 @@ public partial class SongPage : ContentPage
             if (_gridView)
             {
                 BeatsView.Position = _vm.Position;               // a comparison unless the beat changed
-                if (_vm.Editing) BeatsView.Chosen = _vm.SelectedBeat;
+                if (_vm.Editing)
+                {
+                    BeatsView.Chosen = _vm.SelectedBeat;
+                    ShowGridOnMap();
+                }
             }
             else if (_vm.Editing)
             {
@@ -361,12 +379,14 @@ public partial class SongPage : ContentPage
         // The chord diagrams give their row to the map of the song; in the beat
         // view there is no track to map, so the row goes altogether.
         MapRow.IsVisible = editing;
-        Map.IsVisible = editing && !_gridView;
+        Map.IsVisible = editing;                                 // the same strip over both views
+        // Editing, the map takes the row over the song and the grid drops to the
+        // row below it; otherwise the grid has both rows to itself.
+        Grid.SetRow(GridHost, editing ? 4 : 3);
+        Grid.SetRowSpan(GridHost, editing ? 1 : 2);
         BeatsView.Editing = editing;
         FollowChip.IsVisible = editing && (_gridView ? !_gridFollowing : !Track.Following);
-        Body.RowDefinitions[3].Height = editing
-            ? (_gridView ? new GridLength(0) : GridLength.Auto)
-            : new GridLength(3, GridUnitType.Star);
+        Body.RowDefinitions[3].Height = editing ? GridLength.Auto : new GridLength(3, GridUnitType.Star);
         PlayerChevron.IsVisible = !editing;
         if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
     }
@@ -453,12 +473,46 @@ public partial class SongPage : ContentPage
 
     private void ScrollGridToBeat() => ScrollGridToRow(_vm.SelectedBeat, own: false);
 
-    private async void ScrollGridToRow(int beat, bool own = true)
+    /// <summary>Where the song is on the map, and how much of it the rows on
+    /// screen cover — the same window the track draws, measured off the scroll.</summary>
+    private void ShowGridOnMap()
     {
-        if (_gridAt.Step <= 0) return;
+        var beats = _vm.BeatTimes;
+        double step = BeatsView.RowPitch;
+        int columns = BeatsView.Columns;
+        if (beats.Length == 0 || step <= 0 || columns <= 0) return;
+        int firstRow = Math.Max(0, (int)(GridHost.ScrollY / step));
+        int rows = Math.Max(1, (int)Math.Round(GridHost.Height / step));
+        int from = Math.Min(beats.Length - 1, firstRow * columns);
+        int to = Math.Min(beats.Length - 1, (firstRow + rows) * columns);
+        double start = beats[from];
+        double end = to > from ? beats[to] : Math.Max(start + 1, _vm.Duration);
+        Map.Show(_vm.Position, start, end - start);
+        Map.Mark(_vm.SelectedStart);
+    }
+
+    /// <summary>The map was dragged while the beat view is on: scroll to the row
+    /// that holds that moment, and let the song go on without us.</summary>
+    private void ScrollGridToTime(double seconds)
+    {
+        var beats = _vm.BeatTimes;
+        if (beats.Length == 0 || BeatsView.Columns <= 0) return;
+        int index = 0;
+        while (index + 1 < beats.Length && beats[index + 1] <= seconds) index++;
+        _gridFollowing = false;
+        FollowChip.IsVisible = _vm.Editing;
+        // Not animated: the window is dragged, and an animation started on every
+        // move of the finger would queue up and lag a row behind it.
+        ScrollGridToRow(index, animated: false);
+    }
+
+    private async void ScrollGridToRow(int beat, bool own = true, bool animated = true)
+    {
+        double step = BeatsView.RowPitch > 0 ? BeatsView.RowPitch : _gridAt.Step;
+        if (step <= 0) return;
         int row = own && beat >= 0 && BeatsView.Columns > 0 ? beat / BeatsView.Columns : _gridAt.Row;
-        double target = Math.Max(0, (row - 1) * _gridAt.Step);
-        try { await GridHost.ScrollToAsync(0, target, animated: true); }
+        double target = Math.Max(0, (row - 1) * step);
+        try { await GridHost.ScrollToAsync(0, target, animated); }
         catch (Exception) { }                                    // torn down mid-scroll
     }
 

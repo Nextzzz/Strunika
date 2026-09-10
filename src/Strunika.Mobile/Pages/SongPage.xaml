@@ -241,6 +241,18 @@
                 <controls:LockBadge IsLocked="{Binding LoopLocked}" Margin="0,-6,-6,0" BackgroundColor="{t:Theme Fill}" IconColor="{t:Theme OnFill}" />
             </Grid>
 
+            <!-- The A–B chip's place while the editor is on. A loop is for
+                 playing a part over and over; editing, the one thing there is no
+                 other way to do is take a change back — and every change here is
+                 written to the song at once (user decision 2026-09-10). -->
+            <Border HorizontalOptions="Start" WidthRequest="{t:Size 56, Min=44}" HeightRequest="{t:Size 56, Min=44}"
+                    StrokeShape="{t:Round 56, Min=44}" StrokeThickness="0" BackgroundColor="{t:Theme Surface1}"
+                    Padding="0" VerticalOptions="Center" IsVisible="{Binding Editing}"
+                    Opacity="{Binding CanUndo, Converter={StaticResource Faded}}">
+                <controls:IconView Name="undo" Size="{t:Size 24}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding UndoCommand}" /></Border.GestureRecognizers>
+            </Border>
+
             <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
             <Border WidthRequest="{t:Size 60, Min=44}" HeightRequest="{t:Size 60, Min=44}" StrokeShape="{t:Round 60, Min=44}" StrokeThickness="0" BackgroundColor="Transparent" Padding="0" VerticalOptions="Center">
                 <controls:IconView Name="prevCh" Size="{t:Size 28}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />

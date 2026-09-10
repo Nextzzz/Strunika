@@ -17,6 +17,9 @@ public static class PointerDrag
         public Action<double>? Started { get; init; }
         /// <summary>Horizontal offset from the press, in view coordinates.</summary>
         public Action<double>? Moved { get; init; }
+        /// <summary>Both offsets, for something dragged about a grid rather than
+        /// along a line. Raised with <see cref="Moved"/>, never instead of it.</summary>
+        public Action<double, double>? Dragged { get; init; }
         /// <summary>Pointer up or capture lost after a real drag.</summary>
         public Action? Ended { get; init; }
         /// <summary>Pointer up without a real drag, at the press point.</summary>
@@ -55,8 +58,9 @@ public static class PointerDrag
             if (!captured) return;
             var p = e.GetCurrentPoint(el).Position;
             double dx = p.X - startX;
-            if (Math.Abs(dx) > TapSlop || Math.Abs(p.Y - startY) > TapSlop) moved = true;
-            if (moved) c.Moved?.Invoke(dx);
+            double dy = p.Y - startY;
+            if (Math.Abs(dx) > TapSlop || Math.Abs(dy) > TapSlop) moved = true;
+            if (moved) { c.Moved?.Invoke(dx); c.Dragged?.Invoke(dx, dy); }
             e.Handled = true;
         };
         el.PointerReleased += (_, e) =>
@@ -93,6 +97,7 @@ public static class PointerDrag
                     if (Math.Abs(e.TotalX) < 0.5 && Math.Abs(lastTotal) > 12) return;   // stray reset before a cancel
                     lastTotal = e.TotalX;
                     c.Moved?.Invoke(e.TotalX);
+                    c.Dragged?.Invoke(e.TotalX, e.TotalY);
                     break;
                 case GestureStatus.Completed:
                 case GestureStatus.Canceled:

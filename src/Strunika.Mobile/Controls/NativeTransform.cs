@@ -22,6 +22,20 @@ public static class NativeTransform
         catch (Exception ex) when (IsTearDown(ex)) { }
     }
 
+    /// <summary>The other axis, for things that are dragged about a grid rather
+    /// than along a line.</summary>
+    public static void TranslateY(VisualElement view, double y)
+    {
+        try
+        {
+#if WINDOWS
+            if (Composite(view) is { } ct) { if (ct.TranslateY != y) ct.TranslateY = y; return; }
+#endif
+            if (view.TranslationY != y) view.TranslationY = y;
+        }
+        catch (Exception ex) when (IsTearDown(ex)) { }
+    }
+
     /// <summary>A native element already destroyed while the window closes answers
     /// with E_INVALIDARG or a disposed/COM error; there is nothing left to move.</summary>
     public static bool IsTearDown(Exception ex) =>

@@ -538,7 +538,7 @@ public sealed partial class SongViewModel : ObservableObject
         if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
         double start = _raw[i].Start;
         double target = NextBeat(start, direction) ?? start + direction * 0.25;
-        return SetSegmentAsync(i, target, _raw[i].End);
+        return SetSegmentAsync(i, target, _raw[i].End);          // it remembers for us
     }
     /// <summary>The button in the header: into the editor, then out of it.</summary>
     public string EditorText => Editing ? Loc.Get("Common_Done") : Loc.Get("Song_Editor_Short");
@@ -554,8 +554,39 @@ public sealed partial class SongViewModel : ObservableObject
     /// <summary>Nothing shorter than this is worth a chord of its own.</summary>
     private const double MinSegment = 0.15;
 
+    /// <summary>The chords as they were before each change, newest last. The
+    /// editor writes to the song the moment anything is done, so a way back is
+    /// the one thing it cannot be without — and it is what the A–B chip's place
+    /// is for while the editor is on (user decision 2026-09-10). Thirty deep:
+    /// a session's worth, and a few kilobytes.</summary>
+    private readonly List<List<ChordSegmentDto>> _history = new();
+    private const int Remembered = 30;
+
+    public bool CanUndo => _history.Count > 0;
+
+    private void Remember()
+    {
+        _history.Add(new List<ChordSegmentDto>(_raw));
+        if (_history.Count > Remembered) _history.RemoveAt(0);
+        OnPropertyChanged(nameof(CanUndo));
+    }
+
+    /// <summary>The song as it was before the last change.</summary>
+    [RelayCommand]
+    private Task UndoAsync()
+    {
+        if (_history.Count == 0) return Task.CompletedTask;
+        _raw = _history[^1];
+        _history.RemoveAt(_history.Count - 1);
+        OnPropertyChanged(nameof(CanUndo));
+        Selected = -1;
+        return CommitAsync();
+    }
+
     partial void OnEditingChanged(bool value)
     {
+        _history.Clear();                                        // a way back within the sitting, not across sittings
+        OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanAdd));
         // In, on the chord under the playhead — somewhere to start; out, on none.
         Selected = value ? IndexAt(Position) : -1;
@@ -577,6 +608,7 @@ public sealed partial class SongViewModel : ObservableObject
     public Task SetSegmentAsync(int index, double start, double end)
     {
         if (!Editing || index < 0 || index >= _raw.Count) return Task.CompletedTask;
+        Remember();
         double floor = index > 0 ? _raw[index - 1].Start + MinSegment : 0;
         double ceiling = index + 1 < _raw.Count ? _raw[index + 1].End - MinSegment : Math.Max(Duration, _raw[index].End);
         if (ceiling - floor < 2 * MinSegment) return Task.CompletedTask;
@@ -588,12 +620,25 @@ public sealed partial class SongViewModel : ObservableObject
         return CommitAsync();
     }
 
+    /// <summary>The chord dragged onto another square in the beat view: it
+    /// begins there now. Dragged back it simply starts earlier and plays through
+    /// to the same place; dragged past its own end it takes its length along.</summary>
+    public Task MoveSelectedToAsync(double start)
+    {
+        int i = Selected;
+        if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
+        var segment = _raw[i];
+        double end = start >= segment.End - MinSegment ? start + (segment.End - segment.Start) : segment.End;
+        return SetSegmentAsync(i, start, end);                   // it remembers, and the neighbours give way
+    }
+
     /// <summary>The chord being worked on goes; the one before it plays on
     /// through its time (the one after it, if it was the first).</summary>
     public Task DeleteSelectedAsync()
     {
         int i = Selected;
         if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
+        Remember();
         if (i > 0) _raw[i - 1] = _raw[i - 1] with { End = _raw[i].End };
         else if (_raw.Count > 1) _raw[i + 1] = _raw[i + 1] with { Start = _raw[i].Start };
         _raw.RemoveAt(i);
@@ -607,6 +652,7 @@ public sealed partial class SongViewModel : ObservableObject
     {
         int i = Selected;
         if (!Editing || i < 0 || i >= _raw.Count || string.IsNullOrEmpty(label)) return Task.CompletedTask;
+        Remember();
         string was = _raw[i].Label;
         if (everywhere)
             for (int k = 0; k < _raw.Count; k++)
@@ -624,6 +670,7 @@ public sealed partial class SongViewModel : ObservableObject
     public Task AddChordAsync(string label, double at)
     {
         if (!Editing || string.IsNullOrEmpty(label)) return Task.CompletedTask;
+        Remember();
         at = Math.Clamp(at, 0, Math.Max(0, Duration));
         int i = IndexAt(at);
         if (i < 0 || i >= _raw.Count)
