@@ -54,6 +54,13 @@ public partial class ChordPickerSheet : ContentPage
             RootRow.Add(key);
         }
         ShowRoot(_root);
+
+        if (Application.Current?.Windows.FirstOrDefault()?.Page?.Handler?.MauiContext?.Services.GetService<IChordAudio>() is { } audio)
+        {
+            void Finished(object? _, EventArgs __) => Ringing(false);
+            audio.Finished += Finished;
+            Unloaded += (_, _) => { audio.Finished -= Finished; if (_ringing) audio.Stop(); };
+        }
     }
 
     /// <summary>The root of a chord name ("F#m7" gives "F#"), or null when it is not one.</summary>
@@ -103,6 +110,28 @@ public partial class ChordPickerSheet : ContentPage
         Chosen.Text = label;
         Preview.Shape = ChordShapes.For(label);
         Preview.LeftHanded = AppSettings.LeftHanded;
+    }
+
+    /// <summary>Hear the chord before choosing it: the same strum the shapes
+    /// sheet plays, at the same level under the song's.</summary>
+    private void OnHearTapped(object? sender, TappedEventArgs e)
+    {
+        var audio = Application.Current?.Windows.FirstOrDefault()?.Page?.Handler?.MauiContext?.Services.GetService<IChordAudio>();
+        var shape = Preview.Shape;
+        if (audio == null || shape == null) return;
+        if (_ringing) { audio.Stop(); return; }
+        audio.Volume = AppSettings.SongVolume * 0.75;
+        audio.Strum(shape.Frets);
+        Ringing(true);
+    }
+
+    private bool _ringing;
+
+    private void Ringing(bool ringing)
+    {
+        _ringing = ringing;
+        HearIcon.Name = ringing ? "pause" : "play";
+        HearIcon.Margin = ringing ? new Thickness(0) : new Thickness(2, 0, 0, 0);
     }
 
     private static Border Key(string text, bool on)

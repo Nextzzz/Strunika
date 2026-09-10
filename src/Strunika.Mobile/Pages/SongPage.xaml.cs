@@ -62,9 +62,16 @@ public partial class SongPage : ContentPage
             if (e.PropertyName == nameof(SongViewModel.Editing)) ApplyEditor();
         };
 
-        Seeker.DragStarted += (_, _) => _ = _vm.ScrubStartAsync();
+        // Moving the song's own slider is asking to be where the song is: the
+        // editor's track goes back to riding along with it (user request 2026-09-10).
+        Seeker.DragStarted += (_, _) => { Track.FollowNow(); _ = _vm.ScrubStartAsync(); };
         Seeker.Dragging += (_, t) => _vm.Scrubbing(t);
-        Seeker.DragCompleted += (_, t) => _ = _vm.ScrubEndAsync(t);
+        Seeker.DragCompleted += (_, t) => { Track.FollowNow(); _ = _vm.ScrubEndAsync(t); };
+        // The sheet is put away by its own height. It used to be pushed down by a
+        // flat 600 pt, and a sheet taller than that — the metronome's level row
+        // appearing was enough — kept a strip of itself on screen (user report
+        // 2026-09-10).
+        MoreSheet.SizeChanged += (_, _) => { if (!_moreOpen) MoreSheet.TranslationY = MoreSheet.Height + 40; };
 
         ApplyPanelSpacing(around: false);
 #if IOS
@@ -85,6 +92,7 @@ public partial class SongPage : ContentPage
 #endif
 
         BeatsView.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
+        BeatsView.BeatChosen += (_, beat) => _vm.ChooseAtBeat(beat);
         BeatsView.ActiveMoved += OnActiveBeatMoved;
         ApplyViewMode(AppSettings.SongGridView && _vm.BeatTimes.Length > 0, save: false);
 
@@ -250,8 +258,16 @@ public partial class SongPage : ContentPage
             // bindings, and both move by transforms: no drawing, no native
             // control, no layout in the frame.
             if (Math.Abs(Track.Position - _vm.Position) > 0.002) Track.Position = _vm.Position;
-            if (_gridView) BeatsView.Position = _vm.Position;    // a comparison unless the beat changed
-            else if (_vm.Editing) Map.Show(_vm.Position, Track.ViewStart, Track.ViewSpan);
+            if (_gridView)
+            {
+                BeatsView.Position = _vm.Position;               // a comparison unless the beat changed
+                if (_vm.Editing) BeatsView.Chosen = _vm.SelectedBeat;
+            }
+            else if (_vm.Editing)
+            {
+                Map.Show(_vm.Position, Track.ViewStart, Track.ViewSpan);
+                Map.Mark(_vm.SelectedStart);
+            }
             if (++_frame % 3 == 0)
             {
                 Seeker.Position = _vm.Position;
@@ -336,6 +352,7 @@ public partial class SongPage : ContentPage
         // The chord diagrams give their row to the map of the song; in the beat
         // view there is no track to map, so the row goes altogether.
         MapRow.IsVisible = editing && !_gridView;
+        BeatsView.Editing = editing;
         FollowChip.IsVisible = editing && !_gridView && !Track.Following;
         Body.RowDefinitions[3].Height = editing
             ? (_gridView ? new GridLength(0) : GridLength.Auto)
@@ -355,13 +372,24 @@ public partial class SongPage : ContentPage
     /// <summary>Back to the playhead, and along with it from here on.</summary>
     private void OnFollowTapped(object? sender, TappedEventArgs e) => Track.FollowNow();
 
-    private async void OnEditDelete(object? sender, TappedEventArgs e) => await _vm.DeleteSelectedAsync();
+    /// <summary>Back to the chord being worked on, wherever the track has wandered.</summary>
+    private void OnGoToSelectionTapped(object? sender, TappedEventArgs e)
+    {
+        if (_vm.SelectedStart >= 0) Track.LookAt(_vm.SelectedStart);
+    }
+
+    private async void OnEditDelete(object? sender, TappedEventArgs e)
+    {
+        if (!_vm.HasSelection) return;
+        await _vm.DeleteSelectedAsync();
+    }
 
     /// <summary>A chord from this moment on, taking the rest of the one it lands in.</summary>
     private async void OnEditAdd(object? sender, TappedEventArgs e)
     {
         _sheetOpen = true;
-        await ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: false, (label, _) => _vm.AddChordAsync(label));
+        double at = Track.CentreTime;                            // where the cursor stands on the track
+        await ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: false, (label, _) => _vm.AddChordAsync(label, at));
     }
 
     /// <summary>Another chord in place of the one under the playhead.</summary>
@@ -474,9 +502,12 @@ public partial class SongPage : ContentPage
 
     /// <summary>The "more" sheet slides up over the song: key, capo, speed,
     /// chord vocabulary, A–B and volume — everything not needed every bar.</summary>
+    private bool _moreOpen;
+
     private async void OnMoreTapped(object? sender, TappedEventArgs e)
     {
-        bool opening = MoreSheet.TranslationY > 1;
+        bool opening = !_moreOpen;
+        _moreOpen = opening;
         MoreScrim.InputTransparent = !opening;
         if (opening)
         {

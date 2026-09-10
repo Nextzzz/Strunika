@@ -40,12 +40,13 @@ public sealed class SongMap : Grid
 
     private readonly GraphicsView _rail;
     private readonly Border _window;
-    private readonly BoxView _head;
-    private double _position, _viewStart, _viewSpan;
+    private readonly BoxView _head, _pick;
+    private readonly BoxView _gripLeft, _gripRight;
+    private double _position, _viewStart, _viewSpan, _selection = -1;
 
     public SongMap()
     {
-        HeightRequest = 30;
+        HeightRequest = 48;                                      // a strip a finger can work with
         _rail = new GraphicsView { Drawable = new RailDrawable(this), InputTransparent = true };
         _window = new Border
         {
@@ -54,8 +55,17 @@ public sealed class SongMap : Grid
             HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, WidthRequest = 1,
         };
         _head = new BoxView { WidthRequest = 2, CornerRadius = 1, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true };
+        // Where the chord being worked on sits in the song — the one thing the
+        // reader needs to find again after letting the track go.
+        _pick = new BoxView { WidthRequest = 4, CornerRadius = 2, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true, IsVisible = false, Margin = new Thickness(0, 6) };
+        // The window says it can be taken hold of.
+        _gripLeft = Grip();
+        _gripRight = Grip();
         Add(_rail);
         Add(_window);
+        Add(_gripLeft);
+        Add(_gripRight);
+        Add(_pick);
         Add(_head);
         var touch = new BoxView { Color = Colors.Transparent };
         Add(touch);
@@ -69,7 +79,21 @@ public sealed class SongMap : Grid
         SizeChanged += (_, _) => { _rail.Invalidate(); Place(); };
     }
 
+    private static BoxView Grip() => new()
+    {
+        WidthRequest = 3, HeightRequest = 16, CornerRadius = 1.5,
+        HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center, InputTransparent = true,
+    };
+
     private double _grabbed;
+
+    /// <summary>Where the chord being worked on is, or below zero for none.</summary>
+    public void Mark(double seconds)
+    {
+        if (Math.Abs(seconds - _selection) < 0.01) return;
+        _selection = seconds;
+        Place();
+    }
 
     private void Ask(double x)
     {
@@ -92,17 +116,25 @@ public sealed class SongMap : Grid
         double w = Width, duration = Duration;
         if (w <= 0 || duration <= 0) return;
         double scale = w / duration;
-        double windowWidth = Math.Max(10, Math.Min(w, _viewSpan * scale));
-        NativeTransform.TranslateX(_window, Math.Clamp(_viewStart * scale, 0, Math.Max(0, w - windowWidth)));
+        double windowWidth = Math.Max(16, Math.Min(w, _viewSpan * scale));
+        double left = Math.Clamp(_viewStart * scale, 0, Math.Max(0, w - windowWidth));
+        NativeTransform.TranslateX(_window, left);
         NativeTransform.ScaleX(_window, windowWidth);            // the box is one point wide
+        NativeTransform.TranslateX(_gripLeft, left + 3);
+        NativeTransform.TranslateX(_gripRight, left + windowWidth - 6);
         NativeTransform.TranslateX(_head, Math.Clamp(_position * scale, 0, w - 2));
+        bool marked = _selection >= 0;
+        if (_pick.IsVisible != marked) _pick.IsVisible = marked;
+        if (marked) NativeTransform.TranslateX(_pick, Math.Clamp(_selection * scale, 0, w - 4));
     }
 
     private void Recolour()
     {
         _window.BackgroundColor = Accent.WithAlpha(0.16f);
         _window.Stroke = Accent.WithAlpha(0.7f);
+        _gripLeft.Color = _gripRight.Color = Accent.WithAlpha(0.8f);
         _head.Color = Accent;
+        _pick.Color = MarkColor;
         _rail.Invalidate();
     }
 
@@ -121,12 +153,12 @@ public sealed class SongMap : Grid
                 double duration = map.Duration;
                 if (map.Segments is not { Count: > 0 } segments || duration <= 0) return;
                 canvas.StrokeSize = 1.5f;
-                canvas.StrokeColor = map.MarkColor;
+                canvas.StrokeColor = map.MarkColor.WithAlpha(0.7f);
                 foreach (var segment in segments)
                 {
                     if (segment.Label == "—") continue;
                     float x = (float)(rect.Left + segment.Start / duration * rect.Width);
-                    canvas.DrawLine(x, mid - 6, x, mid + 6);
+                    canvas.DrawLine(x, mid - 8, x, mid + 8);
                 }
             }
             catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }

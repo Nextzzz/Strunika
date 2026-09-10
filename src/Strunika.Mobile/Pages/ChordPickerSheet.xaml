@@ -7,7 +7,7 @@
              x:Class="Strunika.Mobile.Pages.ChordPickerSheet"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,20" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
+    <Grid BackgroundColor="{t:Theme Bg}" Padding="20,16,20,20" RowDefinitions="Auto,*,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
 
         <Grid ColumnDefinitions="*,Auto">
             <Label Style="{StaticResource LargeTitle}" FontSize="28" Text="{loc:Str Song_Editor_Pick}" VerticalOptions="Center" />
@@ -17,25 +17,36 @@
             </Border>
         </Grid>
 
-        <!-- The root is a choice of its own, and looks like one: round keys on a
-             rail, nothing like the chord chips below (user report 2026-09-10). -->
-        <VerticalStackLayout Grid.Row="1" Spacing="6" Margin="0,10,0,0">
-            <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Song_Editor_Root}" />
-            <Border Style="{StaticResource Card}" Padding="8,8">
-                <FlexLayout x:Name="RootRow" Wrap="Wrap" Direction="Row" JustifyContent="Start" />
-            </Border>
-        </VerticalStackLayout>
-
-        <ScrollView Grid.Row="2" Margin="0,12,0,0" VerticalScrollBarVisibility="Default">
-            <FlexLayout x:Name="QualityRow" Wrap="Wrap" Direction="Row" />
+        <!-- Root and chord scroll together: pinned above the list, the roots cut
+             its first line off (user report 2026-09-10). -->
+        <ScrollView Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Default">
+            <VerticalStackLayout Spacing="6">
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Song_Editor_Root}" />
+                <!-- The root is a choice of its own and looks like one: round keys
+                     on a rail, nothing like the chord chips under them. -->
+                <Border Style="{StaticResource Card}" Padding="8,8">
+                    <FlexLayout x:Name="RootRow" Wrap="Wrap" Direction="Row" JustifyContent="Start" />
+                </Border>
+                <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Song_Editor_Pick}" Margin="0,8,0,0" />
+                <FlexLayout x:Name="QualityRow" Wrap="Wrap" Direction="Row" />
+            </VerticalStackLayout>
         </ScrollView>
 
-        <!-- What the choice will look like under the fingers -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" ColumnSpacing="14" Margin="0,8,0,10">
-            <controls:ChordDiagram x:Name="Preview" ShowFrets="True" WidthRequest="{t:Size 78, Hero=True}" HeightRequest="{t:Size 112, Hero=True}"
-                                   LineColor="{t:Theme TextPri}" DotColor="{t:Theme Accent}" MutedColor="{t:Theme Dim}" FretTextColor="{t:Theme TextSec}" TitleColor="{t:Theme AccentText}" />
+        <!-- What the choice will look like under the fingers; tap it to hear it -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="14" Margin="0,10,0,10">
+            <Border StrokeThickness="0" BackgroundColor="Transparent" Padding="0">
+                <controls:ChordDiagram x:Name="Preview" ShowFrets="True" WidthRequest="{t:Size 78, Hero=True}" HeightRequest="{t:Size 112, Hero=True}"
+                                       LineColor="{t:Theme TextPri}" DotColor="{t:Theme Accent}" MutedColor="{t:Theme Dim}" FretTextColor="{t:Theme TextSec}" TitleColor="{t:Theme AccentText}" />
+                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnHearTapped" /></Border.GestureRecognizers>
+            </Border>
             <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
-                <Label x:Name="Chosen" FontFamily="DisplayBold" FontSize="{t:Size 30, Hero=True}" TextColor="{t:Theme AccentText}" />
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
+                    <Label x:Name="Chosen" FontFamily="DisplayBold" FontSize="{t:Size 30, Hero=True}" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
+                    <Border Grid.Column="1" WidthRequest="{t:Size 38, Min=38}" HeightRequest="{t:Size 38, Min=38}" StrokeShape="{t:Round 38, Min=38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0" VerticalOptions="Center">
+                        <controls:IconView x:Name="HearIcon" Name="play" Size="{t:Size 18}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" Margin="2,0,0,0" />
+                        <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnHearTapped" /></Border.GestureRecognizers>
+                    </Border>
+                </Grid>
                 <Grid x:Name="AllRow" ColumnDefinitions="*,Auto" ColumnSpacing="10" IsVisible="False">
                     <Label x:Name="AllLabel" FontSize="14" TextColor="{t:Theme TextSec}" VerticalOptions="Center" LineBreakMode="WordWrap" />
                     <Switch Grid.Column="1" x:Name="AllSwitch" VerticalOptions="Center" />
@@ -43,6 +54,6 @@
             </VerticalStackLayout>
         </Grid>
 
-        <Button Grid.Row="4" x:Name="Confirm" Clicked="OnConfirm" />
+        <Button Grid.Row="3" x:Name="Confirm" Clicked="OnConfirm" />
     </Grid>
 </ContentPage>

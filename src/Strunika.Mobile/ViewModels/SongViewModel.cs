@@ -473,6 +473,35 @@ public sealed partial class SongViewModel : ObservableObject
 
     public bool HasSelection => Selected >= 0 && Selected < Segments.Count;
     public string SelectedChord => HasSelection ? Segments[Selected].Label : "—";
+    /// <summary>Where in the song it begins, or below zero for none — the map
+    /// marks it and the chip beside the map goes back to it.</summary>
+    public double SelectedStart => HasSelection ? Segments[Selected].Start : -1;
+
+    /// <summary>The beat the chosen chord begins on, for the grid to outline.</summary>
+    public int SelectedBeat
+    {
+        get
+        {
+            if (!HasSelection || _beats.Length == 0) return -1;
+            double start = Segments[Selected].Start;
+            int best = -1;
+            double nearest = 0.35;
+            for (int i = 0; i < _beats.Length; i++)
+            {
+                double d = Math.Abs(_beats[i] - start);
+                if (d < nearest) { nearest = d; best = i; }
+            }
+            return best;
+        }
+    }
+
+    /// <summary>A beat was tapped in the grid: the chord sounding there is the
+    /// one to work on.</summary>
+    public void ChooseAtBeat(int beat)
+    {
+        if (!Editing || beat < 0 || beat >= _beats.Length) return;
+        Selected = IndexAt(_beats[beat] + 1e-3);
+    }
     /// <summary>The button in the header: into the editor, then out of it.</summary>
     public string EditorText => Editing ? Loc.Get("Common_Done") : Loc.Get("Song_Editor_Short");
     public string EditorGlyph => Editing ? "check" : "pencil";
@@ -481,6 +510,7 @@ public sealed partial class SongViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(SelectedChord));
+        OnPropertyChanged(nameof(SelectedStart));
     }
 
     /// <summary>Nothing shorter than this is worth a chord of its own.</summary>
@@ -550,10 +580,12 @@ public sealed partial class SongViewModel : ObservableObject
 
     /// <summary>A new chord from here on: it takes the rest of the chord it
     /// lands in, which keeps the time up to this moment.</summary>
-    public Task AddChordAsync(string label)
+    /// <param name="at">Where it goes — the editor's cursor, the middle of the
+    /// window, not wherever the song happens to be.</param>
+    public Task AddChordAsync(string label, double at)
     {
         if (!Editing || string.IsNullOrEmpty(label)) return Task.CompletedTask;
-        double at = Position;
+        at = Math.Clamp(at, 0, Math.Max(0, Duration));
         int i = IndexAt(at);
         if (i < 0 || i >= _raw.Count)
         {

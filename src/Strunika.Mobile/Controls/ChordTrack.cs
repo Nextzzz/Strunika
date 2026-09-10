@@ -43,7 +43,7 @@ public sealed class ChordTrack : Grid
     /// with a hold on it, instead of a badge at the moment it starts.</summary>
     public static readonly BindableProperty EditingProperty = BindableProperty.Create(nameof(Editing), typeof(bool), typeof(ChordTrack), false, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t.Redraw(); t.Follow(); });
     /// <summary>Which chord is being worked on, by its place in the song.</summary>
-    public static readonly BindableProperty SelectedProperty = BindableProperty.Create(nameof(Selected), typeof(int), typeof(ChordTrack), -1, propertyChanged: (b, _, _) => ((ChordTrack)b).Redraw());
+    public static readonly BindableProperty SelectedProperty = BindableProperty.Create(nameof(Selected), typeof(int), typeof(ChordTrack), -1, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t.Redraw(); t.Follow(); });
     public static readonly BindableProperty LoopArmedProperty = BindableProperty.Create(nameof(LoopArmed), typeof(bool), typeof(ChordTrack), false, propertyChanged: Reloop);
     public static readonly BindableProperty AccentProperty = BindableProperty.Create(nameof(Accent), typeof(Color), typeof(ChordTrack), Colors.Goldenrod, propertyChanged: (b, _, _) => ((ChordTrack)b).ApplyColours());
     public static readonly BindableProperty OnAccentProperty = BindableProperty.Create(nameof(OnAccent), typeof(Color), typeof(ChordTrack), Colors.Black, propertyChanged: (b, _, _) => ((ChordTrack)b).ApplyColours());
@@ -208,7 +208,8 @@ public sealed class ChordTrack : Grid
     /// <summary>The band is one box, moved and stretched by its transform: a
     /// canvas would have to be redrawn on every frame it grows, which is the
     /// one thing this control does not do.</summary>
-    private readonly BoxView _loopBand;
+    private readonly BoxView _loopBand, _cursor;
+    private readonly Border _cursorMark;
     private readonly BoxView _lineA, _lineB;
     private readonly Border _gripA, _gripB;
     private readonly List<BoxView> _gripBars = new();
@@ -241,12 +242,24 @@ public sealed class ChordTrack : Grid
         _layers.Add(_current);
         _layers.Add(_pinned);
         Add(_layers);
+        // The editor's cursor: the middle of the window, where an added chord
+        // lands. It stands still while the track moves under it.
+        _cursor = new BoxView { WidthRequest = 2, InputTransparent = true, IsVisible = false, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start };
+        _cursorMark = new Border
+        {
+            WidthRequest = 22, HeightRequest = 22, Padding = 0, StrokeThickness = 0, InputTransparent = true, IsVisible = false,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 11 },
+            HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start,
+            Content = new IconView { Name = "plus", Size = 14, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center },
+        };
         _loopBand = new BoxView
         {
             InputTransparent = true, IsVisible = false,
             HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start,
         };
         Add(_loopBand);
+        Add(_cursor);
+        Add(_cursorMark);
         Add(_playhead);
         var overlay = new BoxView { Color = Colors.Transparent };
         Add(overlay);
@@ -302,6 +315,10 @@ public sealed class ChordTrack : Grid
     /// <summary>The moment at the playhead's place on screen.</summary>
     private double ViewAt => Editing ? _viewTime : Position;
 
+    /// <summary>The moment in the middle of the window: where a chord is put
+    /// when one is added, and where the editor's cursor stands.</summary>
+    public double CentreTime => ViewAt + Width * (0.5 - PlayheadAt) / Math.Max(1, PixelsPerSecond);
+
     public void Redraw()
     {
         _pillShift.Clear();
@@ -320,6 +337,9 @@ public sealed class ChordTrack : Grid
     {
         _playhead.Color = Accent;
         _loopBand.Color = Accent.WithAlpha(0.14f);
+        _cursor.Color = TextColor.WithAlpha(0.35f);
+        _cursorMark.BackgroundColor = Accent;
+        if (_cursorMark.Content is IconView mark) mark.Color = OnAccent;
         _lineA.Color = _lineB.Color = Accent;
         _gripA.BackgroundColor = _gripB.BackgroundColor = Accent;
         foreach (var bar in _gripBars) bar.Color = OnAccent;
@@ -347,6 +367,11 @@ public sealed class ChordTrack : Grid
         _playhead.HeightRequest = Math.Max(0, band - 2);
         _playhead.Margin = new Thickness(0, LoopTop, 0, 0);
         NativeTransform.TranslateX(_playhead, px - 2);
+        _cursor.HeightRequest = Math.Max(0, h - PillTop - 6);
+        _cursor.Margin = new Thickness(0, PillTop, 0, 0);
+        _cursorMark.Margin = new Thickness(0, Math.Max(0, h - 26), 0, 0);
+        NativeTransform.TranslateX(_cursor, w / 2 - 1);
+        NativeTransform.TranslateX(_cursorMark, w / 2 - 11);
         _loopBand.WidthRequest = w;
         _loopBand.HeightRequest = band;
         _loopBand.Margin = new Thickness(0, LoopTop, 0, 0);
@@ -457,6 +482,7 @@ public sealed class ChordTrack : Grid
         }
         UpdateLoop();
         PlaceClips();
+        if (_cursor.IsVisible != Editing) _cursor.IsVisible = _cursorMark.IsVisible = Editing;
         if (Editing)
         {
             if (_current.IsVisible) _current.IsVisible = false;   // the blocks say it better
@@ -722,6 +748,7 @@ public sealed class ChordTrack : Grid
         public required Border Ghost;
         public required Label Name;
         public required BoxView Body;
+        public required BoxView GripLeft, GripRight;
         public int Index = -1;
     }
 
@@ -746,14 +773,17 @@ public sealed class ChordTrack : Grid
             Content = name,
         };
         var body = new BoxView { Color = Colors.Transparent };
+        var gripLeft = Grip();
+        var gripRight = Grip();
+        gripRight.HorizontalOptions = LayoutOptions.End;
         var host = new Grid
         {
             HeightRequest = PillTop + PillHeight + 4,
             VerticalOptions = LayoutOptions.Start, HorizontalOptions = LayoutOptions.Start,
             IsVisible = false,
-            Children = { body, ghost },
+            Children = { body, ghost, gripLeft, gripRight },
         };
-        var clip = new Block { Host = host, Ghost = ghost, Name = name, Body = body };
+        var clip = new Block { Host = host, Ghost = ghost, Name = name, Body = body, GripLeft = gripLeft, GripRight = gripRight };
         PointerDrag.Attach(body, new PointerDrag.Callbacks
         {
             Started = _ => BeginClip(clip),
@@ -766,6 +796,15 @@ public sealed class ChordTrack : Grid
         _clips.Add(clip);
         return clip;
     }
+
+    /// <summary>Two little bars on the chord being worked on: what says, without
+    /// a word, that it can be taken hold of and moved.</summary>
+    private BoxView Grip() => new()
+    {
+        WidthRequest = 3, HeightRequest = 18, CornerRadius = 1.5, Color = OnAccent.WithAlpha(0.75f),
+        Margin = new Thickness(5, PillTop, 5, 0), IsVisible = false, InputTransparent = true,
+        HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center,
+    };
 
     private void BeginClip(Block clip)
     {
@@ -843,6 +882,8 @@ public sealed class ChordTrack : Grid
         double shift = _clipMoved ? -width / 2 : _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
         double x = Width * PlayheadAt + (start - ViewAt) * PixelsPerSecond + shift;
         if (Math.Abs(clip.Host.WidthRequest - width) > 0.5) clip.Host.WidthRequest = width;
+        bool chosen = clip.Index == Selected;
+        if (clip.GripLeft.IsVisible != chosen) clip.GripLeft.IsVisible = clip.GripRight.IsVisible = chosen;
         if (!clip.Host.IsVisible) clip.Host.IsVisible = true;
         NativeTransform.TranslateX(clip.Host, x);
     }
@@ -982,7 +1023,10 @@ public sealed class ChordTrack : Grid
             {
                 int k0 = Math.Max(0, (int)Math.Floor(tMin / t._barSeconds));
                 int k1 = Math.Min(bars.Length - 1, (int)Math.Ceiling(tMax / t._barSeconds));
-                canvas.FillColor = played ? (t._playedBar ??= t.Accent.WithAlpha(0.55f)) : t.WaveColor;
+                // Editing, the wave is one colour: the playhead is often out of
+                // the window, and a track half in the accent then says nothing
+                // (user request 2026-09-10).
+                canvas.FillColor = played && !t.Editing ? (t._playedBar ??= t.Accent.WithAlpha(0.55f)) : t.WaveColor;
                 for (int k = k0; k <= k1; k++)
                 {
                     float x = X(k * t._barSeconds);
