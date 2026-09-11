@@ -631,7 +631,10 @@
     <value>Слухаю</value>
   </data>
   <data name="Tuner_NoMic" xml:space="preserve">
-    <value>Немає доступу до мікрофона — торкніться, щоб відкрити Налаштування</value>
+    <value>Немає доступу до мікрофона</value>
+  </data>
+  <data name="Tuner_NoMicHint" xml:space="preserve">
+    <value>Торкніться напису, щоб відкрити налаштування доступу</value>
   </data>
   <data name="Tuner_Reset" xml:space="preserve">
     <value>Скинути до 440 Гц</value>

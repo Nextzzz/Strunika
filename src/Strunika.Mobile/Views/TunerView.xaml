@@ -78,7 +78,11 @@
                 </HorizontalStackLayout>
                 <Label x:Name="IdleLabel" Style="{StaticResource Title2}" FontSize="{t:Size 30, Hero=True}" Text="{Binding IdleMessage}"
                        HorizontalTextAlignment="Center" />
-                <!-- Without a microphone the line says so, and a tap on it opens the app's settings. -->
+                <!-- Without a microphone the line says so, and a tap on it opens the
+                     app's settings. The grey line under it says the tap is there, or
+                     nobody would think to try it (user request 2026-09-11). -->
+                <Label Style="{StaticResource Subhead}" Text="{loc:Str Tuner_NoMicHint}" HorizontalTextAlignment="Center"
+                       IsVisible="{Binding MicUnavailable}" />
                 <VerticalStackLayout.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding OpenMicSettingsCommand}" />
                 </VerticalStackLayout.GestureRecognizers>

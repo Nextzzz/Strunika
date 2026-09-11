@@ -631,7 +631,10 @@
     <value>Listening</value>
   </data>
   <data name="Tuner_NoMic" xml:space="preserve">
-    <value>No microphone access — tap to open Settings</value>
+    <value>No microphone access</value>
+  </data>
+  <data name="Tuner_NoMicHint" xml:space="preserve">
+    <value>Tap here to open the access settings</value>
   </data>
   <data name="Tuner_Reset" xml:space="preserve">
     <value>Reset to 440 Hz</value>
