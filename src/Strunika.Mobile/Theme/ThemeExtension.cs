@@ -9,17 +9,19 @@ namespace Strunika.Mobile.Theme;
 /// SolidColorBrush values for Brush-typed properties (Shadow.Brush).
 /// </summary>
 [ContentProperty(nameof(Key))]
-[AcceptEmptyServiceProvider]
 public sealed class ThemeExtension : IMarkupExtension<BindingBase>
 {
     public string Key { get; set; } = "";
 
     public bool Brush { get; set; }
 
-    // XAML only. AppThemeBindingExtension asks nothing of the service provider
-    // (it says so itself), so neither do we — which is what lets the XAML
-    // compiler fold this away. From code-behind use Tokens.Current(key) or
-    // IconView.ThemeKey instead.
+    // XAML only: AppThemeBindingExtension needs the real XAML service provider
+    // (it declares [RequireService] IProvideValueTarget, IValueConverterProvider,
+    // IXmlLineInfoProvider and IConverterOptions, and throws ArgumentException on a
+    // null one). Never mark this extension [AcceptEmptyServiceProvider] to quiet
+    // XamlC's XC0103: the compiled XAML then passes null here, App's styles fail to
+    // load and the app dies at launch (TestFlight build 43, 2026-09-11).
+    // From code-behind use Tokens.Current(key) or IconView.ThemeKey instead.
     public BindingBase ProvideValue(IServiceProvider serviceProvider)
     {
         var light = Tokens.Light(Key);

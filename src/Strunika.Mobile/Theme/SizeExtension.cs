@@ -11,7 +11,6 @@ namespace Strunika.Mobile.Theme;
 /// <c>Hero=True</c> uses the hero factor for content that may grow on a tablet.
 /// </summary>
 [ContentProperty(nameof(Value))]
-[AcceptEmptyServiceProvider]
 public sealed class SizeExtension : IMarkupExtension<BindingBase>
 {
     public double Value { get; set; }
@@ -40,7 +39,6 @@ public sealed class SizeExtension : IMarkupExtension<BindingBase>
 /// stays round on a compact phone.
 /// </summary>
 [ContentProperty(nameof(Size))]
-[AcceptEmptyServiceProvider]
 public sealed class RoundExtension : IMarkupExtension<BindingBase>
 {
     public double Size { get; set; }
@@ -67,7 +65,6 @@ public sealed class RoundExtension : IMarkupExtension<BindingBase>
 /// <c>HorizontalOptions="Center"</c> — it would take its natural width and
 /// overflow a narrow screen.
 /// </summary>
-[AcceptEmptyServiceProvider]
 public sealed class ContentInsetExtension : IMarkupExtension<BindingBase>
 {
     /// <summary>Add the usual 20 pt page inset (cards that carried their own margin).</summary>

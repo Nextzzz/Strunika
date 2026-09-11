@@ -201,6 +201,9 @@ Any layout decided from measured text — hide a word when the title needs the r
 ### Icon glyphs (rule, 2026-09-11)
 Glyphs in `Controls/Icons.cs` are optically centred in their own 24-unit box — the play triangle's centroid sits on the centre and its bounding box leans right. **Never nudge an icon with a margin** to centre it in a button: three play buttons did, and the sign sat visibly off to the right.
 
+### Markup extensions and the XAML service provider (rule, 2026-09-11)
+`{t:Theme}` hands its service provider on to MAUI's `AppThemeBindingExtension`, which requires `IProvideValueTarget` and three more services and throws on a null provider. **Never put `[AcceptEmptyServiceProvider]` on `ThemeExtension`**, or on any extension that forwards the provider, to silence XamlC's XC0103: the compiled XAML then passes null, App's styles fail and the app dies before its first screen. TestFlight build 43 did exactly that while both heads built clean. A framework's internals are checked against the real package before code relies on them (a file-based `dotnet run` with `#:package Microsoft.Maui.Controls.Xaml@<version>` answers in a minute); the XC0103 warnings themselves are harmless.
+
 ## 6. Adaptive sizing (rule since 2026-08-27 — applies to every page, control and agent)
 
 The app must look right from iPhone SE (375×667 pt) to iPad Pro 13" (1024×1366 pt). Points are a physical unit, so a hard-coded 60 pt button is 60 pt everywhere: too big on a compact phone, and on a tablet the whole chrome would either look lost or — if scaled linearly — turn into saucers. The design is therefore **class-based, not proportional**:

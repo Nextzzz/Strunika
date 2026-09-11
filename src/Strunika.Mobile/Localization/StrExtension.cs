@@ -1,5 +1,3 @@
-using Microsoft.Maui.Controls.Xaml;
-
 namespace Strunika.Mobile.Localization;
 
 /// <summary>
@@ -7,7 +5,6 @@ namespace Strunika.Mobile.Localization;
 /// indexer, so the text follows the selected language at runtime.
 /// </summary>
 [ContentProperty(nameof(Key))]
-[AcceptEmptyServiceProvider]
 public sealed class StrExtension : IMarkupExtension<BindingBase>
 {
     public string Key { get; set; } = "";
