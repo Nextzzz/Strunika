@@ -55,27 +55,6 @@ public static class NativeTransform
         catch (Exception ex) when (IsTearDown(ex)) { }
     }
 
-    /// <summary>Scale about the vertical middle — a sounding string swung from
-    /// one side through to the other. Near-zero and negative scales are fine.</summary>
-    public static void ScaleXAround(VisualElement view, double s)
-    {
-        try
-        {
-#if WINDOWS
-            if (Composite(view) is { } ct)
-            {
-                double middle = view.Width / 2;
-                if (ct.CenterX != middle) ct.CenterX = middle;
-                if (ct.ScaleX != s) ct.ScaleX = s;
-                return;
-            }
-#endif
-            if (view.AnchorX != 0.5) view.AnchorX = 0.5;
-            if (view.ScaleX != s) view.ScaleX = s;
-        }
-        catch (Exception ex) when (IsTearDown(ex)) { }
-    }
-
 #if WINDOWS
     private static bool _logged;
 

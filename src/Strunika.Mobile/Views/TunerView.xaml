@@ -95,11 +95,12 @@
                               ZoneColor="{t:Theme Glow}" TickColor="{t:Theme Dim}" LabelColor="{t:Theme TextSec}"
                               BeadCoreColor="{t:Theme Bg}" />
 
-        <!-- The pegs as a headstock: half the strings on each side in leaning
-             columns, a string from each peg down under the tab bar, in the peg's
-             colours, and the string being tuned shaking while it sounds (user
-             design 2026-09-11). Height, margins and the pegs' places are set in
-             code (ArrangeNeck); the strings are drawn by the Headstock. -->
+        <!-- The strings side by side, parallel and straight up across the whole
+             width, each peg at the top of its string in a symmetric fir tree, the
+             strings running on under the tab bar in their pegs' colours, and the
+             string being tuned shaking while it sounds (user design 2026-09-11).
+             Height, margins and the pegs' places are set in code (ArrangeNeck);
+             the strings are drawn by the Headstock. -->
         <Grid Grid.Row="5" x:Name="Neck">
             <controls:Headstock x:Name="Fan" IdleColor="{t:Theme Separator}" ActiveColor="{t:Theme Accent}" TunedColor="{t:Theme Fill}" />
             <Grid x:Name="PegRow" BindableLayout.ItemsSource="{Binding Pegs}">
