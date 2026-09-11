@@ -24,16 +24,23 @@ public sealed class IosMicrophoneSource : IMicrophoneSource
     {
         if (IsRunning)
             return true;
+        // An engine an interruption (a call, Siri) stopped under us: start clean
+        // rather than leave its tap and its converter behind.
+        if (_engine != null)
+            Stop();
+
+        // Asked before the session is touched: a refused microphone must leave
+        // the audio session as it was, or the next song would play into a
+        // recording session — and the tuner now asks by itself on every launch.
+        // Through MAUI's own permissions: AVAudioSession.RequestRecordPermission
+        // is obsolete from iOS 17 (AVAudioApplication took it over).
+        if (await Permissions.RequestAsync<Permissions.Microphone>() != PermissionStatus.Granted)
+            return false;
 
         var session = AVAudioSession.SharedInstance();
         session.SetCategory(AVAudioSessionCategory.Record);
         session.SetActive(true);
         AudioSessions.Changed();
-
-        // Through MAUI's own permissions: AVAudioSession.RequestRecordPermission
-        // is obsolete from iOS 17 (AVAudioApplication took it over).
-        if (await Permissions.RequestAsync<Permissions.Microphone>() != PermissionStatus.Granted)
-            return false;
 
         _engine = new AVAudioEngine();
         var input = _engine.InputNode;
@@ -76,7 +83,10 @@ public sealed class IosMicrophoneSource : IMicrophoneSource
         });
 
         _engine.Prepare();
-        return _engine.StartAndReturnError(out _);
+        if (_engine.StartAndReturnError(out _))
+            return true;
+        Stop();                                                  // no input to be had: back to the playback session
+        return false;
     }
 
     public void Stop()

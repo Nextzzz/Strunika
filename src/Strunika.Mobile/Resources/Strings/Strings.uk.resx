@@ -615,9 +615,6 @@
   <data name="Tuner_Flat" xml:space="preserve">
     <value>трохи нижче</value>
   </data>
-  <data name="Tuner_Hint_Idle" xml:space="preserve">
-    <value>Натисніть «Слухати» і зіграйте ноту</value>
-  </data>
   <data name="Tuner_Hint_Locked" xml:space="preserve">
     <value>Струну зафіксовано · торкніться кілочка ще раз для авто</value>
   </data>
@@ -634,7 +631,7 @@
     <value>Слухаю</value>
   </data>
   <data name="Tuner_NoMic" xml:space="preserve">
-    <value>Нема доступу до мікрофона — дозвольте в Налаштуваннях.</value>
+    <value>Немає доступу до мікрофона — торкніться, щоб відкрити Налаштування</value>
   </data>
   <data name="Tuner_Reset" xml:space="preserve">
     <value>Скинути до 440 Гц</value>
@@ -683,9 +680,6 @@
   </data>
   <data name="Welcome_Language" xml:space="preserve">
     <value>Мова</value>
-  </data>
-  <data name="Welcome_MicNote" xml:space="preserve">
-    <value>Доступ до мікрофона попросимо, коли натиснете «Слухати»</value>
   </data>
   <data name="Welcome_SkipNote" xml:space="preserve">
     <value>Вітальне вікно можна вимкнути в налаштуваннях</value>

@@ -266,7 +266,7 @@
                 </Border.Triggers>
                 <Border.Shadow><Shadow Brush="{t:Theme Glow, Brush=True}" Radius="12" Opacity="0.7" Offset="0,5" /></Border.Shadow>
                 <Grid>
-                    <controls:IconView Name="play" Size="{t:Size 34}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" Margin="4,0,0,0" IsVisible="{Binding ShowPause, Converter={StaticResource Not}}" />
+                    <controls:IconView Name="play" Size="{t:Size 34}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding ShowPause, Converter={StaticResource Not}}" />
                     <controls:IconView Name="pause" Size="{t:Size 32}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding ShowPause}" />
                 </Grid>
                 <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding TogglePlayCommand}" /></Border.GestureRecognizers>

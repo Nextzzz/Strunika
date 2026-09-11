@@ -139,7 +139,6 @@ public partial class ChordShapesSheet : ContentPage
     {
         _ringing = ringing;
         StrumIcon.Name = ringing ? "pause" : "play";
-        StrumIcon.Margin = ringing ? new Thickness(0) : new Thickness(3, 0, 0, 0);
     }
 
     private void Select(int index)

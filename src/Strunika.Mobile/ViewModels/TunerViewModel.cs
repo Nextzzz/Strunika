@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Strunika.Core.Diagnostics;
 using Strunika.Core.Analysis;
 using Strunika.Mobile.Localization;
 using Strunika.Mobile.Models;
@@ -30,7 +31,8 @@ public partial class PegItem : ObservableObject
 /// for ~160 ms), YIN clarity gate, median, EMA, slew limit — and the string
 /// is chosen once per pluck, never while a note merely decays. A string that
 /// stays in tune for 1.5 s is marked tuned; when the last one is, the tuner
-/// celebrates and stops listening.
+/// celebrates and goes on listening. It listens whenever it is on screen:
+/// there is no Listen button (see StartListeningAsync).
 /// </summary>
 public partial class TunerViewModel : ObservableObject
 {
@@ -91,15 +93,15 @@ public partial class TunerViewModel : ObservableObject
     [ObservableProperty] private bool inTune;
     [ObservableProperty] private bool listening;
     [ObservableProperty] private int lockedIndex = -1;
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowStartAgainChip))] private bool anyTuned;
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowStartAgainChip))] private bool allTuned;
+    /// <summary>At least one string is tuned: the "start again" chip shows.</summary>
+    [ObservableProperty] private bool anyTuned;
+    [ObservableProperty] private bool allTuned;
+    /// <summary>The microphone could not be had — refused, or there is none.</summary>
+    [ObservableProperty] private bool micUnavailable;
+    /// <summary>How hard the string being read sounds, 0–1: the headstock
+    /// shakes its string by it.</summary>
+    [ObservableProperty] private double level;
     [ObservableProperty] private string idleMessage = Loc.Get("Tuner_LetsTune");
-
-    /// <summary>"Start again" chip in the top row: once something is tuned,
-    /// except when idle with everything tuned — then the main button does it.</summary>
-    public bool ShowStartAgainChip => AnyTuned && !(AllTuned && !Listening);
-
-    partial void OnListeningChanged(bool value) => OnPropertyChanged(nameof(ShowStartAgainChip));
 
     public ObservableCollection<PegItem> Pegs { get; } = new();
 
@@ -205,28 +207,53 @@ public partial class TunerViewModel : ObservableObject
         Haptics.Default.Selection();
     }
 
+    /// <summary>The line shown in silence: no microphone, all set, or let's tune.</summary>
     private void UpdateIdleMessage() =>
-        IdleMessage = AllTuned ? Loc.Get("Tuner_AllSet") : Loc.Get("Tuner_LetsTune");
+        IdleMessage = MicUnavailable ? Loc.Get("Tuner_NoMic")
+                    : AllTuned ? Loc.Get("Tuner_AllSet")
+                    : Loc.Get("Tuner_LetsTune");
 
     // ---- microphone ---------------------------------------------------
 
-    /// <summary>Main button: Listen / Stop, or "Start again" once everything is tuned.</summary>
-    [RelayCommand]
-    private async Task ToggleAsync()
-    {
-        if (Listening)
-        {
-            StopListening();
-            return;
-        }
-        if (AllTuned)
-            StartAgain();
+    /// <summary>Whether the tuner should be listening, as set by whoever shows
+    /// or hides it. A start still waiting on the permission prompt looks at it
+    /// when the answer comes, so a tab left in the meantime is not listened to.</summary>
+    private bool _wanted;
+    private Task? _starting;
 
-        if (!await _microphone.StartAsync())
+    /// <summary>
+    /// The tuner listens whenever it is on screen — there is no Listen button
+    /// (user decision 2026-09-11). The page that shows it calls this when the
+    /// tab appears and when the app comes back to the front; on a new install
+    /// the first call is what asks for the microphone, right after the welcome
+    /// screen. Harmless while already listening or while a start is under way.
+    /// </summary>
+    public Task StartListeningAsync()
+    {
+        _wanted = true;
+        if (Listening) return Task.CompletedTask;
+        if (_starting is { IsCompleted: false }) return _starting;
+        _starting = StartCoreAsync();
+        return _starting;
+    }
+
+    private async Task StartCoreAsync()
+    {
+        bool started;
+        try { started = await _microphone.StartAsync(); }
+        catch (Exception ex)
         {
-            IdleMessage = Loc.Get("Tuner_NoMic");
+            FileLog.Error("tuner: microphone start", ex);
+            started = false;
+        }
+        if (!_wanted)
+        {
+            if (started) _microphone.Stop();                     // left while the prompt was up
             return;
         }
+        MicUnavailable = !started;
+        UpdateIdleMessage();
+        if (!started) return;
         Listening = true;
         _timer ??= Application.Current!.Dispatcher.CreateTimer();
         _timer.Interval = TimeSpan.FromMilliseconds(80);
@@ -235,10 +262,23 @@ public partial class TunerViewModel : ObservableObject
         _timer.Start();
     }
 
+    /// <summary>No microphone: the line in the middle says so, and a tap on it
+    /// opens the app's page in Settings, where access is given back. Coming
+    /// back to the app tries again.</summary>
+    [RelayCommand]
+    private void OpenMicSettings()
+    {
+        if (!MicUnavailable) return;
+        try { AppInfo.Current.ShowSettingsUI(); }
+        catch (Exception ex) { FileLog.Error("tuner: open settings", ex); }
+    }
+
     /// <summary>Stops the microphone; the locked string is released, tuned
-    /// marks stay. Also called when the user leaves the tab.</summary>
+    /// marks stay. Called when the tab is left and when the app goes to the
+    /// background.</summary>
     public void StopListening()
     {
+        _wanted = false;
         if (!Listening) return;
         _microphone.Stop();
         _timer?.Stop();
@@ -310,6 +350,7 @@ public partial class TunerViewModel : ObservableObject
         PointsText = "";
         Cents = 0;
         HasSignal = false;
+        Level = 0;
         InTune = false;
         _wasInTune = false;
         _hasReading = false;
@@ -441,6 +482,11 @@ public partial class TunerViewModel : ObservableObject
         _hasReading = true;
         HasSignal = true;
         Cents = _shown;
+        // How hard the string sounds, for the headstock to shake it by: 6 dB
+        // over the room is still, 36 dB over is as wide as it swings.
+        double overRoom = 20 * Math.Log10(Math.Max(_envelope, 1e-9) / Math.Max(_noiseFloor, 1e-4));
+        double level = Math.Clamp((overRoom - 6) / 30, 0, 1);
+        if (Math.Abs(level - Level) > 0.02) Level = level;
 
         bool nowInTune = Math.Abs(_ema) <= InTuneCents;
         _stableTicks = nowInTune ? _stableTicks + 1 : 0;

@@ -48,6 +48,10 @@ public static class Icons
         ["undo"] = new(new[] { "M9 14l-4-4 4-4", "M5 10h9a5 5 0 0 1 0 10h-2" }, Array.Empty<(float, float, float)>()),
         ["redo"] = new(new[] { "M15 14l4-4-4-4", "M19 10h-9a5 5 0 0 0 0 10h2" }, Array.Empty<(float, float, float)>()),
         ["loop"] = new(new[] { "M17 4l3 3-3 3", "M20 7H8a4 4 0 0 0-4 4v1", "M7 20l-3-3 3-3", "M4 17h12a4 4 0 0 0 4-4v-1" }, Array.Empty<(float, float, float)>()),
+        // Optically centred as drawn: the triangle's centroid sits on the box's
+        // centre, its bounding box leaning right as a play sign should. Never
+        // nudge it with a margin — three buttons did, on top of this, and the
+        // sign sat off to the right (user report 2026-09-11).
         ["play"] = new(Array.Empty<string>(), Array.Empty<(float, float, float)>(), new[] { "M8 5v14l11-7z" }),
         ["pause"] = new(Array.Empty<string>(), Array.Empty<(float, float, float)>(), new[] { "M7 5h4v14H7z", "M13 5h4v14h-4z" }),
         ["auto"] = new(Array.Empty<string>(), new[] { (12f, 12f, 8.5f) }, new[] { "M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" }),

@@ -131,7 +131,6 @@ public partial class ChordPickerSheet : ContentPage
     {
         _ringing = ringing;
         HearIcon.Name = ringing ? "pause" : "play";
-        HearIcon.Margin = ringing ? new Thickness(0) : new Thickness(2, 0, 0, 0);
     }
 
     private static Border Key(string text, bool on)

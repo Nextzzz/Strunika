@@ -8,16 +8,19 @@
              x:Class="Strunika.Mobile.Views.TunerView"
              x:DataType="vm:TunerViewModel">
 
-    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,Auto,*,120,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
+    <!-- No Listen button: the tuner listens whenever it is on screen (user
+         decision 2026-09-11). The bottom padding keeps content clear of the
+         floating tab bar; the pegs' strings run on under it (TunerView.xaml.cs). -->
+    <Grid x:Name="Root" Padding="20,8,20,104" RowDefinitions="44,Auto,Auto,*,120,Auto" RowSpacing="0" Margin="{t:ContentInset}">
 
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="0" x:Name="TitleRow">
             <HorizontalStackLayout Spacing="0" VerticalOptions="End">
                 <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Tuner}" VerticalOptions="End" />
                 <controls:ProSuffix IsVisible="{Binding IsPro}" />
             </HorizontalStackLayout>
         </Grid>
 
-        <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+        <HorizontalStackLayout Grid.Row="1" x:Name="ChipsRow" Spacing="8" Margin="0,14,0,0">
             <Border Style="{StaticResource Chip}">
                 <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
                     <Label FontSize="14" Text="{loc:Str Tuner_Tuning}" VerticalOptions="Center" />
@@ -40,10 +43,10 @@
             </Grid>
         </HorizontalStackLayout>
 
-        <!-- Hero: note + points while listening, an invitation while idle. -->
-        <!-- "Start again": under the tuning selector (user request 2026-08-27), big enough to hit. -->
+        <!-- "Start again": under the tuning selector (user request 2026-08-27), the
+             one way to forget the tuned strings (user decision 2026-09-11). -->
         <Border Grid.Row="2" Style="{StaticResource Chip}" HeightRequest="{t:Size 36}" BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}"
-            HorizontalOptions="Start" Margin="0,10,0,0" IsVisible="{Binding ShowStartAgainChip}">
+            HorizontalOptions="Start" Margin="0,10,0,0" IsVisible="{Binding AnyTuned}">
             <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
                 <controls:IconView Name="undo" Size="{t:Size 16}" Color="{t:Theme OnFill}" VerticalOptions="Center" />
                 <Label FontSize="14" FontAttributes="Bold" Text="{loc:Str Tuner_StartAgain}" TextColor="{t:Theme OnFill}" VerticalOptions="Center" />
@@ -53,12 +56,11 @@
             </Border.GestureRecognizers>
         </Border>
 
+        <!-- Hero: the note and its points while a string sounds; in silence, what
+             comes next — "Let's tune!", or "All set" once every string is tuned.
+             The two are swapped with a short cross-fade (ApplyHero). -->
         <Grid Grid.Row="3">
-            <VerticalStackLayout VerticalOptions="Center" Spacing="0" IsVisible="{Binding Listening}">
-                <HorizontalStackLayout Spacing="7" HorizontalOptions="Center">
-                    <BoxView WidthRequest="{t:Size 8}" HeightRequest="{t:Size 8}" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" />
-                    <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Tuner_Listening}" VerticalOptions="Center" />
-                </HorizontalStackLayout>
+            <VerticalStackLayout x:Name="ReadingBlock" VerticalOptions="Center" Spacing="0" IsVisible="False">
                 <Label Style="{StaticResource ChordHero}" FontSize="{t:Size 140, Hero=True}" Text="{Binding NoteName}" Margin="0,4,0,0" MinimumHeightRequest="{t:Size 160, Min=44}" />
                 <Label Text="{Binding PointsText}" FontSize="{t:Size 52, Hero=True}" FontAttributes="Bold" HorizontalTextAlignment="Center"
                        TextColor="{t:Theme TextPri}" MinimumHeightRequest="{t:Size 64, Min=44}" FontAutoScalingEnabled="False">
@@ -69,8 +71,18 @@
                     </Label.Triggers>
                 </Label>
             </VerticalStackLayout>
-            <Label x:Name="IdleLabel" Style="{StaticResource Title2}" FontSize="{t:Size 30, Hero=True}" Text="{Binding IdleMessage}"
-                   HorizontalTextAlignment="Center" VerticalOptions="Center" IsVisible="{Binding Listening, Converter={StaticResource Not}}" />
+            <VerticalStackLayout x:Name="SilenceBlock" VerticalOptions="Center" Spacing="10">
+                <HorizontalStackLayout Spacing="7" HorizontalOptions="Center" IsVisible="{Binding Listening}">
+                    <BoxView WidthRequest="{t:Size 8}" HeightRequest="{t:Size 8}" CornerRadius="4" Color="{t:Theme Accent}" VerticalOptions="Center" />
+                    <Label Style="{StaticResource Eyebrow}" Text="{loc:Str Tuner_Listening}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Label x:Name="IdleLabel" Style="{StaticResource Title2}" FontSize="{t:Size 30, Hero=True}" Text="{Binding IdleMessage}"
+                       HorizontalTextAlignment="Center" />
+                <!-- Without a microphone the line says so, and a tap on it opens the app's settings. -->
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding OpenMicSettingsCommand}" />
+                </VerticalStackLayout.GestureRecognizers>
+            </VerticalStackLayout>
         </Grid>
 
         <controls:TunerString x:Name="StringIndicator" Grid.Row="4"
@@ -79,78 +91,73 @@
                               ZoneColor="{t:Theme Glow}" TickColor="{t:Theme Dim}" LabelColor="{t:Theme TextSec}"
                               BeadCoreColor="{t:Theme Bg}" />
 
-        <FlexLayout x:Name="PegRow" Grid.Row="5" JustifyContent="SpaceBetween" AlignItems="Center" Margin="6,26,6,0"
-                    BindableLayout.ItemsSource="{Binding Pegs}">
-            <BindableLayout.ItemTemplate>
-                <DataTemplate x:DataType="vm:PegItem">
-                    <Grid WidthRequest="{t:Size 50, Min=44}" HeightRequest="{t:Size 50, Min=44}">
-                        <Border WidthRequest="{t:Size 46, Min=44}" HeightRequest="{t:Size 46, Min=44}" StrokeShape="{t:Round 46, Min=44}" Padding="0" HorizontalOptions="Center" VerticalOptions="Center"
-                                BackgroundColor="{t:Theme Surface2}" Stroke="{t:Theme Surface2}" StrokeThickness="2">
-                            <Border.Triggers>
-                                <DataTrigger TargetType="Border" Binding="{Binding IsActive}" Value="True">
-                                    <Setter Property="BackgroundColor" Value="{t:Theme Surface1}" />
-                                    <Setter Property="Stroke" Value="{t:Theme Accent}" />
-                                    <Setter Property="StrokeThickness" Value="2.5" />
-                                </DataTrigger>
-                                <DataTrigger TargetType="Border" Binding="{Binding IsTuned}" Value="True">
-                                    <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
-                                    <Setter Property="Stroke" Value="{t:Theme Fill}" />
-                                </DataTrigger>
-                                <MultiTrigger TargetType="Border">
-                                    <MultiTrigger.Conditions>
-                                        <BindingCondition Binding="{Binding IsTuned}" Value="True" />
-                                        <BindingCondition Binding="{Binding IsActive}" Value="True" />
-                                    </MultiTrigger.Conditions>
-                                    <Setter Property="Stroke" Value="{t:Theme TextPri}" />
-                                    <Setter Property="StrokeThickness" Value="3" />
-                                </MultiTrigger>
-                            </Border.Triggers>
-                            <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="1">
-                                <Label Text="{Binding Label}" FontSize="16" FontAttributes="Bold" TextColor="{t:Theme TextSec}" VerticalOptions="Center">
-                                    <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding IsActive}" Value="True">
-                                            <Setter Property="TextColor" Value="{t:Theme AccentText}" />
-                                        </DataTrigger>
-                                        <DataTrigger TargetType="Label" Binding="{Binding IsTuned}" Value="True">
-                                            <Setter Property="TextColor" Value="{t:Theme OnFill}" />
-                                        </DataTrigger>
-                                    </Label.Triggers>
-                                </Label>
-                                <Label Text="{Binding Sub}" FontSize="10" TextColor="{t:Theme TextSec}" VerticalOptions="End" Margin="0,0,0,3">
-                                    <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding IsTuned}" Value="True">
-                                            <Setter Property="TextColor" Value="{t:Theme OnFill}" />
-                                        </DataTrigger>
-                                    </Label.Triggers>
-                                </Label>
-                            </HorizontalStackLayout>
-                        </Border>
-                        <!-- Lock badge: the string is pinned by hand (tap again to release). -->
-                        <Border WidthRequest="{t:Size 20}" HeightRequest="{t:Size 20}" StrokeShape="{t:Round 20}" Padding="0" StrokeThickness="2"
-                                Stroke="{t:Theme Bg}" BackgroundColor="{t:Theme TextPri}"
-                                HorizontalOptions="End" VerticalOptions="End" IsVisible="{Binding IsLocked}">
-                            <controls:IconView Name="lock" Size="{t:Size 11}" Color="{t:Theme Bg}" HorizontalOptions="Center" VerticalOptions="Center" />
-                        </Border>
-                        <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding TapPegCommand, Source={RelativeSource AncestorType={x:Type vm:TunerViewModel}}}"
-                                                  CommandParameter="{Binding .}" />
-                        </Grid.GestureRecognizers>
-                    </Grid>
-                </DataTemplate>
-            </BindableLayout.ItemTemplate>
-        </FlexLayout>
-
-        <Button Grid.Row="6" Command="{Binding ToggleCommand}" Margin="0,22,0,0" Text="{loc:Str Common_Listen}">
-            <Button.Triggers>
-                <DataTrigger TargetType="Button" Binding="{Binding AllTuned}" Value="True">
-                    <Setter Property="Text" Value="{loc:Str Tuner_StartAgain}" />
-                </DataTrigger>
-                <DataTrigger TargetType="Button" Binding="{Binding Listening}" Value="True">
-                    <Setter Property="Text" Value="{loc:Str Common_Stop}" />
-                    <Setter Property="BackgroundColor" Value="{t:Theme Surface2}" />
-                    <Setter Property="TextColor" Value="{t:Theme TextPri}" />
-                </DataTrigger>
-            </Button.Triggers>
-        </Button>
+        <!-- The pegs as a headstock: half the strings on each side in leaning
+             columns, a string from each peg down under the tab bar, in the peg's
+             colours, and the string being tuned shaking while it sounds (user
+             design 2026-09-11). Height, margins and the pegs' places are set in
+             code (ArrangeNeck); the strings are drawn by the Headstock. -->
+        <Grid Grid.Row="5" x:Name="Neck">
+            <controls:Headstock x:Name="Fan" IdleColor="{t:Theme Separator}" ActiveColor="{t:Theme Accent}" TunedColor="{t:Theme Fill}" />
+            <Grid x:Name="PegRow" BindableLayout.ItemsSource="{Binding Pegs}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PegItem">
+                        <Grid WidthRequest="{t:Size 50, Min=44}" HeightRequest="{t:Size 50, Min=44}" HorizontalOptions="Start" VerticalOptions="Start">
+                            <!-- The idle ring is the idle string's colour, so a peg and its string read as one. -->
+                            <Border WidthRequest="{t:Size 46, Min=44}" HeightRequest="{t:Size 46, Min=44}" StrokeShape="{t:Round 46, Min=44}" Padding="0" HorizontalOptions="Center" VerticalOptions="Center"
+                                    BackgroundColor="{t:Theme Surface2}" Stroke="{t:Theme Separator}" StrokeThickness="2">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsActive}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{t:Theme Surface1}" />
+                                        <Setter Property="Stroke" Value="{t:Theme Accent}" />
+                                        <Setter Property="StrokeThickness" Value="2.5" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsTuned}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{t:Theme Fill}" />
+                                        <Setter Property="Stroke" Value="{t:Theme Fill}" />
+                                    </DataTrigger>
+                                    <MultiTrigger TargetType="Border">
+                                        <MultiTrigger.Conditions>
+                                            <BindingCondition Binding="{Binding IsTuned}" Value="True" />
+                                            <BindingCondition Binding="{Binding IsActive}" Value="True" />
+                                        </MultiTrigger.Conditions>
+                                        <Setter Property="Stroke" Value="{t:Theme TextPri}" />
+                                        <Setter Property="StrokeThickness" Value="3" />
+                                    </MultiTrigger>
+                                </Border.Triggers>
+                                <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="1">
+                                    <Label Text="{Binding Label}" FontSize="16" FontAttributes="Bold" TextColor="{t:Theme TextSec}" VerticalOptions="Center">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsActive}" Value="True">
+                                                <Setter Property="TextColor" Value="{t:Theme AccentText}" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsTuned}" Value="True">
+                                                <Setter Property="TextColor" Value="{t:Theme OnFill}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    <Label Text="{Binding Sub}" FontSize="10" TextColor="{t:Theme TextSec}" VerticalOptions="End" Margin="0,0,0,3">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsTuned}" Value="True">
+                                                <Setter Property="TextColor" Value="{t:Theme OnFill}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                </HorizontalStackLayout>
+                            </Border>
+                            <!-- Lock badge: the string is pinned by hand (tap again to release). -->
+                            <Border WidthRequest="{t:Size 20}" HeightRequest="{t:Size 20}" StrokeShape="{t:Round 20}" Padding="0" StrokeThickness="2"
+                                    Stroke="{t:Theme Bg}" BackgroundColor="{t:Theme TextPri}"
+                                    HorizontalOptions="End" VerticalOptions="End" IsVisible="{Binding IsLocked}">
+                                <controls:IconView Name="lock" Size="{t:Size 11}" Color="{t:Theme Bg}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding TapPegCommand, Source={RelativeSource AncestorType={x:Type vm:TunerViewModel}}}"
+                                                      CommandParameter="{Binding .}" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </Grid>
+        </Grid>
     </Grid>
 </ContentView>

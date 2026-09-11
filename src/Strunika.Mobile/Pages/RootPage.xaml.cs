@@ -15,7 +15,9 @@ namespace Strunika.Mobile.Pages;
 public partial class RootPage : ContentPage
 {
     private readonly View[] _tabs;
+    private readonly TunerViewModel _tuner;
     private int _current;
+    private Window? _window;
 
     public RootPage(TunerViewModel tuner, LiveViewModel live, LibraryViewModel library, SettingsViewModel settings)
     {
@@ -26,6 +28,7 @@ public partial class RootPage : ContentPage
         Settings.BindingContext = settings;
         _ = library.LoadAsync();
         _tabs = new View[] { Tuner, Live, Library, Settings };
+        _tuner = tuner;
 
         TabBar.Tabs.Add(new PillTab("fork", Loc.Get("Tab_Tuner")));
         TabBar.Tabs.Add(new PillTab("mic", Loc.Get("Tab_Live")));
@@ -58,7 +61,11 @@ public partial class RootPage : ContentPage
         // the platform; the first switch pays for that and feels slow. While the
         // tuner is on screen the others are brought up one at a time, invisible,
         // so by the time a tab is tapped there is nothing left to build.
-        Loaded += (_, _) => _ = WarmTabsAsync();
+        Loaded += (_, _) =>
+        {
+            WatchWindow();
+            _ = WarmTabsAsync();
+        };
 
         Loc.Instance.PropertyChanged += (_, _) =>
         {
@@ -67,6 +74,34 @@ public partial class RootPage : ContentPage
             TabBar.Tabs[2].Label = Loc.Get("Tab_Songs");
             TabBar.Tabs[3].Label = Loc.Get("Tab_Settings");
             TabBar.Refresh();
+        };
+    }
+
+    /// <summary>
+    /// The tuner listens while it is on screen. The root page coming into view
+    /// with the tuner tab current — after the launch or the welcome screen, or
+    /// when a sheet over it closes — starts it; a start while it already
+    /// listens does nothing. On a new install this is what asks for the
+    /// microphone, right after the welcome screen (user request 2026-09-11).
+    /// </summary>
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        if (_current == 0) _ = _tuner.StartListeningAsync();
+    }
+
+    /// <summary>The app going to the background lets the microphone go; coming
+    /// back to the tuner takes it again — and tries again, should access have
+    /// just been given in Settings.</summary>
+    private void WatchWindow()
+    {
+        if (Window is not { } window || ReferenceEquals(window, _window)) return;
+        _window = window;
+        window.Stopped += (_, _) => _tuner.StopListening();
+        window.Resumed += (_, _) =>
+        {
+            if (_current == 0 && Navigation.NavigationStack.LastOrDefault() == this)
+                _ = _tuner.StartListeningAsync();
         };
     }
 
@@ -131,6 +166,7 @@ public partial class RootPage : ContentPage
         if (_current == 0) (Tuner.BindingContext as TunerViewModel)?.StopListening();
         if (_current == 1) (Live.BindingContext as LiveViewModel)?.StopListening();
         _current = index;
+        if (index == 0) _ = _tuner.StartListeningAsync();          // the tuner listens while it is shown
 
         to.Opacity = 0;
         to.IsVisible = true;

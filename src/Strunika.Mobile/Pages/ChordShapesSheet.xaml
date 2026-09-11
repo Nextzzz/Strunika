@@ -35,7 +35,7 @@
             <Label Grid.Row="1" x:Name="PreviewCaption" Style="{StaticResource Footnote}" HorizontalTextAlignment="Center" />
             <Border Grid.Row="2" WidthRequest="{t:Size 64, Min=44}" HeightRequest="{t:Size 64, Min=44}" StrokeShape="{t:Round 64, Min=44}" StrokeThickness="0"
                     BackgroundColor="{t:Theme Surface2}" Padding="0" HorizontalOptions="Center" Margin="0,10,0,0">
-                <controls:IconView x:Name="StrumIcon" Name="play" Size="{t:Size 30}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" Margin="3,0,0,0" />
+                <controls:IconView x:Name="StrumIcon" Name="play" Size="{t:Size 30}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnStrumTapped" /></Border.GestureRecognizers>
             </Border>
         </Grid>

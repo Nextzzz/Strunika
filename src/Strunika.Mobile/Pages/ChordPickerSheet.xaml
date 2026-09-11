@@ -43,7 +43,7 @@
                 <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
                     <Label x:Name="Chosen" FontFamily="DisplayBold" FontSize="{t:Size 30, Hero=True}" TextColor="{t:Theme AccentText}" VerticalOptions="Center" />
                     <Border Grid.Column="1" WidthRequest="{t:Size 38, Min=38}" HeightRequest="{t:Size 38, Min=38}" StrokeShape="{t:Round 38, Min=38}" StrokeThickness="0" BackgroundColor="{t:Theme Surface2}" Padding="0" VerticalOptions="Center">
-                        <controls:IconView x:Name="HearIcon" Name="play" Size="{t:Size 18}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" Margin="2,0,0,0" />
+                        <controls:IconView x:Name="HearIcon" Name="play" Size="{t:Size 18}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnHearTapped" /></Border.GestureRecognizers>
                     </Border>
                 </Grid>

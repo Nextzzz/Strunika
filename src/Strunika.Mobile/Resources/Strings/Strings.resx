@@ -615,9 +615,6 @@
   <data name="Tuner_Flat" xml:space="preserve">
     <value>slightly flat</value>
   </data>
-  <data name="Tuner_Hint_Idle" xml:space="preserve">
-    <value>Tap “Listen” and play a note</value>
-  </data>
   <data name="Tuner_Hint_Locked" xml:space="preserve">
     <value>String locked · tap the peg again for auto</value>
   </data>
@@ -634,7 +631,7 @@
     <value>Listening</value>
   </data>
   <data name="Tuner_NoMic" xml:space="preserve">
-    <value>No microphone access — allow it in Settings.</value>
+    <value>No microphone access — tap to open Settings</value>
   </data>
   <data name="Tuner_Reset" xml:space="preserve">
     <value>Reset to 440 Hz</value>
@@ -683,9 +680,6 @@
   </data>
   <data name="Welcome_Language" xml:space="preserve">
     <value>Language</value>
-  </data>
-  <data name="Welcome_MicNote" xml:space="preserve">
-    <value>We’ll ask for the microphone when you tap “Listen”</value>
   </data>
   <data name="Welcome_SkipNote" xml:space="preserve">
     <value>This screen can be turned off in Settings</value>

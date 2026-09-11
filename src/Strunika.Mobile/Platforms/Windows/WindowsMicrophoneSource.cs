@@ -18,10 +18,21 @@ public sealed class WindowsMicrophoneSource : IMicrophoneSource
         _capture.ChunkAvailable += chunk => ChunkAvailable?.Invoke(chunk);
     }
 
+    /// <summary>False when there is no input to open, or it is taken: the tuner
+    /// starts by itself as soon as it is shown, so this must never throw.</summary>
     public Task<bool> StartAsync()
     {
-        _capture.Start();
-        return Task.FromResult(true);
+        try
+        {
+            _capture.Start();
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            Strunika.Core.Diagnostics.FileLog.Error("microphone: start", ex);
+            try { _capture.Stop(); } catch (Exception) { }
+            return Task.FromResult(false);
+        }
     }
 
     public void Stop() => _capture.Stop();

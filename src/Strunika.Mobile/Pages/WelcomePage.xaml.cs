@@ -8,8 +8,8 @@ namespace Strunika.Mobile.Pages;
 
 /// <summary>
 /// First launch: one screen — language and theme pre-filled from the
-/// system, then straight to the tuner. Microphone permission is asked
-/// later, in context.
+/// system, then straight to the tuner — which asks for the microphone by
+/// itself as it appears.
 /// </summary>
 public partial class WelcomePage : ContentPage
 {
@@ -64,19 +64,6 @@ public partial class WelcomePage : ContentPage
 
         Loc.Instance.PropertyChanged += (_, _) =>
             ThemePicker.SetLabels(Loc.Get("Theme_System"), Loc.Get("Theme_Dark"), Loc.Get("Theme_Light"));
-    }
-
-    protected override async void OnAppearing()
-    {
-        base.OnAppearing();
-        // "We will ask for the microphone…" is news only to someone who has not
-        // granted it yet (checking the status never prompts); once they have,
-        // the useful thing to say is that this screen can be turned off.
-        bool granted = false;
-        try { granted = await Permissions.CheckStatusAsync<Permissions.Microphone>() == PermissionStatus.Granted; }
-        catch (Exception ex) { Strunika.Core.Diagnostics.FileLog.Error("welcome: mic status", ex); }
-        MicNote.Text = Loc.Get(granted ? "Welcome_SkipNote" : "Welcome_MicNote");
-        MicNote.IsVisible = true;
     }
 
     private async void OnStartClicked(object? sender, EventArgs e)
