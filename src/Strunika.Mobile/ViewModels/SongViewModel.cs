@@ -40,6 +40,10 @@ public sealed partial class SongViewModel : ObservableObject
     private int _nextBeat;
     private bool _scrubbing, _wasPlaying, _probing;
     private double _predicted, _sinceProbe, _lastProbe = -1;
+    /// <summary>What the last probe found the prediction to be off by, still to
+    /// be made good — spread over the frames until the next probe, as a change
+    /// of pace and never a step back (see Frame).</summary>
+    private double _drift;
     /// <summary>Ticks placed on the device clock and not yet due: the beat and
     /// the Stopwatch stamp it sounds at. A corrected position places them again.</summary>
     private readonly List<(int Beat, long Due)> _inAir = new();
@@ -255,7 +259,18 @@ public sealed partial class SongViewModel : ObservableObject
     public void Frame(double dt)
     {
         if (_transport == null || _scrubbing) return;
-        if (IsPlaying) _predicted = Math.Clamp(_predicted + dt * Speed, 0, Math.Max(0, Duration));
+        if (IsPlaying)
+        {
+            // The probe's correction is paid off a little every frame, as a change
+            // of pace between half and one-and-a-half speed: a prediction that runs
+            // ahead slows down rather than stepping back. In the editor the
+            // playhead itself moves across a still track, and a small step back
+            // on every probe showed as a twitch (user report 2026-09-14).
+            double step = dt * Speed;
+            double fix = Math.Clamp(_drift * Math.Min(1, dt / ProbeSeconds), -step * 0.5, step * 0.5);
+            _drift -= fix;
+            _predicted = Math.Clamp(_predicted + step + fix, 0, Math.Max(0, Duration));
+        }
         _sinceProbe += dt;
         if (_sinceProbe >= (Starting ? StartingProbeSeconds : ProbeSeconds) && !_probing)
         {
@@ -316,6 +331,7 @@ public sealed partial class SongViewModel : ObservableObject
                 await transport.SeekAsync(LoopStart);
                 NoteSeek(LoopStart);
                 _predicted = LoopStart;
+                _drift = 0;
                 _nextBeat = NextBeatAfter(LoopStart);
                 return;
             }
@@ -330,9 +346,10 @@ public sealed partial class SongViewModel : ObservableObject
             {
                 double before = _predicted;
                 _predicted = stalled ? pos : heard;
+                _drift = 0;
                 if (playing && Math.Abs(_predicted - before) > 0.015) ResyncTicks();
             }
-            else _predicted += (heard - _predicted) * 0.25;
+            else _drift = heard - _predicted;
         }
         catch (Exception ex) { FileLog.Error("song probe", ex); }
         finally { _probing = false; }
@@ -350,6 +367,7 @@ public sealed partial class SongViewModel : ObservableObject
 
     private void SetPosition(double pos, bool fromTransport)
     {
+        if (!fromTransport) _drift = 0;                          // a seek or a scrub: nothing left to make good
         if (Metronome && fromTransport && IsPlaying && _transport?.Ticks == null)
         {
             // Every beat inside the lookahead is scheduled now for its exact
@@ -464,8 +482,8 @@ public sealed partial class SongViewModel : ObservableObject
 
     /// <summary>The editor is on, and the page gives its room to the editor's
     /// own row. It has two states and no third: a chord is chosen, or the panel
-    /// asks for one to be picked. Nothing is ever chosen for the reader (user
-    /// rule 2026-09-14).</summary>
+    /// asks for one to be picked. It opens on the chord under the playhead;
+    /// after that nothing is chosen for the reader (user rules 2026-09-14).</summary>
     [ObservableProperty] private bool _editing;
     /// <summary>The chord being worked on, by its place in the song — chosen by
     /// the reader on the track and left alone by the playhead. A chord that
@@ -623,11 +641,16 @@ public sealed partial class SongViewModel : ObservableObject
         OnPropertyChanged(nameof(EditorGlyph));
         ChosenBeat = -1;
         // Out: no chord is chosen outside the editor (the memory keeps it). In:
-        // the chord last worked on in this song, looked up among the chords as
-        // stored — or none, never one picked for the reader (user rule 2026-09-14).
+        // the chord the player is on, so the editor opens on what is being heard
+        // (user request 2026-09-14); with none under the playhead, the chord last
+        // worked on in this song, or none.
         if (!value) Selected = -1;
         Rebuild();
-        if (value) Selected = RecallChoice();
+        if (value)
+        {
+            int active = IndexAt(Position);
+            Selected = active >= 0 && Segments[active].Label != "—" ? active : RecallChoice();
+        }
     }
 
     [RelayCommand]

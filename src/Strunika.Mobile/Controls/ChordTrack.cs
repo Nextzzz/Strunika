@@ -221,7 +221,9 @@ public sealed class ChordTrack : Grid
     private readonly BoxView _loopBand, _cursor, _hole;
     /// <summary>The chord the playhead has just reached, ringed for a moment (see PlaceRing).</summary>
     private readonly Border _ring;
-    private int _ringIndex = -1, _ringTurn;
+    /// <summary>The chord the ring is due on, the chord it is drawn on (the same,
+    /// or the last one while it fades out), and the turn of its animation.</summary>
+    private int _ringIndex = -1, _ringShown = -1, _ringTurn;
     /// <summary>How long of the song a reached chord keeps its ring.</summary>
     private const double RingSeconds = 0.5;
     private readonly Border _cursorMark;
@@ -381,10 +383,15 @@ public sealed class ChordTrack : Grid
         Redraw();
     }
 
+    private double _laidOutW, _laidOutH;
+
     private void Relayout()
     {
         double w = Width, h = Height;
         if (w <= 0 || h <= 0) return;
+        if (Math.Abs(w - _laidOutW) < 0.01 && Math.Abs(h - _laidOutH) < 0.01) return;   // the same size again: nothing to lay out
+        _laidOutW = w;
+        _laidOutH = h;
         double px = w * PlayheadAt, bw = w * BufferSpan + Lead;
         // Both halves are the track's width and are moved to meet at the playhead
         // (FollowCore), so the meeting point can follow a playhead that moves.
@@ -402,7 +409,8 @@ public sealed class ChordTrack : Grid
         double band = Math.Max(0, h - LoopTop);
         _playhead.HeightRequest = Math.Max(0, band - 2);
         _playhead.Margin = new Thickness(0, LoopTop, 0, 0);
-        NativeTransform.TranslateX(_playhead, px - 2);
+        // (Its place across the track is Follow's to set — in the editor it is
+        // not at px, and parking it there first made it jump.)
         _cursor.HeightRequest = Math.Max(0, h - PillTop - 6);
         _cursor.Margin = new Thickness(0, PillTop, 0, 0);
         double mark = Metrics.Instance.Size(22);
@@ -533,7 +541,7 @@ public sealed class ChordTrack : Grid
             PlaceRing(segments, px, pos, pps);
             return;
         }
-        if (_ringIndex >= 0) { _ringIndex = -1; HideRing(); }
+        if (_ringIndex >= 0 || _ringShown >= 0) { _ringIndex = -1; HideRingNow(); }
         if (next != _nextIndex) { _nextIndex = next; _pinnedShown = false; _pinned.Invalidate(); }
         if (next >= 0 && segments != null)
         {
@@ -568,14 +576,29 @@ public sealed class ChordTrack : Grid
         if (index != _ringIndex)
         {
             _ringIndex = index;
-            if (index < 0) { HideRing(); return; }
-            ShowRing(PillWidth(segments![index].Label));
+            if (index >= 0) { _ringShown = index; ShowRing(PillWidth(segments![index].Label)); }
+            else HideRing();
         }
-        if (index < 0 || segments == null) return;
-        var segment = segments[index];
+        // Drawn on its chord to the last, fading included: a ring left where it
+        // was while the track scrolled or the chord left the screen stayed
+        // behind on its own (user report 2026-09-14).
+        int shown = _ringShown;
+        if (shown < 0 || !_ring.IsVisible || segments == null || shown >= segments.Count) return;
+        var segment = segments[shown];
         double width = PillWidth(segment.Label);
-        double shift = _pillShift.TryGetValue(index, out var nudge) ? nudge : -width / 2;
-        NativeTransform.TranslateX(_ring, px + (segment.Start - pos) * pps + shift);
+        double shift = _pillShift.TryGetValue(shown, out var nudge) ? nudge : -width / 2;
+        double x = px + (segment.Start - pos) * pps + shift;
+        if (x + width < 0 || x > Width) { HideRingNow(); return; }
+        NativeTransform.TranslateX(_ring, x);
+    }
+
+    private void HideRingNow()
+    {
+        ++_ringTurn;
+        _ringShown = -1;
+        _ring.CancelAnimations();
+        _ring.IsVisible = false;
+        _ring.Opacity = 1;
     }
 
     /// <summary>The chord whose ring is due at the playhead, or −1.</summary>
@@ -614,12 +637,13 @@ public sealed class ChordTrack : Grid
 
     private async void HideRing()
     {
-        if (!_ring.IsVisible) return;
+        if (!_ring.IsVisible) { _ringShown = -1; return; }
         int turn = ++_ringTurn;
         if (!Services.Motion.Reduced) await _ring.FadeToAsync(0, 140, Easing.CubicOut);
         if (turn != _ringTurn) return;                           // another chord took the ring meanwhile
         _ring.IsVisible = false;
         _ring.Opacity = 1;
+        _ringShown = -1;
     }
 
     private void Invalidate(int buffer)
@@ -899,7 +923,13 @@ public sealed class ChordTrack : Grid
             // A press that did not move is a choice, not a move; so is a finger
             // simply held there (user request 2026-09-14). Either way it pulses.
             Tapped = _ => { _clipDragging = false; SelectionRequested?.Invoke(this, clip.Index); Pulse(clip); },
-            Held = _ => { if (_lifted != null) return; SelectionRequested?.Invoke(this, clip.Index); Pulse(clip); },
+            Held = _ =>
+            {
+                if (_lifted != null) return;
+                Services.Haptics.Default.Success();              // the buzz marks the hold, not the drag (user rule 2026-09-14)
+                SelectionRequested?.Invoke(this, clip.Index);
+                Pulse(clip);
+            },
         });
         Add(host);
         _clips.Add(clip);
@@ -945,15 +975,14 @@ public sealed class ChordTrack : Grid
         PlaceClip(clip, _clipStart);
     }
 
-    /// <summary>The chord comes away from its place: a buzz, the place left
-    /// empty, and the chord itself on the finger in its own colours, with a
-    /// pulse (user request 2026-09-14).</summary>
+    /// <summary>The chord comes away from its place: the place left empty, and
+    /// the chord itself on the finger in its own colours, with a pulse. The buzz
+    /// came with the hold before it (user request 2026-09-14).</summary>
     private void Lift(Block clip)
     {
         var segments = Segments;
         if (segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
         _lifted = clip;
-        Services.Haptics.Default.Success();
         double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
         double shift = _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
         _hole.WidthRequest = width + 2;

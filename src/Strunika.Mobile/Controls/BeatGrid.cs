@@ -265,7 +265,7 @@ public sealed class BeatGrid : Grid
             Started = _ => { if (_liftedBeat < 0) _dragFrom = _dragTo = Chosen; },
             Dragged = DragTo,
             Ended = EndDrag,
-            Held = _ => { if (_liftedBeat < 0) Pulse(); },     // held on the chosen chord: it says so again
+            Held = _ => { if (_liftedBeat >= 0) return; Services.Haptics.Default.Success(); Pulse(); },   // held on the chosen chord: it says so again
             Tapped = _ =>
             {
                 bool lifted = _liftedBeat >= 0;
@@ -333,7 +333,7 @@ public sealed class BeatGrid : Grid
         _labels ??= Labels();
         if (index >= _labels.Length || _labels[index] == null) return;
         _swallowTap = true;
-        Services.Haptics.Default.Selection();
+        Services.Haptics.Default.Success();                      // the buzz marks the hold, not the drag (user rule 2026-09-14)
         Chosen = index;                                          // at once: the page confirms it on its next frame
         BeatChosen?.Invoke(this, index);
         PlaceThumb();
@@ -381,12 +381,12 @@ public sealed class BeatGrid : Grid
         NativeTransform.TranslateY(_drop, target / Columns * step);
     }
 
-    /// <summary>The chord comes off its square: a buzz, the square left empty,
-    /// and the chord on the finger in its own colours (user request 2026-09-14).</summary>
+    /// <summary>The chord comes off its square: the square left empty, and the
+    /// chord on the finger in its own colours; the buzz came with the hold
+    /// before it (user request 2026-09-14).</summary>
     private void Lift()
     {
         _liftedBeat = _dragFrom;
-        Services.Haptics.Default.Success();
         _drop.IsVisible = true;
         NativeTransform.TranslateX(_drop, _thumbX);
         NativeTransform.TranslateY(_drop, _thumbY);
@@ -675,7 +675,8 @@ public sealed class BeatGrid : Grid
             canvas.FillColor = Accent.WithAlpha(0.18f);
             canvas.FillRoundedRectangle(x, y, _cell, _cell, Corner);
         }
-        canvas.StrokeSize = chosen ? Stroke * 2.6f : Stroke;
+        float stroke = chosen ? Stroke * 2.6f : Stroke;
+        canvas.StrokeSize = stroke;
         float outline = starts != null ? 0.85f : 0.35f;
         if (loop) outline = Math.Max(outline, 0.7f);
         // The chord being worked on is outlined, not filled: filling it would be
@@ -683,7 +684,9 @@ public sealed class BeatGrid : Grid
         // In the accent, not the text colour: white on dark and black on light read
         // as a foreign frame (user request 2026-09-14).
         canvas.StrokeColor = chosen || active ? Accent : Accent.WithAlpha(outline);
-        canvas.DrawRoundedRectangle(x + Stroke / 2, y + Stroke / 2, _cell - Stroke, _cell - Stroke, Corner);
+        // Wholly inside the square: a thick outline drawn on the square's edge
+        // was cut off by the canvas on the outer columns (user report 2026-09-14).
+        canvas.DrawRoundedRectangle(x + stroke / 2, y + stroke / 2, _cell - stroke, _cell - stroke, Math.Max(2f, Corner - stroke / 2));
 
         var ink = active ? OnAccent : TextColor;
         if (starts != null)

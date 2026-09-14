@@ -163,7 +163,9 @@
         <Grid Grid.Row="5" x:Name="EditorPanel" Margin="{t:ContentInset Plus=True, Top=2, Bottom=6}" IsVisible="{Binding Editing}">
         <Border x:Name="EditorBar" Style="{StaticResource Card}" Padding="14,12">
             <VerticalStackLayout Spacing="10">
-                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+                <!-- Room on the right, so the fold badge on the corner is not on top
+                     of the last button (user request 2026-09-14). -->
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,0,10,0">
                     <!-- A beat at a time, for when a finger is not exact enough.
                          Only there while a chord is (user request 2026-09-10). -->
                     <Border Style="{StaticResource Chip}" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 58, Min=54}" Padding="0" IsVisible="{Binding HasSelection}">
@@ -193,15 +195,17 @@
                         </Grid>
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditChord" /></Border.GestureRecognizers>
                     </Border>
+                    <!-- Delete before add: the fold badge sits over the corner, and a
+                         miss on it must not delete a chord (user request 2026-09-14). -->
                     <Border Grid.Column="3" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0"
-                            Opacity="{Binding CanAdd, Converter={StaticResource Faded}}">
-                        <controls:IconView Name="plus" Size="{t:Size 26}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
-                        <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditAdd" /></Border.GestureRecognizers>
-                    </Border>
-                    <Border Grid.Column="4" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0"
                             Opacity="{Binding HasSelection, Converter={StaticResource Faded}}">
                         <controls:IconView Name="trash" Size="{t:Size 24}" Color="{t:Theme Error}" HorizontalOptions="Center" VerticalOptions="Center" />
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditDelete" /></Border.GestureRecognizers>
+                    </Border>
+                    <Border Grid.Column="4" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0"
+                            Opacity="{Binding CanAdd, Converter={StaticResource Faded}}">
+                        <controls:IconView Name="plus" Size="{t:Size 26}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditAdd" /></Border.GestureRecognizers>
                     </Border>
                 </Grid>
 
@@ -223,11 +227,11 @@
                  not needed while chords are being moved. A badge on the card's
                  corner, like the lock on the Editor chip but bigger, in a finger's
                  worth of clear room (user request 2026-09-14). -->
-            <Grid WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" HorizontalOptions="End" VerticalOptions="Start"
+            <Grid WidthRequest="{t:Size 48, Min=44}" HeightRequest="{t:Size 48, Min=44}" HorizontalOptions="End" VerticalOptions="Start"
                   Margin="0,-20,-20,0" BackgroundColor="Transparent" SemanticProperties.Description="{loc:Str Song_Editor_Fold}">
-                <Border WidthRequest="{t:Size 28}" HeightRequest="{t:Size 28}" StrokeShape="{t:Round 28}" StrokeThickness="2" Stroke="{t:Theme Bg}"
+                <Border WidthRequest="{t:Size 34}" HeightRequest="{t:Size 34}" StrokeShape="{t:Round 34}" StrokeThickness="2" Stroke="{t:Theme Bg}"
                         BackgroundColor="{t:Theme Fill}" Padding="0" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True">
-                    <controls:IconView x:Name="FoldIcon" Name="chevD" Size="{t:Size 16}" StrokeSize="2.4" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <controls:IconView x:Name="FoldIcon" Name="chevD" Size="{t:Size 20}" StrokeSize="2.4" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Border>
                 <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnFoldTapped" /></Grid.GestureRecognizers>
             </Grid>
