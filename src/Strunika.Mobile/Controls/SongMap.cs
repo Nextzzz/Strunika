@@ -121,6 +121,17 @@ public sealed class SongMap : Grid
         // 2026-09-14).
         double left = Math.Clamp(_viewStart * scale, 0, w);
         double right = Math.Clamp((_viewStart + _viewSpan) * scale, 0, w);
+        // Never narrower than three playhead marks: in a long song the true
+        // window is a sliver nobody can find (user request 2026-09-14). It grows
+        // about its own middle, so whatever is centred in it stays centred; only
+        // against an end of the strip does it lean inwards.
+        double least = 3 * HeadWidth;
+        if (right - left < least)
+        {
+            double middle = (left + right) / 2;
+            left = Math.Clamp(middle - least / 2, 0, Math.Max(0, w - least));
+            right = Math.Min(w, left + least);
+        }
         NativeTransform.TranslateX(_window, left);
         NativeTransform.ScaleX(_window, Math.Max(0.001, right - left));   // the box is one point wide
         // Marks are centred on their moment. Drawn from it rightwards, the chosen
