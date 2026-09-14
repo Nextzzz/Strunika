@@ -106,7 +106,11 @@ public partial class SongPage : ContentPage
         BeatsView.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
         BeatsView.BeatChosen += (_, beat) =>
         {
+            // The empty square already chosen, tapped again: the song goes there,
+            // as the chosen chord's square does (user request 2026-09-14).
+            bool again = beat == _vm.ChosenBeat && !_vm.HasSelection;
             _vm.ChooseAtBeat(beat);
+            if (again && _vm.ChosenBeat == beat && beat < _vm.BeatTimes.Length) _ = _vm.SeekAsync(_vm.BeatTimes[beat]);
             _gridFollowing = false;                              // the beat view is the reader's now
             UpdateFollowChip();
         };

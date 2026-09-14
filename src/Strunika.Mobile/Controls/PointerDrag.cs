@@ -25,6 +25,10 @@ public static class PointerDrag
         public Action? Ended { get; init; }
         /// <summary>Pointer up without a real drag, at the press point.</summary>
         public Action<Point>? Tapped { get; init; }
+        /// <summary>The pointer has stayed down and still for a moment
+        /// (<see cref="HoldDrag.Delay"/>), at the press point. It comes before any
+        /// drag, and not at all once the pointer has moved or lifted.</summary>
+        public Action<Point>? Held { get; init; }
     }
 
     private const double TapSlop = 3;
@@ -45,6 +49,7 @@ public static class PointerDrag
         if (surface.Handler?.PlatformView is not Microsoft.UI.Xaml.FrameworkElement el || el.Tag is "pointer-drag") return;
         el.Tag = "pointer-drag";                                           // once per platform element
         bool captured = false, moved = false;
+        int press = 0;
         double startX = 0, startY = 0;
         el.PointerPressed += (_, e) =>
         {
@@ -52,6 +57,14 @@ public static class PointerDrag
             if (!el.CapturePointer(e.Pointer)) return;
             captured = true; moved = false; startX = p.X; startY = p.Y;
             c.Started?.Invoke(p.X);
+            if (c.Held != null)
+            {
+                int id = ++press;
+                surface.Dispatcher.DispatchDelayed(HoldDrag.Delay, () =>
+                {
+                    if (id == press && captured && !moved) c.Held?.Invoke(new Point(startX, startY));
+                });
+            }
             e.Handled = true;
         };
         el.PointerMoved += (_, e) =>
@@ -88,11 +101,38 @@ public static class PointerDrag
         // A pan on iOS begins only once the finger has moved and never says where
         // it came down; a recognizer that only watches the touch go down supplies
         // that point, so Started gets it as it does on Windows (user report 2026-09-14).
+        bool pressed = false, strayed = false;
+        int press = 0;
+        double atX = 0, atY = 0;
         void Watch()
         {
             if (surface.Handler?.PlatformView is not UIKit.UIView view) return;
             if (view.GestureRecognizers?.Any(g => g is Platforms.iOS.TouchDownRecognizer) == true) return;
-            view.AddGestureRecognizer(new Platforms.iOS.TouchDownRecognizer(point => downX = point.X));
+            if (c.Held == null)
+            {
+                view.AddGestureRecognizer(new Platforms.iOS.TouchDownRecognizer(point => downX = point.X));
+                return;
+            }
+            // A hold is wanted too: the recognizer follows the finger to its end,
+            // so a still press can be told from a move and from a lift.
+            view.AddGestureRecognizer(new Platforms.iOS.TouchDownRecognizer(
+                down: point =>
+                {
+                    downX = atX = point.X;
+                    atY = point.Y;
+                    pressed = true;
+                    strayed = false;
+                    int id = ++press;
+                    surface.Dispatcher.DispatchDelayed(HoldDrag.Delay, () =>
+                    {
+                        if (id == press && pressed && !strayed) c.Held?.Invoke(new Point(atX, atY));
+                    });
+                },
+                moved: point =>
+                {
+                    if (Math.Abs(point.X - atX) > HoldDrag.Slop || Math.Abs(point.Y - atY) > HoldDrag.Slop) strayed = true;
+                },
+                up: () => pressed = false));
         }
         surface.HandlerChanged += (_, _) => Watch();
         Watch();

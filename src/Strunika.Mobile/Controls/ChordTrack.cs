@@ -772,13 +772,14 @@ public sealed class ChordTrack : Grid
     {
         public required Grid Host;
         public required BoxView Body;
-        /// <summary>The chord lifted off the track, drawn by the track's own
-        /// pill code — a label in a box of the measured width cut the name to
-        /// "…" (user report 2026-09-14).</summary>
+        /// <summary>The chord on the finger and in its pulse, drawn by the track's
+        /// own pill code in its own chosen colours — a label in a box of the
+        /// measured width cut the name to "…" (user report 2026-09-14).</summary>
         public required GraphicsView Face;
         /// <summary>Dotted handles on the chord being worked on.</summary>
         public required GraphicsView Handles;
         public int Index = -1;
+        public int PulseTurn;
     }
 
     private readonly List<Block> _clips = new();
@@ -808,8 +809,10 @@ public sealed class ChordTrack : Grid
             Started = _ => BeginClip(clip),
             Moved = dx => { if (_clipDragging && _clipIndex == clip.Index) { _clipDx = dx; DragClip(clip); } },
             Ended = () => EndClip(clip),
-            // A press that did not move is a choice, not a move.
-            Tapped = _ => { _clipDragging = false; SelectionRequested?.Invoke(this, clip.Index); },
+            // A press that did not move is a choice, not a move; so is a finger
+            // simply held there (user request 2026-09-14). Either way it pulses.
+            Tapped = _ => { _clipDragging = false; SelectionRequested?.Invoke(this, clip.Index); Pulse(clip); },
+            Held = _ => { if (_lifted != null) return; SelectionRequested?.Invoke(this, clip.Index); Pulse(clip); },
         });
         Add(host);
         _clips.Add(clip);
@@ -845,8 +848,8 @@ public sealed class ChordTrack : Grid
     }
 
     /// <summary>The chord comes away from its place: a buzz, the place left
-    /// empty, and the chord itself in its lifted colours on the finger (user
-    /// request 2026-09-14).</summary>
+    /// empty, and the chord itself on the finger in its own colours, with a
+    /// pulse (user request 2026-09-14).</summary>
     private void Lift(Block clip)
     {
         var segments = Segments;
@@ -861,6 +864,24 @@ public sealed class ChordTrack : Grid
         clip.Handles.IsVisible = false;
         clip.Face.IsVisible = true;
         clip.Face.Invalidate();
+        Pulse(clip);
+    }
+
+    /// <summary>The chord grows a little and settles: the sign it was chosen,
+    /// with no change of colour (user request 2026-09-14). Its own pill is laid
+    /// over the ribbon's for the moment.</summary>
+    private async void Pulse(Block clip)
+    {
+        int turn = ++clip.PulseTurn;
+        clip.Face.IsVisible = true;
+        clip.Face.Invalidate();
+        if (!Services.Motion.Reduced)
+        {
+            await clip.Face.ScaleToAsync(1.12, 110, Easing.CubicOut);
+            await clip.Face.ScaleToAsync(1.0, 220, Easing.SpringOut);
+        }
+        if (turn != clip.PulseTurn || clip == _lifted) return;  // pulsed again, or on the finger now
+        clip.Face.IsVisible = false;
     }
 
     private void EndClip(Block clip)
@@ -960,7 +981,8 @@ public sealed class ChordTrack : Grid
                 else SeekRequested?.Invoke(this, start);
                 return;
             }
-        if (Editing) SelectionRequested?.Invoke(this, -1);        // beside the chords: none of them
+        // Beside the chords the song goes there, and the chosen chord stays chosen
+        // (user request 2026-09-14).
         double t = ViewAt + (p.Value.X - Width * PlayheadAt) / PixelsPerSecond;
         SeekRequested?.Invoke(this, Math.Clamp(t, 0, Math.Max(0, Duration)));
     }
@@ -997,7 +1019,7 @@ public sealed class ChordTrack : Grid
         return result;
     }
 
-    private enum PillStyle { Resting, Current, Pinned, Lifted }
+    private enum PillStyle { Resting, Current, Pinned }
 
     private void DrawPill(ICanvas canvas, float left, string label, PillStyle style)
     {
@@ -1007,22 +1029,13 @@ public sealed class ChordTrack : Grid
         {
             PillStyle.Current => Accent,
             PillStyle.Pinned => PinnedColor,
-            PillStyle.Lifted => TextColor,
             _ => PillColor,
         };
         canvas.FillRoundedRectangle(pill, 13f);
-        if (style == PillStyle.Lifted)
-        {
-            // Taken off the track: the text colour for ground, ringed in the accent.
-            canvas.StrokeColor = Accent;
-            canvas.StrokeSize = 2f;
-            canvas.DrawRoundedRectangle(pill.Left + 1f, pill.Top + 1f, pill.Width - 2f, pill.Height - 2f, 12f);
-        }
         canvas.FontColor = style switch
         {
             PillStyle.Current => OnAccent,
             PillStyle.Pinned => PinnedTextColor,
-            PillStyle.Lifted => BackdropColor,
             _ => TextColor,
         };
         if (bottom == null)
@@ -1171,7 +1184,7 @@ public sealed class ChordTrack : Grid
         }
     }
 
-    /// <summary>A chord lifted off the track: its own pill, in the lifted colours.</summary>
+    /// <summary>The chord on the finger or pulsing: its own pill, chosen as it is on the ribbon.</summary>
     private sealed class LiftDrawable(ChordTrack track, Block block) : IDrawable
     {
         public void Draw(ICanvas canvas, RectF rect)
@@ -1182,7 +1195,7 @@ public sealed class ChordTrack : Grid
                 var segments = track.Segments;
                 if (segments == null || block.Index < 0 || block.Index >= segments.Count) return;
                 canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
-                track.DrawPill(canvas, 0f, segments[block.Index].Label, PillStyle.Lifted);
+                track.DrawPill(canvas, 0f, segments[block.Index].Label, PillStyle.Current);
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
             }
             catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
