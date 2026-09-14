@@ -59,7 +59,7 @@ public partial class SongPage : ContentPage
             if (_gridView) ScrollGridToTime(middle);
             else Track.LookAt(middle);
         };
-        Track.SegmentMoved += (_, at) => _ = _vm.SetSegmentAsync(at.Index, at.Start, at.End);
+        Track.SegmentMoved += (_, at) => _ = _vm.MoveSegmentAsync(at.Index, at.Start);
         Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
         Track.LoopChanging += (_, loop) => _vm.LoopEditMoved(loop.Start, loop.End);
         Track.LoopEditEnded += (_, at) => _ = _vm.LoopEditEndAsync(at);

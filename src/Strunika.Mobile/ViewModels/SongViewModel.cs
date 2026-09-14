@@ -555,7 +555,7 @@ public sealed partial class SongViewModel : ObservableObject
         int i = Selected;
         if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
         double target = BeatMath.Step(_beats, _raw[i].Start, direction, GridView ? 1 : BeatMath.Sixteenths);
-        return SetSegmentAsync(i, target, _raw[i].End);          // it remembers for us
+        return MoveSegmentAsync(i, target);                      // past a neighbour if need be
     }
     /// <summary>The button in the header: into the editor, then out of it.</summary>
     public string EditorText => Editing ? Loc.Get("Common_Done") : Loc.Get("Song_Editor_Short");
@@ -678,16 +678,20 @@ public sealed partial class SongViewModel : ObservableObject
         return CommitAsync();
     }
 
-    /// <summary>The chord dragged onto another square in the beat view: it
-    /// begins there now. Dragged back it simply starts earlier and plays through
-    /// to the same place; dragged past its own end it takes its length along.</summary>
-    public Task MoveSelectedToAsync(double start)
+    /// <summary>The chord dragged onto another square in the beat view: it begins there now.</summary>
+    public Task MoveSelectedToAsync(double start) => MoveSegmentAsync(Selected, start);
+
+    /// <summary>A chord's beginning put down anywhere in the song (see
+    /// <see cref="ChordEdits.Move"/>): past its neighbours if need be, the song
+    /// staying gapless and in order.</summary>
+    public async Task MoveSegmentAsync(int index, double start)
     {
-        int i = Selected;
-        if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
-        var segment = _raw[i];
-        double end = start >= segment.End - MinSegment ? start + (segment.End - segment.Start) : segment.End;
-        return SetSegmentAsync(i, start, end);                   // it remembers, and the neighbours give way
+        if (!Editing || index < 0 || index >= _raw.Count) return;
+        Remember();
+        var (chords, at) = ChordEdits.Move(_raw, index, start, Duration, MinSegment);
+        _raw = chords;
+        await CommitAsync();
+        Selected = at < Segments.Count ? at : -1;                // still the chord that was moved
     }
 
     /// <summary>The chord being worked on goes; the one before it plays on

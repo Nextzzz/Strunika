@@ -960,18 +960,10 @@ public sealed class ChordTrack : Grid
         }
         // To the nearest sixteenth, and without a buzz (user rule 2026-09-14).
         double moved = BeatMath.Snap(Beats ?? Array.Empty<double>(), _clipFrom + _clipDx / PixelsPerSecond);
-        // As far as the song will take it, so what is dragged is where it lands.
-        // Left, down to just after the chord before begins. Right, past its own
-        // end: the chord takes its length along and the next one gives way, up to
-        // just before that one ends. The drag used to stop at its own end, so a
-        // chord added just before the next would not move right at all (user
+        // Anywhere in the song: the neighbours are no walls — the song puts the
+        // chord down wherever it lands and whatever is there gives way (user
         // report 2026-09-14).
-        var segments = Segments;
-        double low = segments != null && clip.Index > 0 ? segments[clip.Index - 1].Start + MinClip : 0;
-        double high = segments != null && clip.Index + 1 < segments.Count
-            ? segments[clip.Index + 1].End - 2 * MinClip
-            : Math.Max(0, Duration) - MinClip;
-        _clipStart = Math.Clamp(moved, Math.Min(low, _clipFrom), Math.Max(_clipFrom, high));
+        _clipStart = Math.Clamp(moved, 0, Math.Max(0, Duration - MinClip));
         PlaceClip(clip, _clipStart);
     }
 
@@ -1021,10 +1013,8 @@ public sealed class ChordTrack : Grid
         // until the song's chords come back with the move in them: putting
         // either down first showed the old badge again for a frame.
         var lifted = _lifted;
-        // Past its own end it keeps its length and pushes the next chord along;
-        // short of it, it simply starts later and ends where it did.
-        double end = _clipStart >= _clipTo - MinClip ? _clipStart + (_clipTo - _clipFrom) : _clipTo;
-        SegmentMoved?.Invoke(this, (clip.Index, _clipStart, end));
+        // Only the beginning is the track's to say: the chord lasts until the next mark.
+        SegmentMoved?.Invoke(this, (clip.Index, _clipStart, _clipTo));
         Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_lifted == lifted) Land(); });   // a move the song turned down
     }
 
