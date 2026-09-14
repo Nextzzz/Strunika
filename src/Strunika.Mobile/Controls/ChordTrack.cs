@@ -154,7 +154,11 @@ public sealed class ChordTrack : Grid
     private bool _coasting, _stoppedCoast;
     private const string CoastHandle = "coast";
     /// <summary>Slower than this, a lift is a stop, not a fling; and a coast ends.</summary>
-    private const double FlingSpeed = 80, RestSpeed = 24;
+    private const double FlingSpeed = 50, RestSpeed = 24;
+    /// <summary>The stretch of the swipe the speed is read from, and how long
+    /// after the last move a lift still counts as mid-swipe.</summary>
+    private const long SwipeWindowMs = 160, LiftGraceMs = 100;
+    private int _liftLogs;
     /// <summary>Seconds for the coast to lose two thirds of its speed.</summary>
     private const double CoastDecay = 0.45;
     /// <summary>Where the track is looking. Playing a song, that is wherever the
@@ -332,15 +336,18 @@ public sealed class ChordTrack : Grid
                 if (!_panning) return;
                 long now = Environment.TickCount64;
                 _swipe.Add((now, dx));
-                _swipe.RemoveAll(sample => now - sample.At > 120);
-                Pan(Math.Clamp(_panStart - dx / PixelsPerSecond, 0, Math.Max(0, Duration)));
+                _swipe.RemoveAll(sample => now - sample.At > SwipeWindowMs);
+                Pan(Math.Clamp(_panStart - dx / PixelsPerSecond, Editing ? Lowest : 0, Math.Max(0, Duration)));
             },
             Ended = () =>
             {
                 if (!_panning) return;
                 _panning = false;
                 double speed = SwipeSpeed();
-                if (Math.Abs(speed) >= FlingSpeed) { StartCoast(speed); return; }
+                bool fling = Math.Abs(speed) >= FlingSpeed;
+                if (_liftLogs++ < 12)
+                    Strunika.Core.Diagnostics.FileLog.Info($"conveyor lift: {_swipe.Count} samples over {(_swipe.Count > 0 ? _swipe[^1].At - _swipe[0].At : 0)} ms, last {(_swipe.Count > 0 ? Environment.TickCount64 - _swipe[^1].At : -1)} ms ago, {speed:0} pt/s → {(fling ? "coast" : "stop")}");
+                if (fling) { StartCoast(speed); return; }
                 if (!Editing) ScrubEnded?.Invoke(this, _panAt);
             },
             Tapped = pt =>
@@ -386,16 +393,23 @@ public sealed class ChordTrack : Grid
     }
 
     /// <summary>Points per second over the last stretch of the swipe, in the
-    /// finger's direction; nothing when the finger had already paused.</summary>
+    /// finger's direction; nothing when the finger had already paused before
+    /// it lifted.</summary>
     private double SwipeSpeed()
     {
         if (_swipe.Count < 2) return 0;
-        var first = _swipe[0];
         var last = _swipe[^1];
+        if (Environment.TickCount64 - last.At > LiftGraceMs) return 0;   // held still, then lifted
+        var first = _swipe[0];
         double seconds = (last.At - first.At) / 1000.0;
-        if (seconds < 0.02) return 0;
+        if (seconds < 0.015) return 0;
         return (last.Dx - first.Dx) / seconds;
     }
+
+    /// <summary>How far before the song's start the window may look: as far as
+    /// LookAt allows, so a pan or a coast near the start is not thrown to zero
+    /// and stopped there (that ended every fling begun there at once).</summary>
+    private double Lowest => -Width * 0.5 / Math.Max(1, PixelsPerSecond);
 
     private void StartCoast(double speed)
     {
@@ -414,11 +428,11 @@ public sealed class ChordTrack : Grid
         long now = Environment.TickCount64;
         double dt = Math.Min(0.05, (now - _coastTicks) / 1000.0);
         _coastTicks = now;
-        double duration = Math.Max(0, Duration);
-        double at = Math.Clamp(_panAt - _coastSpeed * dt / Math.Max(1, PixelsPerSecond), 0, duration);
+        double duration = Math.Max(0, Duration), lowest = Editing ? Lowest : 0;
+        double at = Math.Clamp(_panAt - _coastSpeed * dt / Math.Max(1, PixelsPerSecond), lowest, duration);
         _coastSpeed *= Math.Exp(-dt / CoastDecay);
         Pan(at);
-        if (Math.Abs(_coastSpeed) < RestSpeed || at <= 0 || at >= duration) Settle();
+        if (Math.Abs(_coastSpeed) < RestSpeed || at <= lowest || at >= duration) Settle();
     }
 
     private void StopCoast()
