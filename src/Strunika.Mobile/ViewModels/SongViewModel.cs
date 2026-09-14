@@ -547,21 +547,23 @@ public sealed partial class SongViewModel : ObservableObject
         RememberChoice();
     }
 
-    /// <summary>The chord last worked on in each song, by where it begins, for as
-    /// long as the app runs: leaving the editor — or the song — and coming back
-    /// finds it still chosen. The first time, none is (user request 2026-09-14).</summary>
-    private static readonly Dictionary<int, double> LastChosen = new();
+    /// <summary>Where the chord last worked on begins, while this song is open:
+    /// leaving the editor and coming back finds it still chosen. It lives with
+    /// the page and goes when the song is left — a memory kept for the whole
+    /// app run (static, so never collected) chose a chord on opening the song
+    /// again (user request 2026-09-14). NaN for none.</summary>
+    private double _lastChosen = double.NaN;
 
     private void RememberChoice()
     {
-        if (!Editing) return;                                    // leaving lets go of the chord, not of the memory
-        if (HasSelection) LastChosen[Song.Id] = Segments[Selected].Start;
-        else LastChosen.Remove(Song.Id);
+        if (!Editing) return;                                    // leaving the editor lets go of the chord, not of the memory
+        _lastChosen = HasSelection ? Segments[Selected].Start : double.NaN;
     }
 
     private int RecallChoice()
     {
-        if (!LastChosen.TryGetValue(Song.Id, out double start)) return -1;
+        if (double.IsNaN(_lastChosen)) return -1;
+        double start = _lastChosen;
         var segments = Segments;
         for (int i = 0; i < segments.Count; i++)
             if (segments[i].Label != "—" && Math.Abs(segments[i].Start - start) < 0.005) return i;

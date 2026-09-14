@@ -72,14 +72,18 @@ public static class PluckSynth
         }
         if (played == 0) return Array.Empty<float>();
 
-        // Normalise the sum: six strings add up well past full scale.
+        // Up to full scale whatever the shape — two strings as loud as six — and
+        // through a soft saturation that lifts the ringing body of the strum well
+        // above where the attack alone would leave it (about 6 dB at a fifth of
+        // the peak), the peak itself still under full scale. The previews were
+        // too quiet to hear (user request 2026-09-14).
         float peak = 0;
         foreach (var v in mix) peak = Math.Max(peak, Math.Abs(v));
-        if (peak > 0.94f)
-        {
-            float scale = 0.94f / peak;
-            for (int i = 0; i < mix.Length; i++) mix[i] *= scale;
-        }
+        if (peak <= 0) return mix;
+        const double Drive = 2.2, Ceiling = 0.97;
+        double scale = Ceiling / Math.Tanh(Drive);
+        double into = Drive / peak;
+        for (int i = 0; i < mix.Length; i++) mix[i] = (float)(scale * Math.Tanh(mix[i] * into));
         return mix;
     }
 }

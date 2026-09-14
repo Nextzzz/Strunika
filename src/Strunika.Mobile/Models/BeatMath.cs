@@ -51,6 +51,18 @@ public static class BeatMath
         return origin + (sign > 0 ? Math.Ceiling(steps) : Math.Floor(steps)) * unit;
     }
 
+    /// <summary>The time at a fractional beat index — 2.5 is half-way from the
+    /// third beat to the fourth — carried on past either end at the nearest
+    /// gap's pace. Rows of squares are whole beats, so a part of a row is a part
+    /// of its beats.</summary>
+    public static double TimeAt(double[] beats, double index)
+    {
+        if (beats.Length == 0) return 0;
+        if (beats.Length == 1) return beats[0];
+        int k = Math.Clamp((int)Math.Floor(index), 0, beats.Length - 2);
+        return beats[k] + (index - k) * (beats[k + 1] - beats[k]);
+    }
+
     /// <summary>The beat a moment's grid is counted from, and one part of its gap.</summary>
     private static (double Origin, double Unit) Cell(double[] beats, double time, int division)
     {

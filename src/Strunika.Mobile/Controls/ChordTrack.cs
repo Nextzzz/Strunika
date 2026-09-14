@@ -53,9 +53,6 @@ public sealed class ChordTrack : Grid
     public static readonly BindableProperty PinnedTextColorProperty = BindableProperty.Create(nameof(PinnedTextColor), typeof(Color), typeof(ChordTrack), Colors.White, propertyChanged: Redraw);
     public static readonly BindableProperty TextColorProperty = BindableProperty.Create(nameof(TextColor), typeof(Color), typeof(ChordTrack), Colors.White, propertyChanged: Redraw);
     public static readonly BindableProperty LineColorProperty = BindableProperty.Create(nameof(LineColor), typeof(Color), typeof(ChordTrack), Colors.Gray, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t._beatTick = null; t._barTick = null; t.Redraw(); });
-    /// <summary>A chord the playhead has passed, while the editor is on.</summary>
-    public static readonly BindableProperty PlayedColorProperty = BindableProperty.Create(nameof(PlayedColor), typeof(Color), typeof(ChordTrack), Colors.DimGray, propertyChanged: Redraw);
-    public static readonly BindableProperty PlayedTextColorProperty = BindableProperty.Create(nameof(PlayedTextColor), typeof(Color), typeof(ChordTrack), Colors.Gray, propertyChanged: Redraw);
     /// <summary>The ground the track sits on: what a chord taken off it leaves behind.</summary>
     public static readonly BindableProperty BackdropColorProperty = BindableProperty.Create(nameof(BackdropColor), typeof(Color), typeof(ChordTrack), Colors.Black, propertyChanged: (b, _, _) => ((ChordTrack)b).ApplyColours());
 
@@ -82,8 +79,6 @@ public sealed class ChordTrack : Grid
     public Color PinnedTextColor { get => (Color)GetValue(PinnedTextColorProperty); set => SetValue(PinnedTextColorProperty, value); }
     public Color TextColor { get => (Color)GetValue(TextColorProperty); set => SetValue(TextColorProperty, value); }
     public Color LineColor { get => (Color)GetValue(LineColorProperty); set => SetValue(LineColorProperty, value); }
-    public Color PlayedColor { get => (Color)GetValue(PlayedColorProperty); set => SetValue(PlayedColorProperty, value); }
-    public Color PlayedTextColor { get => (Color)GetValue(PlayedTextColorProperty); set => SetValue(PlayedTextColorProperty, value); }
     public Color BackdropColor { get => (Color)GetValue(BackdropColorProperty); set => SetValue(BackdropColorProperty, value); }
 
     /// <summary>Finger down: the owner pauses.</summary>
@@ -478,11 +473,10 @@ public sealed class ChordTrack : Grid
                 if (_pendingFrames > 4) Strunika.Core.Diagnostics.FileLog.Info($"conveyor: spare buffer took {_pendingFrames} frames to draw");
             }
         }
-        // Played and coming meet at the playhead. Riding along with the song that
-        // is a fixed place; in the editor the window stays put and the playhead
-        // crosses it, and the chords it passes take their played colour as it
-        // does (user request 2026-09-14). Two transforms more, nothing redrawn.
-        double boundary = Editing ? Math.Clamp(px + (Position - pos) * pps, -1, w + 1) : px;
+        // Played and coming meet at the playhead's fixed place. (For a day the
+        // editor moved this with the playhead so the chords it had passed could
+        // take a colour of their own; the user dropped that, 2026-09-14.)
+        double boundary = px;
         NativeTransform.TranslateX(_leftClip, boundary - w);
         NativeTransform.TranslateX(_rightClip, boundary);
         for (int i = 0; i < 2; i++)
@@ -1003,7 +997,7 @@ public sealed class ChordTrack : Grid
         return result;
     }
 
-    private enum PillStyle { Resting, Current, Pinned, Played, Lifted }
+    private enum PillStyle { Resting, Current, Pinned, Lifted }
 
     private void DrawPill(ICanvas canvas, float left, string label, PillStyle style)
     {
@@ -1013,7 +1007,6 @@ public sealed class ChordTrack : Grid
         {
             PillStyle.Current => Accent,
             PillStyle.Pinned => PinnedColor,
-            PillStyle.Played => PlayedColor,
             PillStyle.Lifted => TextColor,
             _ => PillColor,
         };
@@ -1029,7 +1022,6 @@ public sealed class ChordTrack : Grid
         {
             PillStyle.Current => OnAccent,
             PillStyle.Pinned => PinnedTextColor,
-            PillStyle.Played => PlayedTextColor,
             PillStyle.Lifted => BackdropColor,
             _ => TextColor,
         };
@@ -1168,11 +1160,8 @@ public sealed class ChordTrack : Grid
                     if (left < lastRight + 3f) left = lastRight + 3f;
                     lastRight = left + w;
                     t._pillShift[i] = left - x;
-                    // Resting, unless the editor is on: the chord being worked on in
-                    // the accent, and on the played side the chords already played.
-                    var style = t.Editing && i == t.Selected ? PillStyle.Current
-                              : t.Editing && played ? PillStyle.Played
-                              : PillStyle.Resting;
+                    // Resting, unless the editor is on and this is the chord being worked on.
+                    var style = t.Editing && i == t.Selected ? PillStyle.Current : PillStyle.Resting;
                     t.DrawPill(canvas, left, seg.Label, style);
                     pills.Add((new RectF(left, 0, w, PillTop + PillHeight + 8f), seg.Start, i));
                 }

@@ -134,7 +134,7 @@
                                LoopStart="{Binding LoopStart}" LoopEnd="{Binding LoopEnd}"
                                Accent="{t:Theme Accent}" OnAccent="{t:Theme OnAccent}" CellColor="{t:Theme Surface1}"
                                ChordCellColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}"
-                               PlayedCellColor="{t:Theme Surface1}" PlayedTextColor="{t:Theme Dim}" BackdropColor="{t:Theme Bg}" />
+                               BackdropColor="{t:Theme Bg}" />
         </ScrollView>
 
         <!-- The grid dissolves into the background above the player instead of
@@ -151,7 +151,7 @@
                              Accent="{t:Theme Accent}" OnAccent="{t:Theme OnAccent}" WaveColor="{t:Theme Surface2}"
                              PillColor="{t:Theme Surface2}" TextColor="{t:Theme TextPri}"
                              PinnedColor="{t:Theme Surface1}" PinnedTextColor="{t:Theme TextSec}" LineColor="{t:Theme Dim}"
-                             PlayedColor="{t:Theme Surface1}" PlayedTextColor="{t:Theme Dim}" BackdropColor="{t:Theme Bg}" />
+                             BackdropColor="{t:Theme Bg}" />
 
         <!-- The editor's own panel, over the song's slider: the chord being
              worked on and what can be done to it, with the two levels that
@@ -178,8 +178,13 @@
                     <Border Grid.Column="2" x:Name="ChordChip" Style="{StaticResource Chip}" HeightRequest="{t:Size 58, Min=54}" Padding="8,0"
                             BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}">
                         <Grid>
-                            <Label x:Name="ChordName" Text="{Binding SelectedChord}" FontFamily="DisplayBold" FontSize="26" TextColor="{t:Theme OnFill}" FontAutoScalingEnabled="False"
-                                   HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="NoWrap" MaxLines="1" IsVisible="{Binding HasSelection}" />
+                            <!-- The name and a small pencil, centred together: it says the
+                                 chip changes the chord (user request 2026-09-14). -->
+                            <HorizontalStackLayout x:Name="ChordNameRow" Spacing="5" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding HasSelection}">
+                                <Label x:Name="ChordName" Text="{Binding SelectedChord}" FontFamily="DisplayBold" FontSize="26" TextColor="{t:Theme OnFill}" FontAutoScalingEnabled="False"
+                                       VerticalOptions="Center" LineBreakMode="NoWrap" MaxLines="1" />
+                                <controls:IconView x:Name="ChordPencil" Name="pencil" Size="{t:Size 14}" Color="{t:Theme OnFill}" Opacity="0.85" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
                             <Label Text="{loc:Str Song_Editor_Nothing}" FontSize="14" TextColor="{t:Theme OnFill}" Opacity="0.8"
                                    HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="WordWrap" MaxLines="2" IsVisible="{Binding HasSelection, Converter={StaticResource Not}}" />
                         </Grid>

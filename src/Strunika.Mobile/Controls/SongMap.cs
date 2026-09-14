@@ -39,12 +39,15 @@ public sealed class SongMap : Grid
     public event EventHandler<double>? ViewRequested;
 
     private readonly GraphicsView _rail;
-    /// <summary>The window's ground (one point wide, stretched by its transform)
-    /// and its two edges: plain boxes, since a stretched border stretches its
-    /// stroke and corners along with it.</summary>
-    private readonly BoxView _window, _edgeLeft, _edgeRight;
+    /// <summary>The slice the track shows: one plain box a point wide, stretched
+    /// by its transform, with nothing drawn around it — no edge lines and no
+    /// grips (user request 2026-09-14) — so it is exactly as wide as the screen
+    /// it stands for.</summary>
+    private readonly BoxView _window;
     private readonly BoxView _head, _pick;
-    private readonly BoxView _gripLeft, _gripRight;
+    private const double HeadWidth = 2;
+    /// <summary>The chosen chord's square: a size token, like the rest of the chrome.</summary>
+    private readonly double _pickSize;
     private double _position, _viewStart, _viewSpan, _selection = -1;
 
     public SongMap()
@@ -52,23 +55,21 @@ public sealed class SongMap : Grid
         HeightRequest = Theme.Metrics.Instance.Size(48, min: 44);   // a strip a finger can work with
         _rail = new GraphicsView { Drawable = new RailDrawable(this), InputTransparent = true };
         _window = new BoxView { WidthRequest = 1, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true };
-        _edgeLeft = Edge();
-        _edgeRight = Edge();
-        _head = new BoxView { WidthRequest = 2, CornerRadius = 1, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true };
+        _head = new BoxView { WidthRequest = HeadWidth, CornerRadius = 1, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true };
         // Where the chord being worked on sits in the song — the one thing the
         // reader needs to find again after letting the track go.
-        _pick = new BoxView { WidthRequest = 4, CornerRadius = 2, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true, IsVisible = false, Margin = new Thickness(0, 6) };
-        // The window says it can be taken hold of.
-        _gripLeft = Grip();
-        _gripRight = Grip();
+        // A small square in the accent, on the rail (user request 2026-09-14).
+        _pickSize = Theme.Metrics.Instance.Size(9);
+        _pick = new BoxView
+        {
+            WidthRequest = _pickSize, HeightRequest = _pickSize, CornerRadius = 2,
+            HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center,
+            InputTransparent = true, IsVisible = false,
+        };
         Add(_rail);
         Add(_window);
-        Add(_edgeLeft);
-        Add(_edgeRight);
-        Add(_gripLeft);
-        Add(_gripRight);
-        Add(_pick);
         Add(_head);
+        Add(_pick);                                              // over the playhead: both are the accent, and the chord is the one to find
         var touch = new BoxView { Color = Colors.Transparent };
         Add(touch);
         PointerDrag.Attach(touch, new PointerDrag.Callbacks
@@ -82,19 +83,6 @@ public sealed class SongMap : Grid
         Recolour();
         SizeChanged += (_, _) => { _rail.Invalidate(); Place(); };
     }
-
-    private const double EdgeWidth = 1.5;
-
-    private static BoxView Edge() => new()
-    {
-        WidthRequest = EdgeWidth, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true,
-    };
-
-    private static BoxView Grip() => new()
-    {
-        WidthRequest = 3, HeightRequest = Theme.Metrics.Instance.Size(16), CornerRadius = 1.5,
-        HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center, InputTransparent = true,
-    };
 
     private double _grabbed;
 
@@ -130,29 +118,25 @@ public sealed class SongMap : Grid
         // Exactly the slice the track shows, cut to the song: no least width and
         // never pushed back inside. Either made the window wider than the screen
         // it stands for, or shifted it off the playhead drawn in it (user report
-        // 2026-09-14). The grips sit just outside, so they never widen it.
+        // 2026-09-14).
         double left = Math.Clamp(_viewStart * scale, 0, w);
         double right = Math.Clamp((_viewStart + _viewSpan) * scale, 0, w);
-        double width = Math.Max(0, right - left);
         NativeTransform.TranslateX(_window, left);
-        NativeTransform.ScaleX(_window, Math.Max(0.001, width));  // the box is one point wide
-        NativeTransform.TranslateX(_edgeLeft, left);
-        NativeTransform.TranslateX(_edgeRight, Math.Max(left, right - EdgeWidth));
-        NativeTransform.TranslateX(_gripLeft, Math.Max(0, left - 6));
-        NativeTransform.TranslateX(_gripRight, Math.Min(w - 3, right + 3));
-        NativeTransform.TranslateX(_head, Math.Clamp(_position * scale - 1, 0, w - 2));
+        NativeTransform.ScaleX(_window, Math.Max(0.001, right - left));   // the box is one point wide
+        // Marks are centred on their moment. Drawn from it rightwards, the chosen
+        // chord's four points sat visibly off the middle of a window only a few
+        // points wide, with the chord in the middle of the screen (user report 2026-09-14).
+        NativeTransform.TranslateX(_head, Math.Clamp(_position * scale - HeadWidth / 2, 0, w - HeadWidth));
         bool marked = _selection >= 0;
         if (_pick.IsVisible != marked) _pick.IsVisible = marked;
-        if (marked) NativeTransform.TranslateX(_pick, Math.Clamp(_selection * scale, 0, w - 4));
+        if (marked) NativeTransform.TranslateX(_pick, Math.Clamp(_selection * scale - _pickSize / 2, 0, w - _pickSize));
     }
 
     private void Recolour()
     {
-        _window.Color = Accent.WithAlpha(0.16f);
-        _edgeLeft.Color = _edgeRight.Color = Accent.WithAlpha(0.8f);
-        _gripLeft.Color = _gripRight.Color = Accent.WithAlpha(0.8f);
+        _window.Color = Accent.WithAlpha(0.24f);                 // alone now, so a shade stronger
         _head.Color = Accent;
-        _pick.Color = MarkColor;
+        _pick.Color = Accent;
         _rail.Invalidate();
     }
 

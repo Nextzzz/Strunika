@@ -47,7 +47,7 @@ public partial class SongPage : ContentPage
         Track.ScrubEnded += (_, t) => _ = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
         Track.SelectionRequested += (_, index) => _vm.Selected = index;
-        Track.FollowingChanged += (_, following) => FollowChip.IsVisible = _vm.Editing && !following;
+        Track.FollowingChanged += (_, _) => UpdateFollowChip();
         // The same map serves both views of the song: on the track it moves the
         // window, in the beat view it scrolls to the row (user decision 2026-09-10).
         Map.ViewRequested += (_, middle) =>
@@ -108,8 +108,14 @@ public partial class SongPage : ContentPage
         {
             _vm.ChooseAtBeat(beat);
             _gridFollowing = false;                              // the beat view is the reader's now
-            FollowChip.IsVisible = _vm.Editing;
+            UpdateFollowChip();
         };
+        // The chosen chord tapped again: the song goes to it (user request 2026-09-14).
+        BeatsView.ChosenTapped += (_, _) =>
+        {
+            if (_vm.Editing && _vm.HasSelection) _ = _vm.SeekAsync(_vm.SelectedStart);
+        };
+        GridHost.Scrolled += OnGridScrolled;
         BeatsView.ActiveMoved += OnActiveBeatMoved;
         // A chord dragged from one square onto another.
         BeatsView.ChordDropped += async (_, move) =>
@@ -396,7 +402,9 @@ public partial class SongPage : ContentPage
         Grid.SetRow(GridHost, editing ? 4 : 3);
         Grid.SetRowSpan(GridHost, editing ? 1 : 2);
         BeatsView.Editing = editing;
-        FollowChip.IsVisible = editing && (_gridView ? !_gridFollowing : !Track.Following);
+        UpdateFollowChip();
+        if (!editing) BeatsView.Chosen = -1;                     // no chosen square outside the editor
+        _gridSelfScrollUntil = Environment.TickCount64 + 500;     // the rows move under the new layout, not under a finger
         Body.RowDefinitions[3].Height = editing ? GridLength.Auto : new GridLength(3, GridUnitType.Star);
         PlayerChevron.IsVisible = !editing;
         if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
@@ -414,7 +422,8 @@ public partial class SongPage : ContentPage
     {
         if (ChordName.Handler == null || ChordChip.Width <= 0) return;
         double size = Theme.Metrics.Instance.Size(26, hero: true);
-        double room = ChordChip.Width - ChordChip.Padding.HorizontalThickness - 4;
+        double pencil = ChordPencil.Width > 0 ? ChordPencil.Width : ChordPencil.Size;
+        double room = ChordChip.Width - ChordChip.Padding.HorizontalThickness - pencil - ChordNameRow.Spacing - 4;
         if (_vm.HasSelection && room > 0)
         {
             if (Math.Abs(ChordName.FontSize - size) > 0.1) ChordName.FontSize = size;
@@ -450,12 +459,24 @@ public partial class SongPage : ContentPage
         ApplyViewMode(!_gridView, save: true);
     }
 
+    /// <summary>The follow chip keeps its place in the editor and is never hidden:
+    /// faded and deaf while the view already rides along, live when there is
+    /// somewhere to go back to (user request 2026-09-14).</summary>
+    private void UpdateFollowChip()
+    {
+        bool editing = _vm.Editing;
+        bool canFollow = editing && (_gridView ? !_gridFollowing : !Track.Following);
+        if (FollowChip.IsVisible != editing) FollowChip.IsVisible = editing;
+        FollowChip.Opacity = canFollow ? 1 : 0.35;
+        FollowChip.InputTransparent = !canFollow;
+    }
+
     /// <summary>Back to the playhead, and along with it from here on. The beat
     /// view scrolls itself, so there it is a flag and the next beat brings the
     /// rows back.</summary>
     private void OnFollowTapped(object? sender, TappedEventArgs e)
     {
-        if (_gridView) { _gridFollowing = true; FollowChip.IsVisible = false; ScrollGridToBeat(); }
+        if (_gridView) { _gridFollowing = true; UpdateFollowChip(); ScrollGridToBeat(); }
         else Track.FollowNow();
     }
 
@@ -463,7 +484,7 @@ public partial class SongPage : ContentPage
     private void OnGoToSelectionTapped(object? sender, TappedEventArgs e)
     {
         if (_vm.SelectedStart < 0) return;
-        if (_gridView) { _gridFollowing = false; FollowChip.IsVisible = _vm.Editing; ScrollGridToRow(_vm.SelectedBeat); }
+        if (_gridView) { _gridFollowing = false; UpdateFollowChip(); ScrollGridToRow(_vm.SelectedBeat); }
         else Track.LookAt(_vm.SelectedStart);
     }
 
@@ -532,13 +553,14 @@ public partial class SongPage : ContentPage
         double step = BeatsView.RowPitch;
         int columns = BeatsView.Columns;
         if (beats.Length == 0 || step <= 0 || columns <= 0) return;
-        int firstRow = Math.Max(0, (int)(GridHost.ScrollY / step));
-        int rows = Math.Max(1, (int)Math.Round(GridHost.Height / step));
-        int from = Math.Min(beats.Length - 1, firstRow * columns);
-        int to = Math.Min(beats.Length - 1, (firstRow + rows) * columns);
-        double start = beats[from];
-        double end = to > from ? beats[to] : Math.Max(start + 1, _vm.Duration);
-        Map.Show(_vm.Position, start, end - start);
+        // The rows on screen as they are, parts of rows included: row r begins at
+        // beat r × columns, and a part of a row is that part of its beats. Whole
+        // rows put a square in the middle of the screen off the middle of the
+        // window (user report 2026-09-14).
+        double top = GridHost.ScrollY / step, visible = GridHost.Height / step;
+        double start = BeatMath.TimeAt(beats, top * columns);
+        double end = BeatMath.TimeAt(beats, (top + visible) * columns);
+        Map.Show(_vm.Position, start, Math.Max(0.01, end - start));
         Map.Mark(_vm.SelectedStart);
     }
 
@@ -551,7 +573,7 @@ public partial class SongPage : ContentPage
         int index = 0;
         while (index + 1 < beats.Length && beats[index + 1] <= seconds) index++;
         _gridFollowing = false;
-        FollowChip.IsVisible = _vm.Editing;
+        UpdateFollowChip();
         // Not animated: the window is dragged, and an animation started on every
         // move of the finger would queue up and lag a row behind it.
         ScrollGridToRow(index, animated: false);
@@ -563,8 +585,30 @@ public partial class SongPage : ContentPage
         if (step <= 0) return;
         int row = own && beat >= 0 && BeatsView.Columns > 0 ? beat / BeatsView.Columns : _gridAt.Row;
         double target = Math.Max(0, (row - 1) * step);
+        await ScrollGridSelfAsync(target, animated);
+    }
+
+    /// <summary>Until this moment a scroll of the beat view is the page's own
+    /// doing — an animation it started, or rows moving under a new layout — and
+    /// not the reader's.</summary>
+    private long _gridSelfScrollUntil;
+
+    private async Task ScrollGridSelfAsync(double target, bool animated)
+    {
+        _gridSelfScrollUntil = Environment.TickCount64 + 800;
         try { await GridHost.ScrollToAsync(0, target, animated); }
         catch (Exception) { }                                    // torn down mid-scroll
+        _gridSelfScrollUntil = Environment.TickCount64 + 150;    // its last events arrive after it
+    }
+
+    /// <summary>Scrolling the beat view by hand while it rides along lets go of
+    /// the playhead, as panning the track does (user request 2026-09-14).</summary>
+    private void OnGridScrolled(object? sender, ScrolledEventArgs e)
+    {
+        if (!_vm.Editing || !_gridView || !_gridFollowing) return;
+        if (Environment.TickCount64 < _gridSelfScrollUntil) return;
+        _gridFollowing = false;
+        UpdateFollowChip();
     }
 
     private async void OnActiveBeatMoved(object? sender, (int Row, double Step) at)
@@ -577,8 +621,7 @@ public partial class SongPage : ContentPage
         // there is nothing above, so it simply stays at the top.
         double target = Math.Max(0, (at.Row - 1) * at.Step);
         if (Math.Abs(GridHost.ScrollY - target) < 1) return;
-        try { await GridHost.ScrollToAsync(0, target, animated: true); }
-        catch (Exception) { }                                    // torn down mid-scroll
+        await ScrollGridSelfAsync(target, animated: true);
     }
 
     private async void OnBackTapped(object? sender, TappedEventArgs e) => await Navigation.PopAsync(animated: true);

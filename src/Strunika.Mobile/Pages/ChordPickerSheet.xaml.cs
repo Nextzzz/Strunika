@@ -113,14 +113,14 @@ public partial class ChordPickerSheet : ContentPage
     }
 
     /// <summary>Hear the chord before choosing it: the same strum the shapes
-    /// sheet plays, at the same level under the song's.</summary>
+    /// sheet plays, at the same level: the song's own.</summary>
     private void OnHearTapped(object? sender, TappedEventArgs e)
     {
         var audio = Application.Current?.Windows.FirstOrDefault()?.Page?.Handler?.MauiContext?.Services.GetService<IChordAudio>();
         var shape = Preview.Shape;
         if (audio == null || shape == null) return;
         if (_ringing) { audio.Stop(); return; }
-        audio.Volume = AppSettings.SongVolume * 0.75;
+        audio.Volume = AppSettings.SongVolume;
         audio.Strum(shape.Frets);
         Ringing(true);
     }

@@ -24,10 +24,6 @@ public partial class ChordShapesSheet : ContentPage
     private int _selected;
     private bool _done, _ringing;
 
-    /// <summary>The preview strum sits under the song's own level: it is a
-    /// reference, not the performance (user request 2026-08-28).</summary>
-    private const double StrumLevel = 0.75;
-
     /// <param name="onPick">null when the sheet is only a reference (the dictionary).</param>
     public ChordShapesSheet(string chord, IReadOnlyList<ChordShape> positions, int index, bool leftHanded, int capo, Action<int>? onPick)
     {
@@ -127,7 +123,9 @@ public partial class ChordShapesSheet : ContentPage
         if (audio == null) return;
         if (_ringing) { audio.Stop(); return; }
         var frets = _positions[_selected].Frets.Select(f => f < 0 ? -1 : f + _capo).ToArray();
-        audio.Volume = AppSettings.SongVolume * StrumLevel;
+        // At the song's level, no longer under it: the preview was too quiet to
+        // hear (user request 2026-09-14; it sat at three quarters since 2026-08-28).
+        audio.Volume = AppSettings.SongVolume;
         audio.Strum(frets);
         SetRinging(true);
     }
