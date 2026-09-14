@@ -101,6 +101,9 @@ public sealed class ChordTrack : Grid
     /// <summary>The end was let go, at this position (the view may have scrolled under it).</summary>
     public event EventHandler<double>? LoopEditEnded;
 
+    /// <summary>The room the track keeps over its pills, for whoever lays out what is above it.</summary>
+    public static double TopSpace => PillTop;
+
     /// <summary>Where the playhead sits across the width: a quarter in, so most
     /// of the track is the music still to come.</summary>
     private const float PlayheadAt = 0.25f;

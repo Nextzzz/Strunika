@@ -76,6 +76,18 @@ public static class AppSettings
         set { Preferences.Default.Set("song_volume", Math.Clamp(value, 0, 1)); Raise(nameof(SongVolume)); }
     }
 
+    /// <summary>Whether the editor's panel is folded down to its chord row for a
+    /// song in one of its views. The beat view starts folded, so the squares get
+    /// the room; the track starts open. Each keeps what the reader last chose
+    /// (user decision 2026-09-14).</summary>
+    public static bool EditorPanelFolded(int songId, bool grid) =>
+        Preferences.Default.Get(FoldKey(songId, grid), grid);
+
+    public static void SetEditorPanelFolded(int songId, bool grid, bool folded) =>
+        Preferences.Default.Set(FoldKey(songId, grid), folded);
+
+    private static string FoldKey(int songId, bool grid) => $"editor_fold_{(grid ? "grid" : "track")}_{songId}";
+
     public static bool LeftHanded
     {
         get => Preferences.Default.Get("left_handed", false);

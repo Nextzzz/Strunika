@@ -37,6 +37,10 @@ public partial class SongPage : ContentPage
     {
         InitializeComponent();
         _services = services;
+        // The gaps the XAML gives the track and the grid, for when the editor gives them back.
+        _trackMargin = Track.Margin;
+        _gridTop = GridHost.Margin.Top;
+        _gridBottom = GridHost.Margin.Bottom;
         _vm = new SongViewModel(song, services.GetRequiredService<ISongRepository>(), services.GetRequiredService<IProGate>(), services.GetRequiredService<IClickPlayer>());
         BindingContext = _vm;
         _vm.ProRequired += (_, f) => { _sheetOpen = true; _ = PaywallSheet.ShowAsync(f); };
@@ -473,6 +477,27 @@ public partial class SongPage : ContentPage
     /// simply shows fewer squares. The YouTube player is folded away and stays
     /// folded: the song is being read, not watched (user decision 2026-09-09).
     /// </summary>
+    private Thickness _trackMargin;
+    private double _gridTop, _gridBottom, _gridTopApplied = double.NaN;
+
+    /// <summary>The editor's panel folded down to its chord row — the song's level
+    /// and the metronome's row hidden — as the reader left it for this song in
+    /// this view (see AppSettings.EditorPanelFolded).</summary>
+    private void ApplyPanelFold()
+    {
+        bool folded = _vm.Editing && AppSettings.EditorPanelFolded(_vm.Song.Id, _gridView);
+        if (LevelRow.IsVisible == folded) LevelRow.IsVisible = MetronomeRow.IsVisible = !folded;
+        FoldIcon.Name = folded ? "chevU" : "chevD";              // which way the rows will go
+    }
+
+    private void OnFoldTapped(object? sender, TappedEventArgs e)
+    {
+        if (!_vm.Editing) return;
+        AppSettings.SetEditorPanelFolded(_vm.Song.Id, _gridView, !AppSettings.EditorPanelFolded(_vm.Song.Id, _gridView));
+        Services.Haptics.Default.Selection();
+        ApplyPanelFold();
+    }
+
     private void ApplyEditor()
     {
         bool editing = _vm.Editing;
@@ -490,6 +515,22 @@ public partial class SongPage : ContentPage
         BeatsView.Chosen = ChosenSquare;                         // at once, not a frame later: a stale square showed on switching views
         _gridSelfScrollUntil = Environment.TickCount64 + 500;     // the rows move under the new layout, not under a finger
         Body.RowDefinitions[3].Height = editing ? GridLength.Auto : new GridLength(3, GridUnitType.Star);
+        // Under the map's chips the same gap as over them: the track and the grid
+        // started a good way further down (user request 2026-09-14). The track
+        // keeps a little room over its pills of its own, so it gives that back.
+        ApplyPanelFold();
+        double gap = MapRow.Spacing;
+        var trackMargin = editing
+            ? new Thickness(_trackMargin.Left, Math.Max(0, gap - Controls.ChordTrack.TopSpace), _trackMargin.Right, _trackMargin.Bottom)
+            : _trackMargin;
+        if (Track.Margin != trackMargin) Track.Margin = trackMargin;
+        double gridTop = editing ? gap : _gridTop;
+        if (gridTop != _gridTopApplied)
+        {
+            _gridTopApplied = gridTop;
+            // Bound again rather than assigned: the margin also carries a tablet's content inset.
+            GridHost.SetBinding(View.MarginProperty, new Theme.ContentInsetExtension { Top = gridTop, Bottom = _gridBottom }.ProvideValue(null!));
+        }
         PlayerChevron.IsVisible = !editing;
         if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
         FitChordName();

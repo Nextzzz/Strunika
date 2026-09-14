@@ -32,6 +32,7 @@ public static class Icons
         ["chevL"] = new(new[] { "M15 5l-7 7 7 7" }, Array.Empty<(float, float, float)>()),
         ["chevR"] = new(new[] { "M9 5l7 7-7 7" }, Array.Empty<(float, float, float)>()),
         ["chevD"] = new(new[] { "M6 9l6 6 6-6" }, Array.Empty<(float, float, float)>()),
+        ["chevU"] = new(new[] { "M6 15l6-6 6 6" }, Array.Empty<(float, float, float)>()),
         ["metro"] = new(new[] { "M9.5 3.5h5L18 20H6z", "M12 15l5.5-9" }, Array.Empty<(float, float, float)>()),
         ["mic"] = new(new[] { "M9 6a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0z", "M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" }, Array.Empty<(float, float, float)>()),
         ["pencil"] = new(new[] { "M4 20l4-1L19 8l-3-3L5 16z", "M14 7l3 3" }, Array.Empty<(float, float, float)>()),

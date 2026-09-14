@@ -100,7 +100,7 @@
              are, where the playhead is, and which slice the track is looking at.
              Beside it, the way back to the playhead when the track has been let
              go of (user request 2026-09-10). -->
-        <VerticalStackLayout Grid.Row="3" x:Name="MapRow" Spacing="6" Padding="20,4,20,6" Margin="{t:ContentInset}" IsVisible="False">
+        <VerticalStackLayout Grid.Row="3" x:Name="MapRow" Spacing="6" Padding="20,4,20,0" Margin="{t:ContentInset}" IsVisible="False">
             <controls:SongMap x:Name="Map" Duration="{Binding Duration}" Segments="{Binding Segments}"
                               RailColor="{t:Theme Separator}" MarkColor="{t:Theme Dim}" Accent="{t:Theme Accent}" />
             <!-- (The beat view scrolls itself, so it gets the chips without the map.) -->
@@ -160,7 +160,8 @@
              matter while a song is being taken apart. It is deliberately
              generous — the track above gives up the room (user request
              2026-09-10). -->
-        <Border Grid.Row="5" x:Name="EditorBar" Style="{StaticResource Card}" Padding="14,12" Margin="{t:ContentInset Plus=True, Top=2, Bottom=6}" IsVisible="{Binding Editing}">
+        <Grid Grid.Row="5" x:Name="EditorPanel" Margin="{t:ContentInset Plus=True, Top=2, Bottom=6}" IsVisible="{Binding Editing}">
+        <Border x:Name="EditorBar" Style="{StaticResource Card}" Padding="14,12">
             <VerticalStackLayout Spacing="10">
                 <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
                     <!-- A beat at a time, for when a finger is not exact enough.
@@ -205,19 +206,32 @@
                 </Grid>
 
                 <!-- The song's own level -->
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
+                <Grid x:Name="LevelRow" ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
                     <controls:IconView Name="vol" Size="{t:Size 20}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                     <controls:SeekBar Grid.Column="1" Duration="1" Value="{Binding Volume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,6,0" />
                 </Grid>
 
                 <!-- The metronome and its own -->
-                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
+                <Grid x:Name="MetronomeRow" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
                     <controls:IconView Name="metro" Size="{t:Size 20}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                     <Switch Grid.Column="1" IsToggled="{Binding Metronome, Mode=TwoWay}" VerticalOptions="Center" />
                     <controls:SeekBar Grid.Column="2" Duration="1" Value="{Binding ClickVolume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,6,0" Opacity="{Binding Metronome, Converter={StaticResource Faded}}" />
                 </Grid>
             </VerticalStackLayout>
         </Border>
+            <!-- Folds the panel down to its chord row and back: the two levels are
+                 not needed while chords are being moved. A badge on the card's
+                 corner, like the lock on the Editor chip but bigger, in a finger's
+                 worth of clear room (user request 2026-09-14). -->
+            <Grid WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 44, Min=44}" HorizontalOptions="End" VerticalOptions="Start"
+                  Margin="0,-20,-20,0" BackgroundColor="Transparent" SemanticProperties.Description="{loc:Str Song_Editor_Fold}">
+                <Border WidthRequest="{t:Size 28}" HeightRequest="{t:Size 28}" StrokeShape="{t:Round 28}" StrokeThickness="2" Stroke="{t:Theme Bg}"
+                        BackgroundColor="{t:Theme Fill}" Padding="0" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True">
+                    <controls:IconView x:Name="FoldIcon" Name="chevD" Size="{t:Size 16}" StrokeSize="2.4" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnFoldTapped" /></Grid.GestureRecognizers>
+            </Grid>
+        </Grid>
 
         <!-- Position slider. Each clock shares its cell with an invisible ghost of the
              widest clock the song can show, so the cell keeps one width: the font's
