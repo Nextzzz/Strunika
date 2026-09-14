@@ -49,6 +49,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
     private int _generation;           // bumped by every seek/stop: completions of the blocks before it are ignored
     private bool _playing, _ended;
     private double _rate = 1.0, _volume = 1.0, _heardLag;
+    private int _lagLogs;
     private double _pausedInto;        // real seconds into the current block when paused, so the position holds still
     private readonly Action _onEngineStopped;
     /// <summary>Blocks the node has consumed, as (generation, slot, frames), handed
@@ -217,6 +218,10 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
         {
             var session = AVAudioSession.SharedInstance();
             _heardLag = _pitch.Latency + session.IOBufferDuration + session.OutputLatency;
+            // The one number that shifts every chord against the sound: on
+            // record, so a song heard out of step can be read back to it.
+            if (_lagLogs++ < 3)
+                FileLog.Info($"song player: lag {_heardLag * 1000:0} ms (pitch {_pitch.Latency * 1000:0}, io {session.IOBufferDuration * 1000:0}, out {session.OutputLatency * 1000:0}), route {session.CurrentRoute.Outputs.FirstOrDefault()?.PortType}");
         }
         catch { _heardLag = 0; }
     }

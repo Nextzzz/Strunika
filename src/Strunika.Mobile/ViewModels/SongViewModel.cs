@@ -40,6 +40,8 @@ public sealed partial class SongViewModel : ObservableObject
     private int _nextBeat;
     private bool _scrubbing, _wasPlaying, _probing;
     private double _predicted, _sinceProbe, _lastProbe = -1;
+    /// <summary>Probes in a row that read the same position while "playing".</summary>
+    private int _repeats;
     /// <summary>What the last probe found the prediction to be off by, still to
     /// be made good — spread over the frames until the next probe, as a change
     /// of pace and never a step back (see Frame).</summary>
@@ -335,10 +337,16 @@ public sealed partial class SongViewModel : ObservableObject
                 _nextBeat = NextBeatAfter(LoopStart);
                 return;
             }
-            // A player that says "playing" but reports the same position twice
-            // is buffering (YouTube does this for the first half second): hold
-            // the conveyor there instead of running ahead and snapping back.
-            bool stalled = playing && Math.Abs(pos - _lastProbe) < 1e-3;
+            // A player that says "playing" but reports the same position three
+            // probes running is buffering (YouTube does this for the first half
+            // second): hold the conveyor there instead of running ahead and
+            // snapping back. One repeat is not enough: a clock that moves in
+            // steps of a quarter second — an HTML video's currentTime can, on
+            // some loads — repeats itself on every fourth or fifth probe, and
+            // snapping back to it each time kept the conveyor a step behind the
+            // sound for the whole song (user report 2026-09-15).
+            _repeats = playing && Math.Abs(pos - _lastProbe) < 1e-3 ? _repeats + 1 : 0;
+            bool stalled = _repeats >= 2;
             _lastProbe = pos;
             // Snap on a real jump, otherwise ease the prediction towards the
             // truth so the conveyor never visibly steps.
