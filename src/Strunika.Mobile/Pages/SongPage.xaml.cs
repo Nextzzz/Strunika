@@ -302,7 +302,7 @@ public partial class SongPage : ContentPage
                 if (_vm.Editing)
                 {
                     // The chosen chord's square, or the empty square a new chord would go on.
-                    BeatsView.Chosen = _vm.HasSelection ? _vm.SelectedBeat : _vm.ChosenBeat;
+                    BeatsView.Chosen = ChosenSquare;
                     ShowGridOnMap();
                 }
             }
@@ -358,6 +358,18 @@ public partial class SongPage : ContentPage
     /// song laid out as beats. The transport, slider and player stay put.</summary>
     private void ApplyViewMode(bool grid, bool save)
     {
+        // Where the view going away was looking, and whether it rode along with
+        // the song: the view coming in takes both, so the switch keeps the reader
+        // where they were. The beat view used to open wherever it last scrolled
+        // to — the top of the song, as often as not (user report 2026-09-14).
+        bool switching = grid != _gridView;
+        bool following = true;
+        double lookAt = double.NaN;
+        if (switching && _vm.Editing)
+        {
+            following = _gridView ? _gridFollowing : Track.Following;
+            lookAt = _gridView ? GridCentreTime() : Track.CentreTime;
+        }
         _gridView = grid;
         _vm.GridView = grid;
         if (save) AppSettings.SongGridView = grid;
@@ -377,7 +389,75 @@ public partial class SongPage : ContentPage
         ViewSwitchIcon.Name = grid ? "conveyor" : "grid4";        // what the tap will bring, not what is here
         if (grid) BeatsView.Position = _vm.Position;
         ApplyEditor();
+        if (switching) CarryView(grid, following, lookAt);
     }
+
+    /// <summary>The view just shown looks where the other one did: riding along,
+    /// it rides along too; let go of, it opens on the same moment in its middle.</summary>
+    private void CarryView(bool toGrid, bool following, double lookAt)
+    {
+        if (toGrid)
+        {
+            _gridFollowing = following;
+            UpdateFollowChip();
+            AlignGrid(following || double.IsNaN(lookAt) ? _vm.Position : lookAt, following);
+            return;
+        }
+        if (following || double.IsNaN(lookAt)) Track.FollowNow();
+        else LookWhenSized(lookAt);
+        UpdateFollowChip();
+    }
+
+    /// <summary>The track has a width to centre by once it has been laid out.</summary>
+    private void LookWhenSized(double middle, int attempt = 0)
+    {
+        if (Track.Width > 0) { Track.LookAt(middle); return; }
+        if (attempt < 20) Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(30), () => LookWhenSized(middle, attempt + 1));
+    }
+
+    /// <summary>The moment in the middle of the beat view — the middle of the map's window.</summary>
+    private double GridCentreTime()
+    {
+        var beats = _vm.BeatTimes;
+        double step = BeatsView.RowPitch;
+        int columns = BeatsView.Columns;
+        if (beats.Length == 0 || step <= 0 || columns <= 0 || GridHost.Height <= 0) return _vm.Position;
+        return BeatMath.TimeAt(beats, (GridHost.ScrollY / step + GridHost.Height / step / 2) * columns);
+    }
+
+    /// <summary>The beat view looking at a moment. Riding along, the playing row
+    /// is the second from the top, as it always is; let go of, the moment is in
+    /// the middle of the screen. A grid only just shown has no rows yet, so this
+    /// waits for its layout.</summary>
+    private void AlignGrid(double time, bool following, int attempt = 0)
+    {
+        var beats = _vm.BeatTimes;
+        if (beats.Length == 0 || !_gridView) return;
+        double step = BeatsView.RowPitch;
+        int columns = BeatsView.Columns;
+        if (step <= 0 || columns <= 0 || GridHost.Height <= 0)
+        {
+            if (attempt < 20) Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(30), () => AlignGrid(time, following, attempt + 1));
+            return;
+        }
+        double target;
+        if (following)
+        {
+            int index = Array.BinarySearch(beats, time);
+            if (index < 0) index = ~index - 1;
+            target = (Math.Max(0, index) / columns - 1) * step;
+        }
+        else
+        {
+            target = (BeatMath.IndexAt(beats, time) / columns - GridHost.Height / step / 2) * step;
+        }
+        double most = Math.Max(0, GridHost.ContentSize.Height - GridHost.Height);
+        _ = ScrollGridSelfAsync(Math.Clamp(target, 0, most), animated: false);
+    }
+
+    /// <summary>The square the grid outlines: the chosen chord's, or the empty
+    /// square a new chord would go on — and none outside the editor.</summary>
+    private int ChosenSquare => !_vm.Editing ? -1 : _vm.HasSelection ? _vm.SelectedBeat : _vm.ChosenBeat;
 
     // ---- the chord editor ------------------------------------------------
 
@@ -403,7 +483,7 @@ public partial class SongPage : ContentPage
         Grid.SetRowSpan(GridHost, editing ? 1 : 2);
         BeatsView.Editing = editing;
         UpdateFollowChip();
-        if (!editing) BeatsView.Chosen = -1;                     // no chosen square outside the editor
+        BeatsView.Chosen = ChosenSquare;                         // at once, not a frame later: a stale square showed on switching views
         _gridSelfScrollUntil = Environment.TickCount64 + 500;     // the rows move under the new layout, not under a finger
         Body.RowDefinitions[3].Height = editing ? GridLength.Auto : new GridLength(3, GridUnitType.Star);
         PlayerChevron.IsVisible = !editing;
@@ -476,7 +556,7 @@ public partial class SongPage : ContentPage
     /// rows back.</summary>
     private void OnFollowTapped(object? sender, TappedEventArgs e)
     {
-        if (_gridView) { _gridFollowing = true; UpdateFollowChip(); ScrollGridToBeat(); }
+        if (_gridView) { _gridFollowing = true; UpdateFollowChip(); AlignGrid(_vm.Position, following: true); }
         else Track.FollowNow();
     }
 

@@ -63,6 +63,17 @@ public static class BeatMath
         return beats[k] + (index - k) * (beats[k + 1] - beats[k]);
     }
 
+    /// <summary>The fractional beat index of a moment — the inverse of
+    /// <see cref="TimeAt"/>, carried on past either end the same way.</summary>
+    public static double IndexAt(double[] beats, double time)
+    {
+        if (beats.Length < 2) return 0;
+        int k = Array.BinarySearch(beats, time);
+        if (k >= 0) return k;
+        k = Math.Clamp(~k - 1, 0, beats.Length - 2);
+        return k + (time - beats[k]) / Math.Max(1e-6, beats[k + 1] - beats[k]);
+    }
+
     /// <summary>The beat a moment's grid is counted from, and one part of its gap.</summary>
     private static (double Origin, double Unit) Cell(double[] beats, double time, int division)
     {

@@ -490,7 +490,11 @@ public sealed partial class SongViewModel : ObservableObject
     /// <summary>The beat the reader last chose in the grid, chord or not.</summary>
     [ObservableProperty] private int _chosenBeat = -1;
 
-    partial void OnGridViewChanged(bool value) => OnPropertyChanged(nameof(CanAdd));
+    partial void OnGridViewChanged(bool value)
+    {
+        ChosenBeat = HasSelection ? SelectedBeat : -1;           // an empty square chosen in the grid means nothing on the track
+        OnPropertyChanged(nameof(CanAdd));
+    }
     partial void OnChosenBeatChanged(int value) => OnPropertyChanged(nameof(CanAdd));
 
     /// <summary>When the beat view is on, where a new chord goes.</summary>
@@ -522,8 +526,8 @@ public sealed partial class SongViewModel : ObservableObject
     public void ChooseAtBeat(int beat)
     {
         if (!Editing || beat < 0 || beat >= _beats.Length) return;
-        ChosenBeat = beat;
         Selected = ChordOn(beat);
+        ChosenBeat = beat;                                       // after: letting go of a chord clears the square, this sets it
     }
 
     /// <summary>‹ and › on the panel: the chord's beginning a sixteenth at a time
@@ -544,6 +548,11 @@ public sealed partial class SongViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(SelectedChord));
         OnPropertyChanged(nameof(SelectedStart));
+        // The grid's chosen square follows the chord, from whichever view it was
+        // chosen or let go of. Left behind, it kept outlining a square after the
+        // chord was let go of on the track (user report 2026-09-14). Only
+        // choosing an empty square sets one with no chord (ChooseAtBeat).
+        ChosenBeat = HasSelection ? SelectedBeat : -1;
         RememberChoice();
     }
 
