@@ -44,8 +44,14 @@ public sealed partial class SongViewModel : ObservableObject
     private int _repeats;
     /// <summary>What the last probe found the prediction to be off by, still to
     /// be made good — spread over the frames until the next probe, as a change
-    /// of pace and never a step back (see Frame).</summary>
+    /// of pace and never a step back (see Frame). The prediction plus this is
+    /// the truest clock there is, and it is what the ticks are placed by: the
+    /// smoothed clock is for the eye, and a tick placed by it was early or late
+    /// by exactly what was still to be made good (user report 2026-09-15).</summary>
     private double _drift;
+    /// <summary>A typical round trip to the page, for telling a slow answer
+    /// (whose reading could be anywhere in the trip) from a usual one.</summary>
+    private double _tripTypical = -1;
     /// <summary>Ticks placed on the device clock and not yet due: the beat and
     /// the Stopwatch stamp it sounds at. A corrected position places them again.</summary>
     private readonly List<(int Beat, long Due)> _inAir = new();
@@ -357,7 +363,22 @@ public sealed partial class SongViewModel : ObservableObject
                 _drift = 0;
                 if (playing && Math.Abs(_predicted - before) > 0.015) ResyncTicks();
             }
-            else _drift = heard - _predicted;
+            else
+            {
+                // A usual trip carries the reading well; a trip far longer than
+                // usual could have read the clock anywhere inside it, so it is
+                // let by and the clock keeps its last good estimate.
+                _tripTypical = _tripTypical < 0 ? trip : Math.Min(_tripTypical * 1.02 + 0.001, trip * 0.2 + _tripTypical * 0.8);
+                bool slow = trip > 2.5 * _tripTypical + 0.03;
+                if (!slow)
+                {
+                    double was = _drift;
+                    _drift = heard - _predicted;
+                    // The ticks already in the air were placed by the old clock:
+                    // a change worth hearing places them again.
+                    if (playing && Math.Abs(_drift - was) > 0.015) ResyncTicks();
+                }
+            }
         }
         catch (Exception ex) { FileLog.Error("song probe", ex); }
         finally { _probing = false; }
@@ -387,12 +408,13 @@ public sealed partial class SongViewModel : ObservableObject
             // player's own route latency is not the lead's job — the horizon
             // grows by it, and the player takes it off itself.
             double lead = ClickOffsetMs / 1000.0;
-            double horizon = pos + (ClickLookahead + Math.Max(0, lead) + _click.Latency) * Speed;
+            double clock = pos + _drift;                         // the truest time, not the smoothed one
+            double horizon = clock + (ClickLookahead + Math.Max(0, lead) + _click.Latency) * Speed;
             long now = System.Diagnostics.Stopwatch.GetTimestamp();
             _inAir.RemoveAll(t => t.Due <= now);
             while (_nextBeat < _beats.Length && _beats[_nextBeat] <= horizon)
             {
-                double delay = (_beats[_nextBeat] - pos) / Math.Max(0.1, Speed) - lead;
+                double delay = (_beats[_nextBeat] - clock) / Math.Max(0.1, Speed) - lead;
                 // A beat already behind us is skipped, not played late: a late
                 // tick is what the ear hears as wrong (this allowed −250 ms once,
                 // and a forward correction played a pile of them).
@@ -416,11 +438,12 @@ public sealed partial class SongViewModel : ObservableObject
         if (_transport?.Ticks != null) return;
         long now = System.Diagnostics.Stopwatch.GetTimestamp();
         _inAir.RemoveAll(t => t.Due <= now);
-        if (_inAir.Count == 0) { _nextBeat = Math.Max(_nextBeat, NextBeatAfter(_predicted)); return; }
+        double clock = _predicted + _drift;
+        if (_inAir.Count == 0) { _nextBeat = Math.Max(_nextBeat, NextBeatAfter(clock)); return; }
         _click.Cancel();
         int first = _inAir.Min(t => t.Beat);
         _inAir.Clear();
-        _nextBeat = Math.Max(first, NextBeatAfter(_predicted));
+        _nextBeat = Math.Max(first, NextBeatAfter(clock));
     }
 
     partial void OnPositionChanged(double value)

@@ -53,6 +53,10 @@ public sealed class IosClickPlayer : IClickPlayer
     private readonly System.Collections.Concurrent.BlockingCollection<Action> _work = new();
     private double _outputLatency, _ioBuffer;
     private int _tickLogs = 3;
+    /// <summary>Render blocks that took over half their own duration, and the
+    /// longest: written down off the audio thread, every so often.</summary>
+    private int _slowRenders;
+    private double _slowestRender;
 
     public IosClickPlayer()
     {
@@ -84,6 +88,7 @@ public sealed class IosClickPlayer : IClickPlayer
     private unsafe int Render(ref bool isSilence, ref AudioTimeStamp timestamp, uint frameCount, AudioBuffers outputData)
     {
         int n = (int)frameCount;
+        long began = System.Diagnostics.Stopwatch.GetTimestamp();
         var buffer = outputData[0];
         var dst = new Span<float>((void*)buffer.Data, n);
         dst.Clear();
@@ -110,6 +115,17 @@ public sealed class IosClickPlayer : IClickPlayer
             _rendered = last;
         }
         isSilence = silent;
+        double took = System.Diagnostics.Stopwatch.GetElapsedTime(began).TotalSeconds;
+        if (took > 0.5 * n / SampleRate)
+        {
+            _slowestRender = Math.Max(_slowestRender, took);
+            int count = ++_slowRenders;
+            if (count is 1 or 10 or 100 or 1000)
+            {
+                double slowest = _slowestRender;
+                _work.Add(() => FileLog.Info($"click render: {count} blocks over half their time, slowest {slowest * 1000:0.0} ms for {n} frames"));
+            }
+        }
         return 0;
     }
 

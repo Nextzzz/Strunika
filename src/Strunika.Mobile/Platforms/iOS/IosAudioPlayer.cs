@@ -49,7 +49,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
     private int _generation;           // bumped by every seek/stop: completions of the blocks before it are ignored
     private bool _playing, _ended;
     private double _rate = 1.0, _volume = 1.0, _heardLag;
-    private int _lagLogs;
+    private int _lagLogs, _starved;
     private double _pausedInto;        // real seconds into the current block when paused, so the position holds still
     private readonly Action _onEngineStopped;
     /// <summary>Blocks the node has consumed, as (generation, slot, frames), handed
@@ -171,6 +171,11 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
             _consumed += frames;
             _consumedAt = System.Diagnostics.Stopwatch.GetTimestamp();
             _queued--;
+            // The node had nothing left to play while this block was refilled:
+            // a gap in the sound. Counted, and said once in a while, so a song
+            // that grates can be told from one whose blocks came in time.
+            if (_queued == 0 && _cursor < _length && ++_starved is 1 or 10 or 100 or 1000)
+                FileLog.Info($"song player: ran dry {_starved} times at {_consumed / (double)_sampleRate:0.0} s");
             if (!Schedule(slot, generation) && _queued == 0)
             {
                 _ended = true;                                   // the last block is in the output

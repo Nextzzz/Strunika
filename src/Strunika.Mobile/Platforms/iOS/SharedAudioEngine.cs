@@ -58,6 +58,16 @@ internal static class SharedAudioEngine
             if (_startsLogged++ < 3) FileLog.Error("audio engine: " + error?.LocalizedDescription);
             return false;
         }
+        // What the engine runs at, on which route: the one line that tells a
+        // Bluetooth route's rate and buffer apart from the speaker's, for the
+        // sound that turned to grating on AirPods after a while (user report 2026-09-15).
+        try
+        {
+            var session = AVAudioSession.SharedInstance();
+            var output = Engine.OutputNode.GetBusOutputFormat(0);
+            FileLog.Info($"audio engine: started at {output.SampleRate:0} Hz ({output.ChannelCount} ch), session {session.SampleRate:0} Hz, io {session.IOBufferDuration * 1000:0} ms, out {session.OutputLatency * 1000:0} ms, route {session.CurrentRoute.Outputs.FirstOrDefault()?.PortType}");
+        }
+        catch (Exception ex) { FileLog.Error("audio engine: describe", ex); }
         return true;
     }
 
