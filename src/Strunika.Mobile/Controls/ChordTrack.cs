@@ -219,6 +219,11 @@ public sealed class ChordTrack : Grid
     /// canvas would have to be redrawn on every frame it grows, which is the
     /// one thing this control does not do.</summary>
     private readonly BoxView _loopBand, _cursor, _hole;
+    /// <summary>The chord the playhead has just reached, ringed for a moment (see PlaceRing).</summary>
+    private readonly Border _ring;
+    private int _ringIndex = -1, _ringTurn;
+    /// <summary>How long of the song a reached chord keeps its ring.</summary>
+    private const double RingSeconds = 0.5;
     private readonly Border _cursorMark;
     private readonly BoxView _lineA, _lineB;
     private readonly Border _gripA, _gripB;
@@ -261,6 +266,14 @@ public sealed class ChordTrack : Grid
             HeightRequest = PillHeight + 2, Margin = new Thickness(0, PillTop - 1, 0, 0),
         };
         Add(_hole);
+        _ring = new Border
+        {
+            StrokeThickness = 2.5, BackgroundColor = Colors.Transparent, Padding = 0, IsVisible = false, InputTransparent = true,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(13) },
+            HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start,
+            HeightRequest = PillHeight, Margin = new Thickness(0, PillTop, 0, 0),
+        };
+        Add(_ring);
         // The editor's cursor: the middle of the window, where an added chord
         // lands. It stands still while the track moves under it.
         _cursor = new BoxView { WidthRequest = 2, InputTransparent = true, IsVisible = false, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start };
@@ -359,6 +372,7 @@ public sealed class ChordTrack : Grid
         _cursor.Color = TextColor.WithAlpha(0.35f);
         _cursorMark.BackgroundColor = Accent;
         _hole.Color = BackdropColor;
+        _ring.Stroke = Accent;
         if (_cursorMark.Content is IconView mark) mark.Color = OnAccent;
         _lineA.Color = _lineB.Color = Accent;
         _gripA.BackgroundColor = _gripB.BackgroundColor = Accent;
@@ -516,8 +530,10 @@ public sealed class ChordTrack : Grid
         {
             if (_current.IsVisible) _current.IsVisible = false;   // the blocks say it better
             if (_pinned.IsVisible) { _pinned.IsVisible = false; _pinnedShown = false; }
+            PlaceRing(segments, px, pos, pps);
             return;
         }
+        if (_ringIndex >= 0) { _ringIndex = -1; HideRing(); }
         if (next != _nextIndex) { _nextIndex = next; _pinnedShown = false; _pinned.Invalidate(); }
         if (next >= 0 && segments != null)
         {
@@ -536,6 +552,74 @@ public sealed class ChordTrack : Grid
             _pinnedShown = false;
         }
         if (_pinned.IsVisible != _pinnedShown) _pinned.IsVisible = _pinnedShown;
+    }
+
+    /// <summary>
+    /// In the editor, the chord the playhead reaches wears a ring in the accent:
+    /// from the moment the playhead crosses the middle of its badge, for half a
+    /// second of the song or until the next badge's middle is reached, whichever
+    /// comes first — and never on the chosen chord, which is marked already (user
+    /// request 2026-09-14). The ring is a box moved by its transform; it is only
+    /// resized when another chord takes it.
+    /// </summary>
+    private void PlaceRing(IReadOnlyList<ChordSegmentDto>? segments, double px, double pos, double pps)
+    {
+        int index = RingAt(segments, pps);
+        if (index != _ringIndex)
+        {
+            _ringIndex = index;
+            if (index < 0) { HideRing(); return; }
+            ShowRing(PillWidth(segments![index].Label));
+        }
+        if (index < 0 || segments == null) return;
+        var segment = segments[index];
+        double width = PillWidth(segment.Label);
+        double shift = _pillShift.TryGetValue(index, out var nudge) ? nudge : -width / 2;
+        NativeTransform.TranslateX(_ring, px + (segment.Start - pos) * pps + shift);
+    }
+
+    /// <summary>The chord whose ring is due at the playhead, or −1.</summary>
+    private int RingAt(IReadOnlyList<ChordSegmentDto>? segments, double pps)
+    {
+        if (segments == null || segments.Count == 0) return -1;
+        double position = Position;
+        int last = -1;
+        double lastMiddle = 0, nextMiddle = double.PositiveInfinity;
+        // The last badge whose middle the playhead has passed — this chord's, or
+        // the one before when the no-overlap rule pushed this one along — and the
+        // next badge's middle.
+        for (int i = Math.Max(0, IndexAt(position) - 1); i < segments.Count; i++)
+        {
+            if (segments[i].Label == "—") continue;
+            double width = PillWidth(segments[i].Label);
+            double shift = _pillShift.TryGetValue(i, out var nudge) ? nudge : -width / 2;
+            double middle = segments[i].Start + (shift + width / 2) / pps;
+            if (middle <= position) { last = i; lastMiddle = middle; }
+            else { nextMiddle = middle; break; }
+        }
+        if (last < 0 || last == Selected) return -1;
+        return position < lastMiddle + RingSeconds && position < nextMiddle ? last : -1;
+    }
+
+    private double PillWidth(string label) => _labels.TryGetValue(label, out var measured) ? measured.Width : 46;
+
+    private void ShowRing(double width)
+    {
+        ++_ringTurn;
+        _ring.CancelAnimations();
+        _ring.Opacity = 1;
+        if (Math.Abs(_ring.WidthRequest - width) > 0.5) _ring.WidthRequest = width;
+        _ring.IsVisible = true;
+    }
+
+    private async void HideRing()
+    {
+        if (!_ring.IsVisible) return;
+        int turn = ++_ringTurn;
+        if (!Services.Motion.Reduced) await _ring.FadeToAsync(0, 140, Easing.CubicOut);
+        if (turn != _ringTurn) return;                           // another chord took the ring meanwhile
+        _ring.IsVisible = false;
+        _ring.Opacity = 1;
     }
 
     private void Invalidate(int buffer)
@@ -846,7 +930,18 @@ public sealed class ChordTrack : Grid
         }
         // To the nearest sixteenth, and without a buzz (user rule 2026-09-14).
         double moved = BeatMath.Snap(Beats ?? Array.Empty<double>(), _clipFrom + _clipDx / PixelsPerSecond);
-        _clipStart = Math.Clamp(moved, 0, Math.Max(0, _clipTo - MinClip));
+        // As far as the song will take it, so what is dragged is where it lands.
+        // Left, down to just after the chord before begins. Right, past its own
+        // end: the chord takes its length along and the next one gives way, up to
+        // just before that one ends. The drag used to stop at its own end, so a
+        // chord added just before the next would not move right at all (user
+        // report 2026-09-14).
+        var segments = Segments;
+        double low = segments != null && clip.Index > 0 ? segments[clip.Index - 1].Start + MinClip : 0;
+        double high = segments != null && clip.Index + 1 < segments.Count
+            ? segments[clip.Index + 1].End - 2 * MinClip
+            : Math.Max(0, Duration) - MinClip;
+        _clipStart = Math.Clamp(moved, Math.Min(low, _clipFrom), Math.Max(_clipFrom, high));
         PlaceClip(clip, _clipStart);
     }
 
@@ -897,7 +992,10 @@ public sealed class ChordTrack : Grid
         // until the song's chords come back with the move in them: putting
         // either down first showed the old badge again for a frame.
         var lifted = _lifted;
-        SegmentMoved?.Invoke(this, (clip.Index, _clipStart, _clipTo));
+        // Past its own end it keeps its length and pushes the next chord along;
+        // short of it, it simply starts later and ends where it did.
+        double end = _clipStart >= _clipTo - MinClip ? _clipStart + (_clipTo - _clipFrom) : _clipTo;
+        SegmentMoved?.Invoke(this, (clip.Index, _clipStart, end));
         Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_lifted == lifted) Land(); });   // a move the song turned down
     }
 
