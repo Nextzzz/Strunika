@@ -477,6 +477,7 @@ public partial class SongPage : ContentPage
     /// simply shows fewer squares. The YouTube player is folded away and stays
     /// folded: the song is being read, not watched (user decision 2026-09-09).
     /// </summary>
+    private bool _editorShown, _playerExpandedBeforeEditor;
     private Thickness _trackMargin;
     private double _gridTop, _gridBottom, _gridTopApplied = double.NaN;
 
@@ -532,7 +533,22 @@ public partial class SongPage : ContentPage
             GridHost.SetBinding(View.MarginProperty, new Theme.ContentInsetExtension { Top = gridTop, Bottom = _gridBottom }.ProvideValue(null!));
         }
         PlayerChevron.IsVisible = !editing;
-        if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
+        // The editor folds the player away; leaving it brings the player back the
+        // way it was before (user request 2026-09-14). Only the way in and the way
+        // out count: switching views inside the editor calls this too.
+        if (editing != _editorShown)
+        {
+            _editorShown = editing;
+            if (editing)
+            {
+                _playerExpandedBeforeEditor = _vm.PlayerExpanded;
+                if (_vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
+            }
+            else if (_playerExpandedBeforeEditor && !_vm.PlayerExpanded)
+            {
+                _ = SetPlayerExpandedAsync(true, animate: true);
+            }
+        }
         FitChordName();
 #if IOS
         WatchDeviceVolume();
