@@ -54,6 +54,18 @@ public sealed class BeatGrid : Grid
         BindableProperty.Create(nameof(LoopStart), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
     public static readonly BindableProperty LoopEndProperty =
         BindableProperty.Create(nameof(LoopEnd), typeof(double), typeof(BeatGrid), -1.0, propertyChanged: Redraw);
+    /// <summary>A chord square the playhead has passed, while the editor is on.</summary>
+    public static readonly BindableProperty PlayedCellColorProperty =
+        BindableProperty.Create(nameof(PlayedCellColor), typeof(Color), typeof(BeatGrid), Colors.DimGray, propertyChanged: Redraw);
+    public static readonly BindableProperty PlayedTextColorProperty =
+        BindableProperty.Create(nameof(PlayedTextColor), typeof(Color), typeof(BeatGrid), Colors.Gray, propertyChanged: Redraw);
+    /// <summary>The ground under the grid: the ink of a chord lifted off its square.</summary>
+    public static readonly BindableProperty BackdropColorProperty =
+        BindableProperty.Create(nameof(BackdropColor), typeof(Color), typeof(BeatGrid), Colors.Black, propertyChanged: Redraw);
+
+    public Color PlayedCellColor { get => (Color)GetValue(PlayedCellColorProperty); set => SetValue(PlayedCellColorProperty, value); }
+    public Color PlayedTextColor { get => (Color)GetValue(PlayedTextColorProperty); set => SetValue(PlayedTextColorProperty, value); }
+    public Color BackdropColor { get => (Color)GetValue(BackdropColorProperty); set => SetValue(BackdropColorProperty, value); }
 
     /// <summary>Beats in a bar (the time signature's top number): a row holds
     /// whole bars, so this decides where the rows break.</summary>
@@ -113,7 +125,14 @@ public sealed class BeatGrid : Grid
     public bool Editing
     {
         get => _editing;
-        set { if (_editing == value) return; _editing = value; PlaceThumb(); }
+        set
+        {
+            if (_editing == value) return;
+            _editing = value;
+            if (!value) PutDown();
+            PlaceThumb();
+            Redraw(this, null, null);                            // the played chords take their colour, or give it back
+        }
     }
 
     private bool _editing;
@@ -142,6 +161,8 @@ public sealed class BeatGrid : Grid
         grid._labels = null;
         grid._holds = null;
         grid._active = -1;
+        grid._liftedBeat = -1;                                   // the chords came back: whatever was lifted is down
+        grid._thumbFace.Invalidate();
         grid._bandRows = 0;                                      // the bands are re-cut on the next layout
         grid.InvalidateMeasure();
         grid.Layout(grid.Width);
@@ -161,6 +182,7 @@ public sealed class BeatGrid : Grid
     {
         foreach (var band in _bands) band.Invalidate();
         foreach (var cursor in _cursors) cursor.Invalidate();
+        _thumbFace.Invalidate();
     }
 
     private readonly VerticalStackLayout _stack;
@@ -177,7 +199,10 @@ public sealed class BeatGrid : Grid
     /// never says where it began — so the one thing that can be taken hold of
     /// is a view of its own, sitting over the square (user request 2026-09-10).</summary>
     private readonly Border _thumb, _drop;
-    private readonly VerticalStackLayout _grip;
+    private readonly GraphicsView _thumbFace;
+    /// <summary>The square whose chord is off it — on the finger, or waiting
+    /// where it was let go for the song's chords to come back — or −1.</summary>
+    private int _liftedBeat = -1;
     private double _thumbX, _thumbY;
     private int _dragFrom = -1, _dragTo = -1;
     private readonly int[] _cursorBeat = { -1, -1 }, _cursorDrawn = { -1, -1 };
@@ -216,26 +241,22 @@ public sealed class BeatGrid : Grid
             IsVisible = false, InputTransparent = true,
             HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start,
         };
-        _grip = new VerticalStackLayout
-        {
-            Spacing = 2, InputTransparent = true,
-            HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.End,
-            Margin = new Thickness(0, 0, 0, 5),
-            Children = { Bar(), Bar() },
-        };
+        _thumbFace = new GraphicsView { Drawable = new ThumbDrawable(this), InputTransparent = true, BackgroundColor = Colors.Transparent };
         _thumb = new Border
         {
             StrokeThickness = 0, BackgroundColor = Colors.Transparent, Padding = 0,
-            IsVisible = false, Content = _grip,
+            IsVisible = false, Content = _thumbFace,
             HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start,
         };
         Children.Add(_drop);
         Children.Add(_thumb);
         PointerDrag.Attach(_thumb, new PointerDrag.Callbacks
         {
-            Started = _ => BeginDrag(),
+            // Nothing happens until the finger actually moves: a press is not a drag.
+            Started = _ => { if (_liftedBeat < 0) _dragFrom = _dragTo = Chosen; },
             Dragged = DragTo,
             Ended = EndDrag,
+            Tapped = _ => EndDrag(),
         });
 
         var tap = new TapGestureRecognizer();
@@ -244,18 +265,21 @@ public sealed class BeatGrid : Grid
         SizeChanged += (_, _) => Layout(Width);
     }
 
-    /// <summary>One bar of the handle: two of them say "hold me here".</summary>
-    private static BoxView Bar() => new() { WidthRequest = 16, HeightRequest = 2.5, CornerRadius = 1.5 };
-
     /// <summary>The handle sits over the square the chord starts on, and is
-    /// there only while that square holds a chord of its own.</summary>
+    /// there only while that square holds a chord of its own — or while that
+    /// chord is lifted, when the drag places it.</summary>
     private void PlaceThumb()
     {
         _labels ??= Beats.Length == 0 ? null : Labels();
+        bool lifted = _liftedBeat >= 0;
         int chosen = Chosen;
-        bool can = Editing && _cell > 0 && chosen >= 0 && _labels != null
-                   && chosen < _labels.Length && _labels[chosen] != null;
-        if (_thumb.IsVisible != can) _thumb.IsVisible = can;
+        bool can = Editing && _cell > 0 && _labels != null
+                   && (lifted || (chosen >= 0 && chosen < _labels.Length && _labels[chosen] != null));
+        if (_thumb.IsVisible != can)
+        {
+            _thumb.IsVisible = can;
+            if (can) _thumbFace.Invalidate();
+        }
         if (!can)
         {
             if (_drop.IsVisible) _drop.IsVisible = false;
@@ -266,8 +290,8 @@ public sealed class BeatGrid : Grid
             _thumb.WidthRequest = _thumb.HeightRequest = _cell;
             _drop.WidthRequest = _drop.HeightRequest = _cell;
         }
-        foreach (var bar in _grip.Children) if (bar is BoxView box) box.Color = TextColor;
         _drop.Stroke = Accent;
+        if (lifted) return;                                      // on the finger, or waiting where it was let go
         double step = _cell + _gap;
         _thumbX = chosen % Columns * step;
         _thumbY = chosen / Columns * step;
@@ -275,18 +299,10 @@ public sealed class BeatGrid : Grid
         NativeTransform.TranslateY(_thumb, _thumbY);
     }
 
-    private void BeginDrag()
-    {
-        _dragFrom = _dragTo = Chosen;
-        if (_dragFrom < 0) return;
-        _drop.IsVisible = true;
-        NativeTransform.TranslateX(_drop, _thumbX);
-        NativeTransform.TranslateY(_drop, _thumbY);
-    }
-
     private void DragTo(double dx, double dy)
     {
         if (_dragFrom < 0) return;
+        if (_liftedBeat < 0) Lift();
         NativeTransform.TranslateX(_thumb, _thumbX + dx);
         NativeTransform.TranslateY(_thumb, _thumbY + dy);
         int target = BeatAt(_thumbX + dx + _cell / 2, _thumbY + dy + _cell / 2);
@@ -297,13 +313,78 @@ public sealed class BeatGrid : Grid
         NativeTransform.TranslateY(_drop, target / Columns * step);
     }
 
+    /// <summary>The chord comes off its square: a buzz, the square left empty,
+    /// and the chord in its lifted colours on the finger (user request 2026-09-14).</summary>
+    private void Lift()
+    {
+        _liftedBeat = _dragFrom;
+        Services.Haptics.Default.Success();
+        _drop.IsVisible = true;
+        NativeTransform.TranslateX(_drop, _thumbX);
+        NativeTransform.TranslateY(_drop, _thumbY);
+        _thumbFace.Invalidate();
+        RepaintSquare(_liftedBeat);
+    }
+
     private void EndDrag()
     {
         int from = _dragFrom, to = _dragTo;
         _dragFrom = _dragTo = -1;
         _drop.IsVisible = false;
-        PlaceThumb();                                            // back to its square until the song says otherwise
-        if (from >= 0 && to >= 0 && to != from) ChordDropped?.Invoke(this, (from, to));
+        if (_liftedBeat < 0) return;                             // a press that never became a drag
+        if (from >= 0 && to >= 0 && to != from)
+        {
+            // It waits, lifted, on the square it was let go on until the song's
+            // chords come back with the move in them (Rebuild puts it down):
+            // putting it down first showed it on its old square for a frame.
+            double step = _cell + _gap;
+            NativeTransform.TranslateX(_thumb, to % Columns * step);
+            NativeTransform.TranslateY(_thumb, to / Columns * step);
+            int lifted = _liftedBeat;
+            ChordDropped?.Invoke(this, (from, to));
+            Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_liftedBeat == lifted) PutDown(); });   // a move the song turned down
+            return;
+        }
+        PutDown();
+    }
+
+    /// <summary>The chord back on its square: its name drawn there again, the handle over it.</summary>
+    private void PutDown()
+    {
+        int beat = _liftedBeat;
+        if (beat < 0) return;
+        _liftedBeat = -1;
+        RepaintSquare(beat);
+        _thumbFace.Invalidate();
+        PlaceThumb();
+    }
+
+    /// <summary>The one band a square is painted on, and the cursor if it stands there.</summary>
+    private void RepaintSquare(int beat)
+    {
+        if (beat < 0 || Columns <= 0) return;
+        int band = _bandRows > 0 ? beat / Columns / _bandRows : 0;
+        if (band < _bands.Count) _bands[band].Invalidate();
+        if (beat == _active) foreach (var cursor in _cursors) cursor.Invalidate();
+    }
+
+    /// <summary>The chords the playhead has just passed, or gone back over,
+    /// change colour: only the bands holding them are repainted, and only when
+    /// a chord was among them.</summary>
+    private void RepaintPlayed(int from, int to)
+    {
+        if (_labels == null || _bands.Count == 0 || _bandRows <= 0 || Columns <= 0) return;
+        int low = Math.Max(0, Math.Min(from, to)), high = Math.Min(_labels.Length - 1, Math.Max(from, to));
+        int last = -1;
+        for (int i = low; i <= high; i++)
+        {
+            if (_labels[i] == null) continue;
+            int band = i / Columns / _bandRows;
+            if (band == last || band >= _bands.Count) continue;
+            last = band;
+            if (_onScreen) _bands[band].Invalidate();
+            else _stale = true;
+        }
     }
 
     /// <summary>The square at a point on the grid, or −1 past the last beat.</summary>
@@ -328,7 +409,9 @@ public sealed class BeatGrid : Grid
             int index = Locate(beats, value);
             if (index != _active)
             {
+                int was = _active;
                 _active = index;
+                if (Editing) RepaintPlayed(was, index);
                 PlaceCursor(force: false);
             }
             ShowWhenDrawn();
@@ -512,9 +595,7 @@ public sealed class BeatGrid : Grid
             foreach (var segment in segments)
             {
                 if (segment.Label == "—") continue;
-                int at = Locate(beats, segment.Start + 1e-6);
-                if (at + 1 < beats.Length && beats[at + 1] - segment.Start < segment.Start - beats[Math.Max(at, 0)]) at++;
-                if (at < 0) at = 0;
+                int at = BeatMath.Nearest(beats, segment.Start);   // the editor chooses by the same rule
                 labels[at] ??= segment.Label;
                 for (int i = at + 1; i < beats.Length && beats[i] < segment.End - 1e-6; i++) holds[i] ??= segment.Label;
             }
@@ -527,9 +608,9 @@ public sealed class BeatGrid : Grid
     /// and — for the beat being played — the chord still being held, in the
     /// corner. Every canvas calls this, which is what keeps them identical.
     /// </summary>
-    private void DrawCell(ICanvas canvas, float x, float y, string? starts, string? holding, bool active, bool loop = false, bool chosen = false)
+    private void DrawCell(ICanvas canvas, float x, float y, string? starts, string? holding, bool active, bool loop = false, bool chosen = false, bool played = false)
     {
-        canvas.FillColor = active ? Accent : starts != null ? ChordCellColor : CellColor.WithAlpha(0.45f);
+        canvas.FillColor = active ? Accent : starts != null ? (played ? PlayedCellColor : ChordCellColor) : CellColor.WithAlpha(0.45f);
         canvas.FillRoundedRectangle(x, y, _cell, _cell, Corner);
         if (loop && !active)
         {
@@ -546,7 +627,7 @@ public sealed class BeatGrid : Grid
         canvas.StrokeColor = chosen ? TextColor : active ? Accent : Accent.WithAlpha(outline);
         canvas.DrawRoundedRectangle(x + Stroke / 2, y + Stroke / 2, _cell - Stroke, _cell - Stroke, Corner);
 
-        var ink = active ? OnAccent : TextColor;
+        var ink = active ? OnAccent : played ? PlayedTextColor : TextColor;
         if (starts != null)
         {
             float size = Fit(canvas, starts, Math.Max(8f, _cell * CellFontRatio), _cell - 6f);
@@ -592,10 +673,53 @@ public sealed class BeatGrid : Grid
                 for (int i = first; i < beats.Length && i < first + rows * grid.Columns; i++)
                 {
                     int local = i - first;
+                    string? starts = i == grid._liftedBeat ? null : grid._labels[i];
                     grid.DrawCell(canvas, local % grid.Columns * step, local / grid.Columns * step,
-                                  grid._labels[i], null, active: false, loop: grid.InLoop(beats[i]), chosen: i == grid.Chosen);
+                                  starts, null, active: false, loop: grid.InLoop(beats[i]), chosen: i == grid.Chosen,
+                                  played: grid.Editing && starts != null && i < grid._active);
                 }
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+            }
+            catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
+        }
+    }
+
+    /// <summary>The handle on the chord being worked on — dotted, the sign for
+    /// "this moves" (bars read as "this stretches") — and, while the chord is on
+    /// the finger, the chord itself in its lifted colours (user request 2026-09-14).</summary>
+    private sealed class ThumbDrawable(BeatGrid grid) : IDrawable
+    {
+        public void Draw(ICanvas canvas, RectF rect)
+        {
+            if (grid.Handler == null || rect.Width <= 0) return;
+            try
+            {
+                float cell = rect.Width;
+                int beat = grid._liftedBeat;
+                var labels = grid._labels;
+                var dots = grid.TextColor;
+                if (beat >= 0 && labels != null && beat < labels.Length && labels[beat] is { } name)
+                {
+                    canvas.FillColor = grid.TextColor;
+                    canvas.FillRoundedRectangle(0, 0, cell, cell, Corner);
+                    canvas.StrokeColor = grid.Accent;
+                    canvas.StrokeSize = Stroke * 2;
+                    canvas.DrawRoundedRectangle(Stroke, Stroke, cell - 2 * Stroke, cell - 2 * Stroke, Corner);
+                    float size = Fit(canvas, name, Math.Max(8f, cell * CellFontRatio), cell - 6f);
+                    canvas.Font = CanvasFont;
+                    canvas.FontSize = size;
+                    canvas.FontColor = grid.BackdropColor;
+                    canvas.DrawString(name, 0, 0, cell, cell, HorizontalAlignment.Center, VerticalAlignment.Center);
+                    canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+                    dots = grid.BackdropColor;
+                }
+                // Two dotted rows along the bottom of the square, clear of the name.
+                canvas.FillColor = dots.WithAlpha(0.85f);
+                float radius = Math.Max(1.3f, cell * 0.022f), gap = radius * 3.4f;
+                float middle = cell / 2, bottom = cell - Math.Max(6f, cell * 0.1f);
+                for (int row = 0; row < 2; row++)
+                    for (int k = -1; k <= 1; k++)
+                        canvas.FillCircle(middle + k * gap, bottom - row * gap, radius);
             }
             catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
         }
@@ -614,7 +738,7 @@ public sealed class BeatGrid : Grid
                 int beat = grid._cursorBeat[slot];
                 var labels = grid._labels;
                 if (labels == null || beat < 0 || beat >= labels.Length) return;
-                string? starts = labels[beat];
+                string? starts = beat == grid._liftedBeat ? null : labels[beat];
                 string? holding = starts == null && grid._holds != null && beat < grid._holds.Length
                     ? grid._holds[beat] : null;
                 grid.DrawCell(canvas, 0, 0, starts, holding, active: true, loop: false, chosen: beat == grid.Chosen);

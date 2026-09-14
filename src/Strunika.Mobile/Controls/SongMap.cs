@@ -39,7 +39,10 @@ public sealed class SongMap : Grid
     public event EventHandler<double>? ViewRequested;
 
     private readonly GraphicsView _rail;
-    private readonly Border _window;
+    /// <summary>The window's ground (one point wide, stretched by its transform)
+    /// and its two edges: plain boxes, since a stretched border stretches its
+    /// stroke and corners along with it.</summary>
+    private readonly BoxView _window, _edgeLeft, _edgeRight;
     private readonly BoxView _head, _pick;
     private readonly BoxView _gripLeft, _gripRight;
     private double _position, _viewStart, _viewSpan, _selection = -1;
@@ -48,12 +51,9 @@ public sealed class SongMap : Grid
     {
         HeightRequest = Theme.Metrics.Instance.Size(48, min: 44);   // a strip a finger can work with
         _rail = new GraphicsView { Drawable = new RailDrawable(this), InputTransparent = true };
-        _window = new Border
-        {
-            StrokeThickness = 1.5, Padding = 0, InputTransparent = true,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 6 },
-            HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, WidthRequest = 1,
-        };
+        _window = new BoxView { WidthRequest = 1, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true };
+        _edgeLeft = Edge();
+        _edgeRight = Edge();
         _head = new BoxView { WidthRequest = 2, CornerRadius = 1, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true };
         // Where the chord being worked on sits in the song — the one thing the
         // reader needs to find again after letting the track go.
@@ -63,6 +63,8 @@ public sealed class SongMap : Grid
         _gripRight = Grip();
         Add(_rail);
         Add(_window);
+        Add(_edgeLeft);
+        Add(_edgeRight);
         Add(_gripLeft);
         Add(_gripRight);
         Add(_pick);
@@ -71,13 +73,22 @@ public sealed class SongMap : Grid
         Add(touch);
         PointerDrag.Attach(touch, new PointerDrag.Callbacks
         {
-            Started = x => _grabbed = x,
+            // The window goes to the finger at once, then follows it — wherever on
+            // the strip the drag began (user request 2026-09-14).
+            Started = x => { _grabbed = x; Ask(x); },
             Moved = dx => Ask(_grabbed + dx),
             Tapped = point => Ask(point.X),
         });
         Recolour();
         SizeChanged += (_, _) => { _rail.Invalidate(); Place(); };
     }
+
+    private const double EdgeWidth = 1.5;
+
+    private static BoxView Edge() => new()
+    {
+        WidthRequest = EdgeWidth, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Fill, InputTransparent = true,
+    };
 
     private static BoxView Grip() => new()
     {
@@ -116,13 +127,20 @@ public sealed class SongMap : Grid
         double w = Width, duration = Duration;
         if (w <= 0 || duration <= 0) return;
         double scale = w / duration;
-        double windowWidth = Math.Max(16, Math.Min(w, _viewSpan * scale));
-        double left = Math.Clamp(_viewStart * scale, 0, Math.Max(0, w - windowWidth));
+        // Exactly the slice the track shows, cut to the song: no least width and
+        // never pushed back inside. Either made the window wider than the screen
+        // it stands for, or shifted it off the playhead drawn in it (user report
+        // 2026-09-14). The grips sit just outside, so they never widen it.
+        double left = Math.Clamp(_viewStart * scale, 0, w);
+        double right = Math.Clamp((_viewStart + _viewSpan) * scale, 0, w);
+        double width = Math.Max(0, right - left);
         NativeTransform.TranslateX(_window, left);
-        NativeTransform.ScaleX(_window, windowWidth);            // the box is one point wide
-        NativeTransform.TranslateX(_gripLeft, left + 3);
-        NativeTransform.TranslateX(_gripRight, left + windowWidth - 6);
-        NativeTransform.TranslateX(_head, Math.Clamp(_position * scale, 0, w - 2));
+        NativeTransform.ScaleX(_window, Math.Max(0.001, width));  // the box is one point wide
+        NativeTransform.TranslateX(_edgeLeft, left);
+        NativeTransform.TranslateX(_edgeRight, Math.Max(left, right - EdgeWidth));
+        NativeTransform.TranslateX(_gripLeft, Math.Max(0, left - 6));
+        NativeTransform.TranslateX(_gripRight, Math.Min(w - 3, right + 3));
+        NativeTransform.TranslateX(_head, Math.Clamp(_position * scale - 1, 0, w - 2));
         bool marked = _selection >= 0;
         if (_pick.IsVisible != marked) _pick.IsVisible = marked;
         if (marked) NativeTransform.TranslateX(_pick, Math.Clamp(_selection * scale, 0, w - 4));
@@ -130,8 +148,8 @@ public sealed class SongMap : Grid
 
     private void Recolour()
     {
-        _window.BackgroundColor = Accent.WithAlpha(0.16f);
-        _window.Stroke = Accent.WithAlpha(0.7f);
+        _window.Color = Accent.WithAlpha(0.16f);
+        _edgeLeft.Color = _edgeRight.Color = Accent.WithAlpha(0.8f);
         _gripLeft.Color = _gripRight.Color = Accent.WithAlpha(0.8f);
         _head.Color = Accent;
         _pick.Color = MarkColor;

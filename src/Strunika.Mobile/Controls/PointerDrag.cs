@@ -13,7 +13,8 @@ public static class PointerDrag
 {
     public sealed class Callbacks
     {
-        /// <summary>Pointer down at x (view coordinates).</summary>
+        /// <summary>Pointer down at x (view coordinates). On iOS it comes when the
+        /// drag begins, with the point the finger first touched.</summary>
         public Action<double>? Started { get; init; }
         /// <summary>Horizontal offset from the press, in view coordinates.</summary>
         public Action<double>? Moved { get; init; }
@@ -82,7 +83,20 @@ public static class PointerDrag
     private static void AttachGestures(View surface, Callbacks c)
     {
         bool panning = false;
-        double lastTotal = 0;
+        double lastTotal = 0, downX = 0;
+#if IOS
+        // A pan on iOS begins only once the finger has moved and never says where
+        // it came down; a recognizer that only watches the touch go down supplies
+        // that point, so Started gets it as it does on Windows (user report 2026-09-14).
+        void Watch()
+        {
+            if (surface.Handler?.PlatformView is not UIKit.UIView view) return;
+            if (view.GestureRecognizers?.Any(g => g is Platforms.iOS.TouchDownRecognizer) == true) return;
+            view.AddGestureRecognizer(new Platforms.iOS.TouchDownRecognizer(point => downX = point.X));
+        }
+        surface.HandlerChanged += (_, _) => Watch();
+        Watch();
+#endif
         var pan = new PanGestureRecognizer();
         pan.PanUpdated += (_, e) =>
         {
@@ -90,7 +104,7 @@ public static class PointerDrag
             {
                 case GestureStatus.Started:
                     panning = true; lastTotal = 0;
-                    c.Started?.Invoke(0);
+                    c.Started?.Invoke(downX);
                     break;
                 case GestureStatus.Running:
                     if (!panning) return;

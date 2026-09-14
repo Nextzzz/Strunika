@@ -462,8 +462,10 @@ public sealed partial class SongViewModel : ObservableObject
 
     // ---- the chord editor ----------------------------------------------
 
-    /// <summary>The editor is on: the chord under the playhead is the one being
-    /// worked on, and the page gives its room to the editor's own row.</summary>
+    /// <summary>The editor is on, and the page gives its room to the editor's
+    /// own row. It has two states and no third: a chord is chosen, or the panel
+    /// asks for one to be picked. Nothing is ever chosen for the reader (user
+    /// rule 2026-09-14).</summary>
     [ObservableProperty] private bool _editing;
     /// <summary>The chord being worked on, by its place in the song — chosen by
     /// the reader on the track and left alone by the playhead. A chord that
@@ -494,50 +496,43 @@ public sealed partial class SongViewModel : ObservableObject
     /// <summary>When the beat view is on, where a new chord goes.</summary>
     public double ChosenBeatTime => ChosenBeat >= 0 && ChosenBeat < _beats.Length ? _beats[ChosenBeat] : Position;
 
-    /// <summary>A chord begins on this beat.</summary>
-    private bool StartsOn(int beat)
+    /// <summary>
+    /// The chord that begins on this beat, or −1. A chord begins on the beat
+    /// nearest its start — the rule the grid draws its names by. A looser one
+    /// (any chord within 0.35 s) let a square that shows nothing choose the
+    /// chord beside it (user report 2026-09-14).
+    /// </summary>
+    private int ChordOn(int beat)
     {
-        if (beat < 0 || beat >= _beats.Length) return false;
-        foreach (var segment in Segments)
-            if (Math.Abs(segment.Start - _beats[beat]) < 0.35) return true;
-        return false;
+        if (beat < 0 || beat >= _beats.Length) return -1;
+        var segments = Segments;
+        for (int i = 0; i < segments.Count; i++)
+            if (segments[i].Label != "—" && BeatMath.Nearest(_beats, segments[i].Start) == beat) return i;
+        return -1;
     }
+
+    private bool StartsOn(int beat) => ChordOn(beat) >= 0;
 
     /// <summary>The beat the chosen chord begins on, for the grid to outline.</summary>
-    public int SelectedBeat
-    {
-        get
-        {
-            if (!HasSelection || _beats.Length == 0) return -1;
-            double start = Segments[Selected].Start;
-            int best = -1;
-            double nearest = 0.35;
-            for (int i = 0; i < _beats.Length; i++)
-            {
-                double d = Math.Abs(_beats[i] - start);
-                if (d < nearest) { nearest = d; best = i; }
-            }
-            return best;
-        }
-    }
+    public int SelectedBeat => HasSelection && _beats.Length > 0 ? BeatMath.Nearest(_beats, Segments[Selected].Start) : -1;
 
-    /// <summary>A beat was tapped in the grid: the chord sounding there is the
-    /// one to work on.</summary>
+    /// <summary>A square was tapped in the grid: one with a chord of its own
+    /// chooses that chord; an empty one lets go of any, and is where a new chord
+    /// would go (user rule 2026-09-14).</summary>
     public void ChooseAtBeat(int beat)
     {
         if (!Editing || beat < 0 || beat >= _beats.Length) return;
         ChosenBeat = beat;
-        Selected = StartsOn(beat) ? IndexAt(_beats[beat] + 1e-3) : -1;
+        Selected = ChordOn(beat);
     }
 
-    /// <summary>« and » on the panel: the chord's beginning, one beat at a time,
-    /// for when a finger is not exact enough.</summary>
+    /// <summary>‹ and › on the panel: the chord's beginning a sixteenth at a time
+    /// on the track, a square at a time in the beat view (user rule 2026-09-14).</summary>
     public Task NudgeSelectedAsync(int direction)
     {
         int i = Selected;
         if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
-        double start = _raw[i].Start;
-        double target = NextBeat(start, direction) ?? start + direction * 0.25;
+        double target = BeatMath.Step(_beats, _raw[i].Start, direction, GridView ? 1 : BeatMath.Sixteenths);
         return SetSegmentAsync(i, target, _raw[i].End);          // it remembers for us
     }
     /// <summary>The button in the header: into the editor, then out of it.</summary>
@@ -549,6 +544,28 @@ public sealed partial class SongViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(SelectedChord));
         OnPropertyChanged(nameof(SelectedStart));
+        RememberChoice();
+    }
+
+    /// <summary>The chord last worked on in each song, by where it begins, for as
+    /// long as the app runs: leaving the editor — or the song — and coming back
+    /// finds it still chosen. The first time, none is (user request 2026-09-14).</summary>
+    private static readonly Dictionary<int, double> LastChosen = new();
+
+    private void RememberChoice()
+    {
+        if (!Editing) return;                                    // leaving lets go of the chord, not of the memory
+        if (HasSelection) LastChosen[Song.Id] = Segments[Selected].Start;
+        else LastChosen.Remove(Song.Id);
+    }
+
+    private int RecallChoice()
+    {
+        if (!LastChosen.TryGetValue(Song.Id, out double start)) return -1;
+        var segments = Segments;
+        for (int i = 0; i < segments.Count; i++)
+            if (segments[i].Label != "—" && Math.Abs(segments[i].Start - start) < 0.005) return i;
+        return -1;
     }
 
     /// <summary>Nothing shorter than this is worth a chord of its own.</summary>
@@ -559,28 +576,31 @@ public sealed partial class SongViewModel : ObservableObject
     /// the one thing it cannot be without — and it is what the A–B chip's place
     /// is for while the editor is on (user decision 2026-09-10). Thirty deep:
     /// a session's worth, and a few kilobytes.</summary>
-    private readonly List<List<ChordSegmentDto>> _history = new();
+    private readonly List<(List<ChordSegmentDto> Raw, int Selected)> _history = new();
     private const int Remembered = 30;
 
     public bool CanUndo => _history.Count > 0;
 
     private void Remember()
     {
-        _history.Add(new List<ChordSegmentDto>(_raw));
+        _history.Add((new List<ChordSegmentDto>(_raw), Selected));
         if (_history.Count > Remembered) _history.RemoveAt(0);
         OnPropertyChanged(nameof(CanUndo));
     }
 
-    /// <summary>The song as it was before the last change.</summary>
+    /// <summary>The song as it was before the last change, and the choice as it
+    /// was then: undo never takes the chord out of the reader's hands (user
+    /// request 2026-09-14).</summary>
     [RelayCommand]
-    private Task UndoAsync()
+    private async Task UndoAsync()
     {
-        if (_history.Count == 0) return Task.CompletedTask;
-        _raw = _history[^1];
+        if (_history.Count == 0) return;
+        var (raw, selected) = _history[^1];
         _history.RemoveAt(_history.Count - 1);
+        _raw = raw;
         OnPropertyChanged(nameof(CanUndo));
-        Selected = -1;
-        return CommitAsync();
+        await CommitAsync();
+        Selected = selected >= 0 && selected < Segments.Count ? selected : -1;
     }
 
     partial void OnEditingChanged(bool value)
@@ -588,11 +608,15 @@ public sealed partial class SongViewModel : ObservableObject
         _history.Clear();                                        // a way back within the sitting, not across sittings
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanAdd));
-        // In, on the chord under the playhead — somewhere to start; out, on none.
-        Selected = value ? IndexAt(Position) : -1;
         OnPropertyChanged(nameof(EditorText));
         OnPropertyChanged(nameof(EditorGlyph));
+        ChosenBeat = -1;
+        // Out: no chord is chosen outside the editor (the memory keeps it). In:
+        // the chord last worked on in this song, looked up among the chords as
+        // stored — or none, never one picked for the reader (user rule 2026-09-14).
+        if (!value) Selected = -1;
         Rebuild();
+        if (value) Selected = RecallChoice();
     }
 
     [RelayCommand]
@@ -642,7 +666,7 @@ public sealed partial class SongViewModel : ObservableObject
         if (i > 0) _raw[i - 1] = _raw[i - 1] with { End = _raw[i].End };
         else if (_raw.Count > 1) _raw[i + 1] = _raw[i + 1] with { Start = _raw[i].Start };
         _raw.RemoveAt(i);
-        Selected = Math.Min(i, _raw.Count - 1);                  // the neighbour that took its time
+        Selected = -1;                                           // a chord is only ever chosen by the reader
         return CommitAsync();
     }
 
@@ -677,7 +701,8 @@ public sealed partial class SongViewModel : ObservableObject
         {
             // Past the last chord, or in a song with none: a chord of its own
             // from here to whatever end there is.
-            double from = _raw.Count > 0 ? Math.Max(at, _raw[^1].End) : Math.Max(0, at);
+            at = Math.Max(0, BeatMath.Snap(_beats, at));        // under the cursor, to the sixteenth
+            double from = _raw.Count > 0 ? Math.Max(at, _raw[^1].End) : at;
             double to = Math.Max(from + MinSegment, Duration);
             _raw.Add(new ChordSegmentDto(from, to, label));
             Selected = _raw.Count - 1;
@@ -685,7 +710,7 @@ public sealed partial class SongViewModel : ObservableObject
         }
         var segment = _raw[i];
         if (segment.End - segment.Start < 2 * MinSegment) return Task.CompletedTask;   // no room to split
-        double split = Math.Clamp(SnapToBeat(at), segment.Start + MinSegment, segment.End - MinSegment);
+        double split = Math.Clamp(BeatMath.Snap(_beats, at), segment.Start + MinSegment, segment.End - MinSegment);
         _raw[i] = segment with { End = split };
         _raw.Insert(i + 1, new ChordSegmentDto(split, segment.End, label));
         Selected = i + 1;                                        // the new one is the one being worked on
@@ -704,37 +729,7 @@ public sealed partial class SongViewModel : ObservableObject
         }
         catch (Exception ex) { FileLog.Error("song edit", ex); }
         Rebuild();
-    }
-
-    /// <summary>The beat next along in that direction, or null with no beats.</summary>
-    private double? NextBeat(double time, int direction)
-    {
-        var beats = _beats;
-        if (beats.Length == 0) return null;
-        if (direction > 0)
-        {
-            foreach (double beat in beats)
-                if (beat > time + 1e-3) return beat;
-        }
-        else
-        {
-            for (int i = beats.Length - 1; i >= 0; i--)
-                if (beats[i] < time - 1e-3) return beats[i];
-        }
-        return null;
-    }
-
-    /// <summary>The nearest beat when there is one within 0.4 s, the moment itself otherwise.</summary>
-    private double SnapToBeat(double time)
-    {
-        var beats = _beats;
-        double best = time, nearest = 0.4;
-        foreach (double beat in beats)
-        {
-            double d = Math.Abs(beat - time);
-            if (d < nearest) { nearest = d; best = beat; }
-        }
-        return best;
+        RememberChoice();                                        // the chosen chord may have moved
     }
 
     /// <summary>« — back to the stop this moment belongs to; pressed again

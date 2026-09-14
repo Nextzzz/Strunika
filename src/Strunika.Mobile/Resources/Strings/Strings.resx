@@ -478,7 +478,7 @@
     <value>Replace every {0} in the song</value>
   </data>
   <data name="Song_Editor_Nothing" xml:space="preserve">
-    <value>Pick a chord on the track</value>
+    <value>Pick a chord on the board</value>
   </data>
   <data name="Song_Editor_Follow" xml:space="preserve">
     <value>Follow</value>

@@ -66,7 +66,10 @@ public partial class SongPage : ContentPage
         {
             if (e.PropertyName == nameof(SongViewModel.LoopArmed)) BreatheLoopChip();
             if (e.PropertyName == nameof(SongViewModel.Editing)) ApplyEditor();
+            if (e.PropertyName == nameof(SongViewModel.SelectedChord)) Dispatcher.Dispatch(FitChordName);
         };
+        ChordChip.SizeChanged += (_, _) => FitChordName();
+        Theme.Refit.Watch(this, FitChordName);
 
         // Moving the song's own slider is asking to be where the song is: the
         // editor's track goes back to riding along with it (user request 2026-09-10).
@@ -126,7 +129,14 @@ public partial class SongPage : ContentPage
         // started were stopped again by the first tick, which still saw the page
         // as gone. The song froze until it was left and opened again (user
         // report 2026-09-10).
-        Loaded += (_, _) => { _unloaded = false; StartFrames(); };
+        Loaded += (_, _) =>
+        {
+            _unloaded = false;
+            StartFrames();
+#if IOS
+            WatchDeviceVolume();                                 // a sheet over the page took the volume view away
+#endif
+        };
         Unloaded += (_, _) =>
         {
             _unloaded = true;
@@ -285,7 +295,8 @@ public partial class SongPage : ContentPage
                 BeatsView.Position = _vm.Position;               // a comparison unless the beat changed
                 if (_vm.Editing)
                 {
-                    BeatsView.Chosen = _vm.SelectedBeat;
+                    // The chosen chord's square, or the empty square a new chord would go on.
+                    BeatsView.Chosen = _vm.HasSelection ? _vm.SelectedBeat : _vm.ChosenBeat;
                     ShowGridOnMap();
                 }
             }
@@ -389,7 +400,47 @@ public partial class SongPage : ContentPage
         Body.RowDefinitions[3].Height = editing ? GridLength.Auto : new GridLength(3, GridUnitType.Star);
         PlayerChevron.IsVisible = !editing;
         if (editing && _vm.PlayerExpanded) _ = SetPlayerExpandedAsync(false, animate: true);
+        FitChordName();
+#if IOS
+        WatchDeviceVolume();
+#endif
     }
+
+    /// <summary>The chosen chord's name fills its chip and shrinks rather than
+    /// being cut: squeezed by the step arrows, "Am" came out as "…" on an iPhone
+    /// (user report 2026-09-14). Measured, never guessed; run again when the
+    /// name, the chip or the size class changes.</summary>
+    private void FitChordName()
+    {
+        if (ChordName.Handler == null || ChordChip.Width <= 0) return;
+        double size = Theme.Metrics.Instance.Size(26, hero: true);
+        double room = ChordChip.Width - ChordChip.Padding.HorizontalThickness - 4;
+        if (_vm.HasSelection && room > 0)
+        {
+            if (Math.Abs(ChordName.FontSize - size) > 0.1) ChordName.FontSize = size;
+            double natural = ChordName.Measure(double.PositiveInfinity, double.PositiveInfinity).Width;
+            if (natural > room) size = Math.Max(Theme.Metrics.Instance.Size(12), size * room / natural);
+        }
+        if (Math.Abs(ChordName.FontSize - size) > 0.1) ChordName.FontSize = size;
+    }
+
+#if IOS
+    /// <summary>A YouTube song's level slider is the device's own volume.
+    /// Whichever one is on screen — the "…" sheet's or the editor's — starts
+    /// where the volume buttons left it and follows them while it shows (user
+    /// request 2026-09-14); with neither showing, the buttons get the system's
+    /// overlay back.</summary>
+    private void WatchDeviceVolume()
+    {
+        if (!_vm.IsYouTube) return;
+        if (!_unloaded && (_moreOpen || _vm.Editing))
+        {
+            Platforms.iOS.SystemVolume.Attach(v => _vm.Volume = v);
+            _vm.Volume = Platforms.iOS.SystemVolume.Get();
+        }
+        else Platforms.iOS.SystemVolume.Detach();
+    }
+#endif
 
     /// <summary>In the editor the sheet's place goes to the switch between the
     /// two views of the song, one tap instead of three.</summary>
@@ -613,14 +664,7 @@ public partial class SongPage : ContentPage
         if (opening)
         {
 #if IOS
-            // A YouTube song's slider is the device volume: while it shows, the
-            // buttons move it (and the system's overlay stays away); the moment
-            // the sheet closes the overlay is the system's again.
-            if (_vm.IsYouTube)
-            {
-                Platforms.iOS.SystemVolume.Attach(v => _vm.Volume = v);
-                _vm.Volume = Platforms.iOS.SystemVolume.Get();     // where the buttons left it since the song opened
-            }
+            WatchDeviceVolume();                                 // the sheet's slider is the device volume for a YouTube song
 #endif
             _ = MoreScrim.FadeToAsync(0.45, 180);
             await MoreSheet.TranslateToAsync(0, 0, 260, Easing.CubicOut);
@@ -628,7 +672,7 @@ public partial class SongPage : ContentPage
         else
         {
 #if IOS
-            Platforms.iOS.SystemVolume.Detach();
+            WatchDeviceVolume();                                 // the editor's slider may still want the buttons
 #endif
             _ = MoreScrim.FadeToAsync(0, 160);
             await MoreSheet.TranslateToAsync(0, HiddenSheet, 220, Easing.CubicIn);

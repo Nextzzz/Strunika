@@ -29,7 +29,7 @@ public sealed class ChordTrack : Grid
 
     public static readonly BindableProperty PositionProperty = BindableProperty.Create(nameof(Position), typeof(double), typeof(ChordTrack), 0.0, propertyChanged: (b, _, _) => ((ChordTrack)b).Follow());
     public static readonly BindableProperty DurationProperty = BindableProperty.Create(nameof(Duration), typeof(double), typeof(ChordTrack), 0.0);
-    public static readonly BindableProperty SegmentsProperty = BindableProperty.Create(nameof(Segments), typeof(IReadOnlyList<ChordSegmentDto>), typeof(ChordTrack), null, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t._currentIndex = -1; t._nextIndex = -1; t.Redraw(); t.Follow(); });
+    public static readonly BindableProperty SegmentsProperty = BindableProperty.Create(nameof(Segments), typeof(IReadOnlyList<ChordSegmentDto>), typeof(ChordTrack), null, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t._currentIndex = -1; t._nextIndex = -1; t.Redraw(); t.Follow(); t.ChordsArrived(); });
     public static readonly BindableProperty BeatsProperty = BindableProperty.Create(nameof(Beats), typeof(double[]), typeof(ChordTrack), null, propertyChanged: (b, _, _) => { ((ChordTrack)b)._clocks.Clear(); ((ChordTrack)b).Redraw(); });
     public static readonly BindableProperty PeaksProperty = BindableProperty.Create(nameof(Peaks), typeof(byte[]), typeof(ChordTrack), null, propertyChanged: Rebuild);
     public static readonly BindableProperty PeaksFpsProperty = BindableProperty.Create(nameof(PeaksFps), typeof(int), typeof(ChordTrack), 40, propertyChanged: Rebuild);
@@ -41,7 +41,7 @@ public sealed class ChordTrack : Grid
     /// being taken.</summary>
     /// <summary>The editor is on: a chord is a block over the time it lasts,
     /// with a hold on it, instead of a badge at the moment it starts.</summary>
-    public static readonly BindableProperty EditingProperty = BindableProperty.Create(nameof(Editing), typeof(bool), typeof(ChordTrack), false, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t.Redraw(); t.Follow(); });
+    public static readonly BindableProperty EditingProperty = BindableProperty.Create(nameof(Editing), typeof(bool), typeof(ChordTrack), false, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; if (!t.Editing) t.Land(); t.Redraw(); t.Follow(); });
     /// <summary>Which chord is being worked on, by its place in the song.</summary>
     public static readonly BindableProperty SelectedProperty = BindableProperty.Create(nameof(Selected), typeof(int), typeof(ChordTrack), -1, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t.Redraw(); t.Follow(); });
     public static readonly BindableProperty LoopArmedProperty = BindableProperty.Create(nameof(LoopArmed), typeof(bool), typeof(ChordTrack), false, propertyChanged: Reloop);
@@ -53,6 +53,11 @@ public sealed class ChordTrack : Grid
     public static readonly BindableProperty PinnedTextColorProperty = BindableProperty.Create(nameof(PinnedTextColor), typeof(Color), typeof(ChordTrack), Colors.White, propertyChanged: Redraw);
     public static readonly BindableProperty TextColorProperty = BindableProperty.Create(nameof(TextColor), typeof(Color), typeof(ChordTrack), Colors.White, propertyChanged: Redraw);
     public static readonly BindableProperty LineColorProperty = BindableProperty.Create(nameof(LineColor), typeof(Color), typeof(ChordTrack), Colors.Gray, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t._beatTick = null; t._barTick = null; t.Redraw(); });
+    /// <summary>A chord the playhead has passed, while the editor is on.</summary>
+    public static readonly BindableProperty PlayedColorProperty = BindableProperty.Create(nameof(PlayedColor), typeof(Color), typeof(ChordTrack), Colors.DimGray, propertyChanged: Redraw);
+    public static readonly BindableProperty PlayedTextColorProperty = BindableProperty.Create(nameof(PlayedTextColor), typeof(Color), typeof(ChordTrack), Colors.Gray, propertyChanged: Redraw);
+    /// <summary>The ground the track sits on: what a chord taken off it leaves behind.</summary>
+    public static readonly BindableProperty BackdropColorProperty = BindableProperty.Create(nameof(BackdropColor), typeof(Color), typeof(ChordTrack), Colors.Black, propertyChanged: (b, _, _) => ((ChordTrack)b).ApplyColours());
 
     public double Position { get => (double)GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
     public double Duration { get => (double)GetValue(DurationProperty); set => SetValue(DurationProperty, value); }
@@ -77,6 +82,9 @@ public sealed class ChordTrack : Grid
     public Color PinnedTextColor { get => (Color)GetValue(PinnedTextColorProperty); set => SetValue(PinnedTextColorProperty, value); }
     public Color TextColor { get => (Color)GetValue(TextColorProperty); set => SetValue(TextColorProperty, value); }
     public Color LineColor { get => (Color)GetValue(LineColorProperty); set => SetValue(LineColorProperty, value); }
+    public Color PlayedColor { get => (Color)GetValue(PlayedColorProperty); set => SetValue(PlayedColorProperty, value); }
+    public Color PlayedTextColor { get => (Color)GetValue(PlayedTextColorProperty); set => SetValue(PlayedTextColorProperty, value); }
+    public Color BackdropColor { get => (Color)GetValue(BackdropColorProperty); set => SetValue(BackdropColorProperty, value); }
 
     /// <summary>Finger down: the owner pauses.</summary>
     public event EventHandler? ScrubStarted;
@@ -163,12 +171,16 @@ public sealed class ChordTrack : Grid
     public double ViewStart => ViewAt - Width * PlayheadAt / Math.Max(1, PixelsPerSecond);
     public double ViewSpan => Width / Math.Max(1, PixelsPerSecond);
 
-    /// <summary>Look here; the song is left where it is.</summary>
+    /// <summary>Put this moment in the middle of the window; the song is left where it is.</summary>
     public void LookAt(double middle)
     {
         Following = false;
         _viewSet = true;
-        _viewTime = Math.Clamp(middle, 0, Math.Max(0, Duration));
+        // The view is kept as the moment at the playhead's place, a quarter in —
+        // not the middle. Taking the middle for it put what the map asked for a
+        // quarter of a screen off (user report 2026-09-14).
+        double pps = Math.Max(1, PixelsPerSecond);
+        _viewTime = Math.Clamp(middle - Width * (0.5 - PlayheadAt) / pps, -Width * 0.5 / pps, Math.Max(0, Duration));
         Follow();
     }
 
@@ -208,7 +220,7 @@ public sealed class ChordTrack : Grid
     /// <summary>The band is one box, moved and stretched by its transform: a
     /// canvas would have to be redrawn on every frame it grows, which is the
     /// one thing this control does not do.</summary>
-    private readonly BoxView _loopBand, _cursor;
+    private readonly BoxView _loopBand, _cursor, _hole;
     private readonly Border _cursorMark;
     private readonly BoxView _lineA, _lineB;
     private readonly Border _gripA, _gripB;
@@ -242,6 +254,15 @@ public sealed class ChordTrack : Grid
         _layers.Add(_current);
         _layers.Add(_pinned);
         Add(_layers);
+        // What a chord taken hold of leaves behind: its old place, covered in the
+        // track's own ground, so nothing is redrawn for it (user request 2026-09-14).
+        _hole = new BoxView
+        {
+            CornerRadius = 14, IsVisible = false, InputTransparent = true,
+            HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start,
+            HeightRequest = PillHeight + 2, Margin = new Thickness(0, PillTop - 1, 0, 0),
+        };
+        Add(_hole);
         // The editor's cursor: the middle of the window, where an added chord
         // lands. It stands still while the track moves under it.
         _cursor = new BoxView { WidthRequest = 2, InputTransparent = true, IsVisible = false, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start };
@@ -339,6 +360,7 @@ public sealed class ChordTrack : Grid
         _loopBand.Color = Accent.WithAlpha(0.14f);
         _cursor.Color = TextColor.WithAlpha(0.35f);
         _cursorMark.BackgroundColor = Accent;
+        _hole.Color = BackdropColor;
         if (_cursorMark.Content is IconView mark) mark.Color = OnAccent;
         _lineA.Color = _lineB.Color = Accent;
         _gripA.BackgroundColor = _gripB.BackgroundColor = Accent;
@@ -352,8 +374,10 @@ public sealed class ChordTrack : Grid
         double w = Width, h = Height;
         if (w <= 0 || h <= 0) return;
         double px = w * PlayheadAt, bw = w * BufferSpan + Lead;
-        AbsoluteLayout.SetLayoutBounds(_leftClip, new Rect(0, 0, px, h));
-        AbsoluteLayout.SetLayoutBounds(_rightClip, new Rect(px, 0, w - px, h));
+        // Both halves are the track's width and are moved to meet at the playhead
+        // (FollowCore), so the meeting point can follow a playhead that moves.
+        AbsoluteLayout.SetLayoutBounds(_leftClip, new Rect(0, 0, w, h));
+        AbsoluteLayout.SetLayoutBounds(_rightClip, new Rect(0, 0, w, h));
         for (int i = 0; i < 2; i++)
         {
             AbsoluteLayout.SetLayoutBounds(_played[i], new Rect(0, 0, bw, h));
@@ -454,12 +478,19 @@ public sealed class ChordTrack : Grid
                 if (_pendingFrames > 4) Strunika.Core.Diagnostics.FileLog.Info($"conveyor: spare buffer took {_pendingFrames} frames to draw");
             }
         }
+        // Played and coming meet at the playhead. Riding along with the song that
+        // is a fixed place; in the editor the window stays put and the playhead
+        // crosses it, and the chords it passes take their played colour as it
+        // does (user request 2026-09-14). Two transforms more, nothing redrawn.
+        double boundary = Editing ? Math.Clamp(px + (Position - pos) * pps, -1, w + 1) : px;
+        NativeTransform.TranslateX(_leftClip, boundary - w);
+        NativeTransform.TranslateX(_rightClip, boundary);
         for (int i = 0; i < 2; i++)
         {
             if (double.IsNaN(_t0[i])) continue;
             double tx = px - (pos - _t0[i]) * pps - Lead;
-            NativeTransform.TranslateX(_played[i], tx);
-            NativeTransform.TranslateX(_coming[i], tx - px);            // its container starts at the playhead
+            NativeTransform.TranslateX(_played[i], tx - (boundary - w));
+            NativeTransform.TranslateX(_coming[i], tx - boundary);
         }
         _tx = px - (pos - _t0[_active]) * pps - Lead;
 
@@ -746,10 +777,13 @@ public sealed class ChordTrack : Grid
     private sealed class Block
     {
         public required Grid Host;
-        public required Border Ghost;
-        public required Label Name;
         public required BoxView Body;
-        public required BoxView GripLeft, GripRight;
+        /// <summary>The chord lifted off the track, drawn by the track's own
+        /// pill code — a label in a box of the measured width cut the name to
+        /// "…" (user report 2026-09-14).</summary>
+        public required GraphicsView Face;
+        /// <summary>Dotted handles on the chord being worked on.</summary>
+        public required GraphicsView Handles;
         public int Index = -1;
     }
 
@@ -757,34 +791,24 @@ public sealed class ChordTrack : Grid
     private bool _clipDragging, _clipMoved;
     private int _clipIndex = -1;
     private double _clipFrom, _clipTo, _clipDx, _clipStart;
+    /// <summary>The chord off the track: from its first move until the song's
+    /// chords come back with the move in them.</summary>
+    private Block? _lifted;
 
     private Block NewClip()
     {
-        var name = new Label
-        {
-            FontFamily = "DisplayBold", FontSize = PillFont, TextColor = OnAccent,
-            HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center,
-            LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 1,
-        };
-        var ghost = new Border
-        {
-            BackgroundColor = Accent, StrokeThickness = 0, Padding = 0, IsVisible = false, InputTransparent = true,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 13 },
-            Margin = new Thickness(0, PillTop, 0, 0), HeightRequest = PillHeight, VerticalOptions = LayoutOptions.Start,
-            Content = name,
-        };
+        var face = new GraphicsView { IsVisible = false, InputTransparent = true, BackgroundColor = Colors.Transparent };
+        var handles = new GraphicsView { Drawable = new HandlesDrawable(this), IsVisible = false, InputTransparent = true, BackgroundColor = Colors.Transparent };
         var body = new BoxView { Color = Colors.Transparent };
-        var gripLeft = Grip();
-        var gripRight = Grip();
-        gripRight.HorizontalOptions = LayoutOptions.End;
         var host = new Grid
         {
             HeightRequest = PillTop + PillHeight + 4,
             VerticalOptions = LayoutOptions.Start, HorizontalOptions = LayoutOptions.Start,
             IsVisible = false,
-            Children = { body, ghost, gripLeft, gripRight },
+            Children = { body, face, handles },
         };
-        var clip = new Block { Host = host, Ghost = ghost, Name = name, Body = body, GripLeft = gripLeft, GripRight = gripRight };
+        var clip = new Block { Host = host, Body = body, Face = face, Handles = handles };
+        face.Drawable = new LiftDrawable(this, clip);
         PointerDrag.Attach(body, new PointerDrag.Callbacks
         {
             Started = _ => BeginClip(clip),
@@ -798,19 +822,10 @@ public sealed class ChordTrack : Grid
         return clip;
     }
 
-    /// <summary>Two little bars on the chord being worked on: what says, without
-    /// a word, that it can be taken hold of and moved.</summary>
-    private BoxView Grip() => new()
-    {
-        WidthRequest = 3, HeightRequest = Metrics.Instance.Size(18), CornerRadius = 1.5, Color = OnAccent.WithAlpha(0.75f),
-        Margin = new Thickness(5, PillTop, 5, 0), IsVisible = false, InputTransparent = true,
-        HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center,
-    };
-
     private void BeginClip(Block clip)
     {
         var segments = Segments;
-        if (!Editing || segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
+        if (!Editing || _lifted != null || segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
         Untether();
         _clipDragging = true;
         _clipIndex = clip.Index;
@@ -827,12 +842,31 @@ public sealed class ChordTrack : Grid
             if (Math.Abs(_clipDx) < 3) return;                   // a finger settling, not a move
             _clipMoved = true;
             SelectionRequested?.Invoke(this, clip.Index);
-            clip.Name.Text = Segments is { } list && clip.Index < list.Count ? list[clip.Index].Label : "";
-            clip.Ghost.IsVisible = true;
+            Lift(clip);
         }
-        double moved = Snap(_clipFrom + _clipDx / PixelsPerSecond, end: false);
+        // To the nearest sixteenth, and without a buzz (user rule 2026-09-14).
+        double moved = BeatMath.Snap(Beats ?? Array.Empty<double>(), _clipFrom + _clipDx / PixelsPerSecond);
         _clipStart = Math.Clamp(moved, 0, Math.Max(0, _clipTo - MinClip));
         PlaceClip(clip, _clipStart);
+    }
+
+    /// <summary>The chord comes away from its place: a buzz, the place left
+    /// empty, and the chord itself in its lifted colours on the finger (user
+    /// request 2026-09-14).</summary>
+    private void Lift(Block clip)
+    {
+        var segments = Segments;
+        if (segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
+        _lifted = clip;
+        Services.Haptics.Default.Success();
+        double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
+        double shift = _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
+        _hole.WidthRequest = width + 2;
+        NativeTransform.TranslateX(_hole, Width * PlayheadAt + (segments[clip.Index].Start - ViewAt) * PixelsPerSecond + shift - 1);
+        _hole.IsVisible = true;
+        clip.Handles.IsVisible = false;
+        clip.Face.IsVisible = true;
+        clip.Face.Invalidate();
     }
 
     private void EndClip(Block clip)
@@ -841,15 +875,37 @@ public sealed class ChordTrack : Grid
         _clipDragging = false;
         if (!_clipMoved) return;
         _clipMoved = false;
-        clip.Ghost.IsVisible = false;
+        // The chord stays lifted where it was let go, and its old place empty,
+        // until the song's chords come back with the move in them: putting
+        // either down first showed the old badge again for a frame.
+        var lifted = _lifted;
         SegmentMoved?.Invoke(this, (clip.Index, _clipStart, _clipTo));
+        Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_lifted == lifted) Land(); });   // a move the song turned down
+    }
+
+    /// <summary>The chords are back from the song: once the ribbon has drawn
+    /// them, the lifted chord is put down.</summary>
+    private void ChordsArrived()
+    {
+        if (_lifted == null || _clipDragging) return;
+        var lifted = _lifted;
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(80), () => { if (_lifted == lifted) Land(); });
+    }
+
+    private void Land()
+    {
+        if (_lifted == null) return;
+        _lifted.Face.IsVisible = false;
+        _lifted = null;
+        _hole.IsVisible = false;
+        Follow();                                                // the badges take their places again
     }
 
     /// <summary>Every chord on screen gets its badge; the rest wait their turn.
-    /// Nothing moves while one is being dragged — the song is stopped for it.</summary>
+    /// Nothing moves while one is off the track.</summary>
     private void PlaceClips()
     {
-        if (_clipDragging && _clipMoved) return;
+        if (_lifted != null) return;
         var segments = Segments;
         if (!Editing || segments == null || Width <= 0)
         {
@@ -874,17 +930,17 @@ public sealed class ChordTrack : Grid
     }
 
     /// <summary>Over the badge the ribbon drew: the same width, and the same
-    /// nudge the no-overlap rule gave it.</summary>
+    /// nudge the no-overlap rule gave it — centred on its moment once lifted.</summary>
     private void PlaceClip(Block clip, double start)
     {
         var segments = Segments;
         if (segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
         double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
-        double shift = _clipMoved ? -width / 2 : _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
+        double shift = clip == _lifted ? -width / 2 : _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
         double x = Width * PlayheadAt + (start - ViewAt) * PixelsPerSecond + shift;
         if (Math.Abs(clip.Host.WidthRequest - width) > 0.5) clip.Host.WidthRequest = width;
-        bool chosen = clip.Index == Selected;
-        if (clip.GripLeft.IsVisible != chosen) clip.GripLeft.IsVisible = clip.GripRight.IsVisible = chosen;
+        bool handles = clip.Index == Selected && clip != _lifted;
+        if (clip.Handles.IsVisible != handles) clip.Handles.IsVisible = handles;
         if (!clip.Host.IsVisible) clip.Host.IsVisible = true;
         NativeTransform.TranslateX(clip.Host, x);
     }
@@ -947,13 +1003,36 @@ public sealed class ChordTrack : Grid
         return result;
     }
 
-    private void DrawPill(ICanvas canvas, float left, string label, bool current, bool pinned = false)
+    private enum PillStyle { Resting, Current, Pinned, Played, Lifted }
+
+    private void DrawPill(ICanvas canvas, float left, string label, PillStyle style)
     {
         var (w, top, bottom) = Measure(canvas, label);
         var pill = new RectF(left, PillTop, w, PillHeight);
-        canvas.FillColor = current ? Accent : pinned ? PinnedColor : PillColor;
+        canvas.FillColor = style switch
+        {
+            PillStyle.Current => Accent,
+            PillStyle.Pinned => PinnedColor,
+            PillStyle.Played => PlayedColor,
+            PillStyle.Lifted => TextColor,
+            _ => PillColor,
+        };
         canvas.FillRoundedRectangle(pill, 13f);
-        canvas.FontColor = current ? OnAccent : pinned ? PinnedTextColor : TextColor;
+        if (style == PillStyle.Lifted)
+        {
+            // Taken off the track: the text colour for ground, ringed in the accent.
+            canvas.StrokeColor = Accent;
+            canvas.StrokeSize = 2f;
+            canvas.DrawRoundedRectangle(pill.Left + 1f, pill.Top + 1f, pill.Width - 2f, pill.Height - 2f, 12f);
+        }
+        canvas.FontColor = style switch
+        {
+            PillStyle.Current => OnAccent,
+            PillStyle.Pinned => PinnedTextColor,
+            PillStyle.Played => PlayedTextColor,
+            PillStyle.Lifted => BackdropColor,
+            _ => TextColor,
+        };
         if (bottom == null)
         {
             canvas.FontSize = PillFont;
@@ -1089,14 +1168,55 @@ public sealed class ChordTrack : Grid
                     if (left < lastRight + 3f) left = lastRight + 3f;
                     lastRight = left + w;
                     t._pillShift[i] = left - x;
-                    // Resting, unless the editor is on and this is the chord being
-                    // worked on — there the overlay is off and the ribbon says it.
-                    t.DrawPill(canvas, left, seg.Label, current: t.Editing && i == t.Selected);
+                    // Resting, unless the editor is on: the chord being worked on in
+                    // the accent, and on the played side the chords already played.
+                    var style = t.Editing && i == t.Selected ? PillStyle.Current
+                              : t.Editing && played ? PillStyle.Played
+                              : PillStyle.Resting;
+                    t.DrawPill(canvas, left, seg.Label, style);
                     pills.Add((new RectF(left, 0, w, PillTop + PillHeight + 8f), seg.Start, i));
                 }
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
             }
             if (played) t._drawnPlayed[index] = t0; else t._drawnComing[index] = t0;   // this window is on the canvas
+        }
+    }
+
+    /// <summary>A chord lifted off the track: its own pill, in the lifted colours.</summary>
+    private sealed class LiftDrawable(ChordTrack track, Block block) : IDrawable
+    {
+        public void Draw(ICanvas canvas, RectF rect)
+        {
+            if (track.Handler == null) return;                        // torn down: nothing to draw for
+            try
+            {
+                var segments = track.Segments;
+                if (segments == null || block.Index < 0 || block.Index >= segments.Count) return;
+                canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
+                track.DrawPill(canvas, 0f, segments[block.Index].Label, PillStyle.Lifted);
+                canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+            }
+            catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
+        }
+    }
+
+    /// <summary>Dotted handles at both ends of the chord being worked on: the
+    /// sign for "this moves". Bars read as "this stretches" (user request 2026-09-14).</summary>
+    private sealed class HandlesDrawable(ChordTrack track) : IDrawable
+    {
+        public void Draw(ICanvas canvas, RectF rect)
+        {
+            if (track.Handler == null || rect.Width <= 0) return;      // torn down: nothing to draw for
+            try
+            {
+                const float Dot = 1.6f, Gap = 5.5f, Inset = 7f;
+                float middle = PillTop + PillHeight / 2;
+                canvas.FillColor = track.OnAccent.WithAlpha(0.85f);
+                foreach (float x in new[] { Inset, rect.Width - Inset })
+                    for (int k = -1; k <= 1; k++)
+                        canvas.FillCircle(x, middle + k * Gap, Dot);
+            }
+            catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
         }
     }
 
@@ -1112,7 +1232,7 @@ public sealed class ChordTrack : Grid
                 var segments = t.Segments;
                 if (t._currentIndex < 0 || segments == null || t._currentIndex >= segments.Count) return;
                 canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
-                t.DrawPill(canvas, 0f, segments[t._currentIndex].Label, current: true);
+                t.DrawPill(canvas, 0f, segments[t._currentIndex].Label, PillStyle.Current);
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
             }
             catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
@@ -1137,7 +1257,7 @@ public sealed class ChordTrack : Grid
             canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
             var label = segments[t._nextIndex].Label;
             var (w, _, _) = t.Measure(canvas, label);
-            t.DrawPill(canvas, rect.Right - w - 2f, label, current: false, pinned: true);
+            t.DrawPill(canvas, rect.Right - w - 2f, label, PillStyle.Pinned);
             canvas.Font = Microsoft.Maui.Graphics.Font.Default;
         }
     }
