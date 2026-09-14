@@ -563,8 +563,7 @@ public partial class SongPage : ContentPage
     {
         if (ChordName.Handler == null || ChordChip.Width <= 0) return;
         double size = Theme.Metrics.Instance.Size(26, hero: true);
-        double pencil = ChordPencil.Width > 0 ? ChordPencil.Width : ChordPencil.Size;
-        double room = ChordChip.Width - ChordChip.Padding.HorizontalThickness - pencil - ChordNameRow.Spacing - 4;
+        double room = ChordChip.Width - ChordChip.Padding.HorizontalThickness - 4;   // the pencil is over the corner, not beside the name
         if (_vm.HasSelection && room > 0)
         {
             if (Math.Abs(ChordName.FontSize - size) > 0.1) ChordName.FontSize = size;

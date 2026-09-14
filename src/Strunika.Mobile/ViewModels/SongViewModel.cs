@@ -235,6 +235,22 @@ public sealed partial class SongViewModel : ObservableObject
     public bool HasNext => NextChord.Length > 0;
     /// <summary>The button reads "pause" from the moment play is asked for.</summary>
     public bool ShowPause => IsPlaying || Starting;
+    /// <summary>The song has played to its end and stands there: the button
+    /// offers to play it again, not to go on (user request 2026-09-15).</summary>
+    public bool AtEnd => !ShowPause && Duration > 0 && Position >= Duration - 0.2;
+    public bool ShowPlay => !ShowPause && !AtEnd;
+    public bool ShowReplay => !ShowPause && AtEnd;
+    private bool _atEnd;
+
+    private void CheckEnd()
+    {
+        bool atEnd = AtEnd;
+        if (atEnd == _atEnd) return;
+        _atEnd = atEnd;
+        OnPropertyChanged(nameof(AtEnd));
+        OnPropertyChanged(nameof(ShowPlay));
+        OnPropertyChanged(nameof(ShowReplay));
+    }
 
     /// <summary>A transport probe is in flight (frame diagnostics).</summary>
     public bool IsProbing => _probing;
@@ -451,6 +467,7 @@ public sealed partial class SongViewModel : ObservableObject
         int second = (int)value;
         if (second != _lastSecond) { _lastSecond = second; OnPropertyChanged(nameof(PositionText)); }
         UpdateChords(value);
+        CheckEnd();
     }
 
     partial void OnDurationChanged(double value)
@@ -968,8 +985,8 @@ public sealed partial class SongViewModel : ObservableObject
         _scrubbing = false;
     }
     partial void OnNextChordChanged(string value) => OnPropertyChanged(nameof(HasNext));
-    partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(ShowPause));
-    partial void OnStartingChanged(bool value) => OnPropertyChanged(nameof(ShowPause));
+    partial void OnIsPlayingChanged(bool value) { OnPropertyChanged(nameof(ShowPause)); OnPropertyChanged(nameof(ShowPlay)); OnPropertyChanged(nameof(ShowReplay)); CheckEnd(); }
+    partial void OnStartingChanged(bool value) { OnPropertyChanged(nameof(ShowPause)); OnPropertyChanged(nameof(ShowPlay)); OnPropertyChanged(nameof(ShowReplay)); CheckEnd(); }
 
     private void Rebuild()
     {

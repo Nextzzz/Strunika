@@ -183,13 +183,13 @@
                     <Border Grid.Column="2" x:Name="ChordChip" Style="{StaticResource Chip}" HeightRequest="{t:Size 58, Min=54}" Padding="8,0"
                             BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}">
                         <Grid>
-                            <!-- The name and a small pencil, centred together: it says the
-                                 chip changes the chord (user request 2026-09-14). -->
-                            <HorizontalStackLayout x:Name="ChordNameRow" Spacing="5" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding HasSelection}">
-                                <Label x:Name="ChordName" Text="{Binding SelectedChord}" FontFamily="DisplayBold" FontSize="26" TextColor="{t:Theme OnFill}" FontAutoScalingEnabled="False"
-                                       VerticalOptions="Center" LineBreakMode="NoWrap" MaxLines="1" />
-                                <controls:IconView x:Name="ChordPencil" Name="pencil" Size="{t:Size 14}" Color="{t:Theme OnFill}" Opacity="0.85" VerticalOptions="Center" />
-                            </HorizontalStackLayout>
+                            <!-- The name has the whole chip; the pencil that says the chip
+                                 changes the chord sits in the top-right corner, over it, so
+                                 it takes no room from the name (user request 2026-09-15). -->
+                            <Label x:Name="ChordName" Text="{Binding SelectedChord}" FontFamily="DisplayBold" FontSize="26" TextColor="{t:Theme OnFill}" FontAutoScalingEnabled="False"
+                                   HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="NoWrap" MaxLines="1" IsVisible="{Binding HasSelection}" />
+                            <controls:IconView Name="pencil" Size="{t:Size 12}" Color="{t:Theme OnFill}" Opacity="0.8" HorizontalOptions="End" VerticalOptions="Start"
+                                               Margin="0,4,-2,0" IsVisible="{Binding HasSelection}" />
                             <Label Text="{loc:Str Song_Editor_Nothing}" FontSize="14" TextColor="{t:Theme OnFill}" Opacity="0.8"
                                    HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="WordWrap" MaxLines="2" IsVisible="{Binding HasSelection, Converter={StaticResource Not}}" />
                         </Grid>
@@ -298,7 +298,9 @@
                 </Border.Triggers>
                 <Border.Shadow><Shadow Brush="{t:Theme Glow, Brush=True}" Radius="12" Opacity="0.7" Offset="0,5" /></Border.Shadow>
                 <Grid>
-                    <controls:IconView Name="play" Size="{t:Size 34}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding ShowPause, Converter={StaticResource Not}}" />
+                    <controls:IconView Name="play" Size="{t:Size 34}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding ShowPlay}" />
+                    <!-- At the song's end: play it again (the tap already starts over). -->
+                    <controls:IconView Name="replay" Size="{t:Size 30}" StrokeSize="2.2" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding ShowReplay}" />
                     <controls:IconView Name="pause" Size="{t:Size 32}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding ShowPause}" />
                 </Grid>
                 <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnPlayTapped" /></Border.GestureRecognizers>

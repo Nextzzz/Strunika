@@ -50,6 +50,8 @@ public static class Icons
         ["check"] = new(new[] { "M5 12l4.5 4.5L19 7" }, Array.Empty<(float, float, float)>()),
         ["undo"] = new(new[] { "M9 14l-4-4 4-4", "M5 10h9a5 5 0 0 1 0 10h-2" }, Array.Empty<(float, float, float)>()),
         ["redo"] = new(new[] { "M15 14l4-4-4-4", "M19 10h-9a5 5 0 0 0 0 10h2" }, Array.Empty<(float, float, float)>()),
+        // Play again: a song at its end (user request 2026-09-15).
+        ["replay"] = new(new[] { "M19.5 12a7.5 7.5 0 1 1-2.2-5.3", "M19.5 4.5v4h-4" }, Array.Empty<(float, float, float)>()),
         ["loop"] = new(new[] { "M17 4l3 3-3 3", "M20 7H8a4 4 0 0 0-4 4v1", "M7 20l-3-3 3-3", "M4 17h12a4 4 0 0 0 4-4v-1" }, Array.Empty<(float, float, float)>()),
         // Optically centred as drawn: the triangle's centroid sits on the box's
         // centre, its bounding box leaning right as a play sign should. Never
