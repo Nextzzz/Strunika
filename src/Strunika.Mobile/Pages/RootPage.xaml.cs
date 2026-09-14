@@ -41,7 +41,7 @@ public partial class RootPage : ContentPage
         // bar inset stays. Every layout that reaches the screen's bottom pads
         // itself by the safe area unless told not to (MAUI 10, and UIKit hands
         // each view its own share of the inset), so the tab bar's holder and
-        // each tab's root layout are told; the tabs' 104 pt bottom paddings
+        // each tab's root layout are told; the tabs' 116 pt bottom paddings
         // then clear the bar as before. The legacy Page.UseSafeArea is gone
         // from the XAML: it still pads the whole page and hid all of this.
         Root.SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.Container, SafeAreaRegions.None);
@@ -144,7 +144,7 @@ public partial class RootPage : ContentPage
         BottomShade.Background = new LinearGradientBrush(
             new GradientStopCollection
             {
-                // 100 pt tall: 12 pt above the bar (buttons sit 104 pt up), then the bar + gap.
+                // 112 pt tall: 12 pt above the bar (buttons sit 116 pt up), then the bar + gap.
                 // Steep: content is already dimming ~10 pt above the bar and is fully
                 // shaded by the time it reaches the capsule.
                 new GradientStop(shade.WithAlpha(0f), 0f),

@@ -66,13 +66,18 @@ public sealed class PillTabBar : GraphicsView, IDrawable
     private double _selectorPos;      // in tab units; fractional while dragging/animating
     private bool _pressed, _dragging;
     private float _downX;
-    private double _dragStartPos;
+    /// <summary>How far the selector sits from the finger, in tab units: kept
+    /// when the press landed on the selector, so it does not jump; zero when it
+    /// landed elsewhere, so the selector comes to the finger the moment the
+    /// drag begins instead of being dragged from wherever it was (user report
+    /// 2026-09-14).</summary>
+    private double _dragOffset;
 
     public PillTabBar()
     {
         Drawable = this;
         BackgroundColor = Colors.Transparent;
-        HeightRequest = 66;
+        HeightRequest = 72;                                      // the XAML sets the real one; a taller bar is harder to drag off (2026-09-14)
         StartInteraction += OnStart;
         DragInteraction += OnDrag;
         EndInteraction += OnEnd;
@@ -93,7 +98,8 @@ public sealed class PillTabBar : GraphicsView, IDrawable
         _pressed = true;
         _dragging = false;
         _downX = e.Touches[0].X;
-        _dragStartPos = _selectorPos;
+        double under = PosAt(_downX);
+        _dragOffset = Math.Abs(under - _selectorPos) <= 0.5 ? _selectorPos - under : 0;
         this.AbortAnimation("snap");
         this.AbortAnimation("scale");
         this.ScaleToAsync(Motion.Reduced ? 1.0 : 1.04, 120, Easing.CubicOut);
@@ -106,9 +112,12 @@ public sealed class PillTabBar : GraphicsView, IDrawable
         if (!_dragging && Math.Abs(dx) > DragThreshold)
             _dragging = true;
         if (!_dragging) return;
-        _selectorPos = Math.Clamp(_dragStartPos + dx / ItemWidth, 0, Tabs.Count - 1);
+        _selectorPos = Math.Clamp(PosAt(e.Touches[0].X) + _dragOffset, 0, Tabs.Count - 1);
         Invalidate();
     }
+
+    /// <summary>The selector position, in tab units, whose centre is under x.</summary>
+    private double PosAt(float x) => ItemWidth <= 0 ? 0 : (x - InsetX - Pad) / ItemWidth - 0.5;
 
     private void OnEnd(object? sender, TouchEventArgs e)
     {

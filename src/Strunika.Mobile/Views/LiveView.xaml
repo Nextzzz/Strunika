@@ -8,7 +8,7 @@
              x:Class="Strunika.Mobile.Views.LiveView"
              x:DataType="vm:LiveViewModel">
 
-    <Grid Padding="20,8,20,104" RowDefinitions="44,Auto,*,Auto,Auto,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
+    <Grid Padding="20,8,20,116" RowDefinitions="44,Auto,*,Auto,Auto,Auto,Auto" RowSpacing="0" Margin="{t:ContentInset}">
 
         <HorizontalStackLayout Grid.Row="0" Spacing="0" VerticalOptions="End">
             <Label Style="{StaticResource LargeTitle}" Text="{loc:Str Tab_Live}" VerticalOptions="End" />

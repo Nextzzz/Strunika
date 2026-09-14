@@ -10,7 +10,7 @@
 
     <ScrollView>
         <!-- {t:ContentInset}: a 560 pt column centred on a tablet, full width on phones -->
-        <VerticalStackLayout Padding="20,8,20,104" Spacing="12" Margin="{t:ContentInset}">
+        <VerticalStackLayout Padding="20,8,20,116" Spacing="12" Margin="{t:ContentInset}">
 
             <!-- title · chord dictionary. The button keeps its size; on a narrow
                  screen the title truncates rather than the button being clipped. -->

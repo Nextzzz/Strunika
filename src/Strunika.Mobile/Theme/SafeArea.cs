@@ -48,8 +48,10 @@ public static class SafeArea
     }
 #endif
 
-    /// <summary>Where a floating bar's bottom edge goes: 21 pt above the screen's
-    /// edge on a phone with a home indicator (the distance iOS 26 keeps its own
-    /// tab bar at), 16 pt on one without.</summary>
-    public static double FloatingBarMargin => Bottom > 0 ? 21 : 16;
+    /// <summary>Where a floating bar's bottom edge goes: 28 pt above the screen's
+    /// edge on a phone with a home indicator — a little more than the 21 pt iOS 26
+    /// keeps its own tab bar at, since a finger dragging the selector along the
+    /// bar was catching the home gesture (user report 2026-09-14) — and 20 pt on
+    /// one without.</summary>
+    public static double FloatingBarMargin => Bottom > 0 ? 28 : 20;
 }

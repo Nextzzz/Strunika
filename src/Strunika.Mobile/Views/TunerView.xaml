@@ -11,7 +11,7 @@
     <!-- No Listen button: the tuner listens whenever it is on screen (user
          decision 2026-09-11). The bottom padding keeps content clear of the
          floating tab bar; the pegs' strings run on under it (TunerView.xaml.cs). -->
-    <Grid x:Name="Root" Padding="20,8,20,104" RowDefinitions="44,Auto,Auto,*,120,Auto" RowSpacing="0" Margin="{t:ContentInset}">
+    <Grid x:Name="Root" Padding="20,8,20,116" RowDefinitions="44,Auto,Auto,*,120,Auto" RowSpacing="0" Margin="{t:ContentInset}">
 
         <Grid Grid.Row="0" x:Name="TitleRow">
             <HorizontalStackLayout Spacing="0" VerticalOptions="End">
