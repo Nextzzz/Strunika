@@ -540,14 +540,14 @@ public partial class SongPage : ContentPage
     }
 
     /// <summary>The follow chip keeps its place in the editor and is never hidden:
-    /// faded and deaf while the view already rides along, live when there is
+    /// dimmed and deaf while the view already rides along, live when there is
     /// somewhere to go back to (user request 2026-09-14).</summary>
     private void UpdateFollowChip()
     {
         bool editing = _vm.Editing;
         bool canFollow = editing && (_gridView ? !_gridFollowing : !Track.Following);
         if (FollowChip.IsVisible != editing) FollowChip.IsVisible = editing;
-        FollowChip.Opacity = canFollow ? 1 : 0.35;
+        FollowChip.Opacity = canFollow ? 1 : 0.45;               // a little dimmed, still plainly the accent
         FollowChip.InputTransparent = !canFollow;
     }
 

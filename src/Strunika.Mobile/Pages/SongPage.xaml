@@ -111,14 +111,16 @@
                  appearing never takes room from the track (user request 2026-09-14). -->
             <HorizontalStackLayout Spacing="8" HeightRequest="{t:Size 34, Min=34}">
                 <!-- The icon alone (user request 2026-09-14); the words are for VoiceOver. -->
+                <!-- Filled with the accent, so it never reads as the chip beside it (user request 2026-09-14). -->
                 <Border x:Name="FollowChip" Style="{StaticResource Chip}" HeightRequest="{t:Size 34, Min=34}" WidthRequest="{t:Size 44, Min=44}" Padding="0" IsVisible="False"
+                        BackgroundColor="{t:Theme Fill}" Stroke="{t:Theme Fill}"
                         SemanticProperties.Description="{loc:Str Song_Editor_Follow}">
-                    <controls:IconView Name="head" Size="{t:Size 17}" Color="{t:Theme AccentText}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <controls:IconView Name="head" Size="{t:Size 17}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnFollowTapped" /></Border.GestureRecognizers>
                 </Border>
                 <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 34, Min=34}" Padding="10,0" IsVisible="{Binding HasSelection}">
                     <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
-                        <controls:IconView Name="head" Size="{t:Size 15}" Color="{t:Theme AccentText}" VerticalOptions="Center" />
+                        <controls:IconView Name="pin" Size="{t:Size 16}" Color="{t:Theme TextPri}" VerticalOptions="Center" />
                         <Label Text="{Binding SelectedChord}" FontFamily="Display" FontSize="14" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
                     </HorizontalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnGoToSelectionTapped" /></Border.GestureRecognizers>
