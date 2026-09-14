@@ -144,6 +144,19 @@ public sealed class ChordTrack : Grid
     private readonly Dictionary<int, float> _pillShift = new();
     private double _panStart, _panAt;
     private bool _panning;
+    // A fling: the track keeps going after the finger lifts and slows to a stop,
+    // as the beat view's scroll view does (user request 2026-09-14). Outside the
+    // editor the scrub simply goes on until the coast ends; the song is sought
+    // there and resumed only then.
+    private readonly List<(long At, double Dx)> _swipe = new();
+    private double _coastSpeed;                                  // points per second, in the finger's direction
+    private long _coastTicks;
+    private bool _coasting, _stoppedCoast;
+    private const string CoastHandle = "coast";
+    /// <summary>Slower than this, a lift is a stop, not a fling; and a coast ends.</summary>
+    private const double FlingSpeed = 80, RestSpeed = 24;
+    /// <summary>Seconds for the coast to lose two thirds of its speed.</summary>
+    private const double CoastDecay = 0.45;
     /// <summary>Where the track is looking. Playing a song, that is wherever the
     /// song is; editing one, it is the reader's own and stays put while the song
     /// runs across it — a track that rode along with the playhead could not be
@@ -302,31 +315,41 @@ public sealed class ChordTrack : Grid
             Started = _ =>
             {
                 if (_dragging != 0) return;                      // a loop end has the finger
+                // A finger on a coasting track stops it; the scrub it was is not over.
+                bool wasCoasting = _coasting;
+                if (wasCoasting) StopCoast();
+                _stoppedCoast = wasCoasting;
                 _panning = true;
+                _swipe.Clear();
                 Untether();
                 _panStart = _panAt = ViewAt;
                 // Editing, the finger moves the track and not the song, so the
                 // song is left playing.
-                if (!Editing) ScrubStarted?.Invoke(this, EventArgs.Empty);
+                if (!Editing && !wasCoasting) ScrubStarted?.Invoke(this, EventArgs.Empty);
             },
             Moved = dx =>
             {
                 if (!_panning) return;
-                _panAt = Math.Clamp(_panStart - dx / PixelsPerSecond, 0, Math.Max(0, Duration));
-                if (Editing) { _viewTime = _panAt; Follow(); return; }
-                // Never assign Position here: the owner applies it and it comes back.
-                Scrubbing?.Invoke(this, _panAt);
+                long now = Environment.TickCount64;
+                _swipe.Add((now, dx));
+                _swipe.RemoveAll(sample => now - sample.At > 120);
+                Pan(Math.Clamp(_panStart - dx / PixelsPerSecond, 0, Math.Max(0, Duration)));
             },
             Ended = () =>
             {
                 if (!_panning) return;
                 _panning = false;
+                double speed = SwipeSpeed();
+                if (Math.Abs(speed) >= FlingSpeed) { StartCoast(speed); return; }
                 if (!Editing) ScrubEnded?.Invoke(this, _panAt);
             },
             Tapped = pt =>
             {
                 if (_dragging != 0) return;
-                // A press that did not move: the scrub ends where it began, then the tap seeks.
+                // A press that stopped a coast is only that: the scrub ends where
+                // the track came to rest. Any other press that did not move: the
+                // scrub ends where it began, then the tap seeks.
+                if (_stoppedCoast) { _stoppedCoast = false; _panning = false; if (!Editing) ScrubEnded?.Invoke(this, _panAt); return; }
                 if (_panning) { _panning = false; if (!Editing) ScrubEnded?.Invoke(this, _panAt); }
                 TapAt(pt);
             },
@@ -348,6 +371,72 @@ public sealed class ChordTrack : Grid
     /// <summary>Re-render every ribbon and the pinned pill (data or colours changed).</summary>
     /// <summary>The moment at the playhead's place on screen.</summary>
     private double ViewAt => Editing ? _viewTime : Position;
+
+    /// <summary>The track is still moving after a fling.</summary>
+    public bool Coasting => _coasting;
+
+    /// <summary>The finger's or the coast's new place: the window in the editor,
+    /// the song outside it. Never assign Position here — the owner applies it
+    /// and it comes back.</summary>
+    private void Pan(double at)
+    {
+        _panAt = at;
+        if (Editing) { _viewTime = at; Follow(); return; }
+        Scrubbing?.Invoke(this, at);
+    }
+
+    /// <summary>Points per second over the last stretch of the swipe, in the
+    /// finger's direction; nothing when the finger had already paused.</summary>
+    private double SwipeSpeed()
+    {
+        if (_swipe.Count < 2) return 0;
+        var first = _swipe[0];
+        var last = _swipe[^1];
+        double seconds = (last.At - first.At) / 1000.0;
+        if (seconds < 0.02) return 0;
+        return (last.Dx - first.Dx) / seconds;
+    }
+
+    private void StartCoast(double speed)
+    {
+        _coastSpeed = speed;
+        _coastTicks = Environment.TickCount64;
+        _coasting = true;
+        this.AbortAnimation(CoastHandle);
+        new Animation(_ => Coast()).Commit(this, CoastHandle, length: 60_000, repeat: () => _coasting);
+    }
+
+    /// <summary>A frame of the coast: on in the finger's direction, a little
+    /// slower each frame, until it rests or reaches an end of the song.</summary>
+    private void Coast()
+    {
+        if (!_coasting) return;
+        long now = Environment.TickCount64;
+        double dt = Math.Min(0.05, (now - _coastTicks) / 1000.0);
+        _coastTicks = now;
+        double duration = Math.Max(0, Duration);
+        double at = Math.Clamp(_panAt - _coastSpeed * dt / Math.Max(1, PixelsPerSecond), 0, duration);
+        _coastSpeed *= Math.Exp(-dt / CoastDecay);
+        Pan(at);
+        if (Math.Abs(_coastSpeed) < RestSpeed || at <= 0 || at >= duration) Settle();
+    }
+
+    private void StopCoast()
+    {
+        if (!_coasting) return;
+        _coasting = false;
+        this.AbortAnimation(CoastHandle);
+    }
+
+    /// <summary>The coast is over, here: outside the editor the scrub ends and the
+    /// song is sought (and resumed, if it was playing). The owner calls this
+    /// before playing so the track is still first (user rule 2026-09-14).</summary>
+    public void Settle()
+    {
+        if (!_coasting) return;
+        StopCoast();
+        if (!Editing) ScrubEnded?.Invoke(this, _panAt);
+    }
 
     /// <summary>The moment in the middle of the window: where a chord is put
     /// when one is added, and where the editor's cursor stands.</summary>
@@ -445,7 +534,16 @@ public sealed class ChordTrack : Grid
         double w = Width;
         if (w <= 0) return;
         double pps = PixelsPerSecond, v = w / pps, px = w * PlayheadAt;
-        if (!Editing) { _viewSet = false; _following = true; }
+        if (!Editing)
+        {
+            _viewSet = false;
+            _following = true;
+            // At its own place. Relayout used to put it there and no longer does
+            // (in the editor that made it jump), so a song opened fresh had the
+            // playhead at the edge and one out of the editor had none (user
+            // report 2026-09-14).
+            NativeTransform.TranslateX(_playhead, px - 2);
+        }
         else
         {
             // Riding along, the window is the song's; let go of, it is the

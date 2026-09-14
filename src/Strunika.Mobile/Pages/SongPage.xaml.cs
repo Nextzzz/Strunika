@@ -48,7 +48,7 @@ public partial class SongPage : ContentPage
 
         Track.ScrubStarted += (_, _) => _ = _vm.ScrubStartAsync();
         Track.Scrubbing += (_, t) => _vm.Scrubbing(t);
-        Track.ScrubEnded += (_, t) => _ = _vm.ScrubEndAsync(t);
+        Track.ScrubEnded += (_, t) => _scrubEnd = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
         Track.SelectionRequested += (_, index) => _vm.Selected = index;
         Track.FollowingChanged += (_, _) => UpdateFollowChip();
@@ -627,6 +627,22 @@ public partial class SongPage : ContentPage
         if (_vm.SelectedStart < 0) return;
         if (_gridView) { _gridFollowing = false; UpdateFollowChip(); ScrollGridToRow(_vm.SelectedBeat); }
         else Track.LookAt(_vm.SelectedStart);
+    }
+
+    private Task? _scrubEnd;
+
+    /// <summary>Play: a track still coasting from a fling is brought to rest
+    /// first, and the song sought there — and if it was playing before the
+    /// fling, that alone starts it again (user rule 2026-09-14).</summary>
+    private async void OnPlayTapped(object? sender, TappedEventArgs e)
+    {
+        if (Track.Coasting)
+        {
+            Track.Settle();
+            if (_scrubEnd != null) { try { await _scrubEnd; } catch (Exception ex) { FileLog.Error("scrub end", ex); } }
+            if (_vm.IsPlaying) return;
+        }
+        _vm.TogglePlayCommand.Execute(null);
     }
 
     private async void OnEditNudgeBack(object? sender, TappedEventArgs e) => await _vm.NudgeSelectedAsync(-1);
