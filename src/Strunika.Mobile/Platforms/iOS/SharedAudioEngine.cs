@@ -54,7 +54,10 @@ internal static class SharedAudioEngine
     /// encoder, ticking for twenty minutes beside WebKit's audio, is the best
     /// lead there is for the sound that turned to grating (log of 2026-09-15).
     /// The metronome reads the real value back and places its ticks by it.</summary>
-    private const double PreferredIoSeconds = 0.0232;
+    /// <para>Asked as 23 ms, the speaker came back with 85 (log of 2026-09-15):
+    /// the hardware rounds to its own sizes. 20 ms lands on 1024 frames at
+    /// 48 kHz, and what it comes back with is logged with the start.</para>
+    private const double PreferredIoSeconds = 0.02;
 
     public static bool Ensure()
     {

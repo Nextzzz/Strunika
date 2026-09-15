@@ -467,7 +467,13 @@ public sealed partial class SongViewModel : ObservableObject
     {
         if (_transport?.Ticks != null) return;
         long now = System.Diagnostics.Stopwatch.GetTimestamp();
-        _inAir.RemoveAll(t => t.Due <= now);
+        // A tick due within the player's latency is already written into the
+        // stream — rendered a block early and heard a route's latency later —
+        // and cancelling it does nothing. Placing it again as well played the
+        // beat twice, often on AirPods (163 ms) and, with an 85 ms block on the
+        // speaker, there too (log of 2026-09-15). Such ticks are left as they are.
+        long committed = now + (long)((_click.Latency + 0.03) * System.Diagnostics.Stopwatch.Frequency);
+        _inAir.RemoveAll(t => t.Due <= committed);
         double clock = _predicted + _drift;
         if (_inAir.Count == 0) { _nextBeat = Math.Max(_nextBeat, NextBeatAfter(clock)); return; }
         _click.Cancel();
