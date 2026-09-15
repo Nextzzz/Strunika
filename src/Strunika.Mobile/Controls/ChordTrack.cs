@@ -330,16 +330,21 @@ public sealed class ChordTrack : Grid
             Started = _ =>
             {
                 if (_dragging != 0) return;                      // a loop end has the finger
-                bool wasCoasting = _stoppedCoast || _coasting;
                 if (_coasting) StopCoast();
-                _stoppedCoast = wasCoasting;
+                _stoppedCoast = false;                           // the finger moved on: a drag, not a tap that stopped a coast
                 _panning = true;
                 _swipe.Clear();
                 Untether();
                 _panStart = _panAt = ViewAt;
                 // Editing, the finger moves the track and not the song, so the
-                // song is left playing.
-                if (!Editing && !wasCoasting) BeginScrub();
+                // song is left playing. Outside it the scrub begins here unless
+                // one is already under way (the finger caught a coasting track):
+                // deciding that by a flag left over from an earlier stop let a
+                // later drag go on without a scrub, and the song, still
+                // playing, took every position back — the track stood while the
+                // chords flickered, and no drag moved it again (user report
+                // 2026-09-15).
+                if (!Editing && !_scrubbing) BeginScrub();
             },
             Moved = dx =>
             {
