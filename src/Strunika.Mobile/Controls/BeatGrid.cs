@@ -140,16 +140,19 @@ public sealed class BeatGrid : Grid
     /// <summary>The drag is over, one way or another.</summary>
     public event EventHandler? DragEnded;
     /// <summary>How far the page has scrolled the grid under a still finger
-    /// since the drag began: the finger points that much further down the grid.</summary>
-    private double _dragShift, _lastDx, _lastDy;
+    /// since the drag began (the pan's screen deltas do not know it), and where
+    /// the finger last was, in the grid's coordinates.</summary>
+    private double _dragShift, _lastFx, _lastFy;
 
     /// <summary>The page scrolled the grid by <paramref name="dy"/> under the
-    /// finger: the chord on it stays on the screen, not on the rows.</summary>
+    /// finger: the chord on it stays on the screen, not on the rows. Counted
+    /// once — the hold's points already carry the scroll, and adding it to them
+    /// as well sent the square flying off the screen (user report 2026-09-15).</summary>
     public void ShiftDrag(double dy)
     {
         if (_liftedBeat < 0) return;
         _dragShift += dy;
-        DragTo(_lastDx, _lastDy);
+        DragAt(_lastFx, _lastFy + dy);
     }
     /// <summary>The chosen chord's square was tapped again (it wears the handle,
     /// so the tap lands there and not on the grid).</summary>
@@ -222,7 +225,9 @@ public sealed class BeatGrid : Grid
     private bool _thumbFull;
     private int _pulseTurn;
     /// <summary>Where a hold on the grid came down, for the drag that follows it.</summary>
-    private double _holdX, _holdY;
+    /// <summary>Where the finger holds the square, from its top-left corner;
+    /// and, for the pan on the handle, where the finger came down in the grid.</summary>
+    private double _grabX, _grabY, _pressX, _pressY;
     /// <summary>A hold has just ended: a tap the platform may still send for it is not a tap.</summary>
     private bool _swallowTap;
     /// <summary>The square whose chord is off it — on the finger, or waiting
@@ -280,8 +285,19 @@ public sealed class BeatGrid : Grid
         PointerDrag.Attach(thumbTouch, new PointerDrag.Callbacks
         {
             // Nothing happens until the finger actually moves: a press is not a drag.
-            Started = _ => { if (_liftedBeat < 0) _dragFrom = _dragTo = Chosen; },
-            Dragged = DragTo,
+            Started = _ =>
+            {
+                if (_liftedBeat >= 0) return;
+                _dragFrom = _dragTo = Chosen;
+                // The pan reports how far the finger moved on the screen; it began
+                // over the handle, taken as the middle of the square.
+                _grabX = _grabY = _cell / 2;
+                _pressX = _thumbX + _grabX;
+                _pressY = _thumbY + _grabY;
+                _dragShift = 0;
+            },
+            // Screen deltas: the rows the page scrolled under them are added back.
+            Dragged = (dx, dy) => DragAt(_pressX + dx, _pressY + dy + _dragShift),
             Ended = EndDrag,
             Held = _ => { if (_liftedBeat >= 0) return; Services.Haptics.Default.Success(); Pulse(); },   // held on the chosen chord: it says so again
             Tapped = _ =>
@@ -300,7 +316,8 @@ public sealed class BeatGrid : Grid
         HoldDrag.Attach(_stack, new HoldDrag.Callbacks
         {
             Held = HoldAt,
-            Moved = point => DragTo(point.X - _holdX, point.Y - _holdY),
+            // In the grid's own coordinates, so a scroll under the finger is already in them.
+            Moved = point => DragAt(point.X, point.Y),
             Released = _ => EndHold(),
             Cancelled = EndHold,
         });
@@ -357,8 +374,9 @@ public sealed class BeatGrid : Grid
         PlaceThumb();
         Pulse();
         _dragFrom = _dragTo = index;
-        _holdX = point.X;
-        _holdY = point.Y;
+        _grabX = point.X - _thumbX;
+        _grabY = point.Y - _thumbY;
+        _dragShift = 0;
     }
 
     private void EndHold()
@@ -385,17 +403,20 @@ public sealed class BeatGrid : Grid
         _thumbFace.Invalidate();
     }
 
-    private void DragTo(double dx, double dy)
+    /// <summary>The finger is here, in the grid's coordinates: the square goes
+    /// under it, never past the grid's edges.</summary>
+    private void DragAt(double fx, double fy)
     {
         if (_dragFrom < 0) return;
-        if (_liftedBeat < 0) { _dragShift = 0; Lift(); }
-        _lastDx = dx;
-        _lastDy = dy;
-        dy += _dragShift;
-        NativeTransform.TranslateX(_thumb, _thumbX + dx);
-        NativeTransform.TranslateY(_thumb, _thumbY + dy);
-        DragCentre?.Invoke(this, _thumbY + dy + _cell / 2);
-        int target = BeatAt(_thumbX + dx + _cell / 2, _thumbY + dy + _cell / 2);
+        if (_liftedBeat < 0) Lift();
+        _lastFx = fx;
+        _lastFy = fy;
+        double x = Math.Clamp(fx - _grabX, 0, Math.Max(0, Width - _cell));
+        double y = Math.Clamp(fy - _grabY, 0, Math.Max(0, Height - _cell));
+        NativeTransform.TranslateX(_thumb, x);
+        NativeTransform.TranslateY(_thumb, y);
+        DragCentre?.Invoke(this, y + _cell / 2);
+        int target = BeatAt(x + _cell / 2, y + _cell / 2);
         if (target < 0 || target == _dragTo) return;
         _dragTo = target;
         double step = _cell + _gap;
