@@ -48,10 +48,26 @@ internal static class SharedAudioEngine
     }
 
     /// <summary>Running, on the mixable playback session. Call under <see cref="Gate"/>.</summary>
+    /// <summary>The IO cycle asked of the hardware before the engine starts. On
+    /// AirPods the route ran at 10 ms (the speaker at 23), and a Bluetooth link
+    /// encodes in frames of about 21 ms: an engine cycling faster than the
+    /// encoder, ticking for twenty minutes beside WebKit's audio, is the best
+    /// lead there is for the sound that turned to grating (log of 2026-09-15).
+    /// The metronome reads the real value back and places its ticks by it.</summary>
+    private const double PreferredIoSeconds = 0.0232;
+
     public static bool Ensure()
     {
         AudioSessions.ForPlayback();
         if (Engine.Running) return true;
+        try
+        {
+            var session = AVAudioSession.SharedInstance();
+            if (Math.Abs(session.PreferredIOBufferDuration - PreferredIoSeconds) > 1e-4
+                && !session.SetPreferredIOBufferDuration(PreferredIoSeconds, out var ioError))
+                FileLog.Info("audio engine: io buffer preference refused: " + ioError?.LocalizedDescription);
+        }
+        catch (Exception ex) { FileLog.Error("audio engine: io buffer", ex); }
         Engine.Prepare();
         if (!Engine.StartAndReturnError(out var error))
         {
