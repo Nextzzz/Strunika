@@ -41,7 +41,7 @@ public sealed class ChordTrack : Grid
     /// being taken.</summary>
     /// <summary>The editor is on: a chord is a block over the time it lasts,
     /// with a hold on it, instead of a badge at the moment it starts.</summary>
-    public static readonly BindableProperty EditingProperty = BindableProperty.Create(nameof(Editing), typeof(bool), typeof(ChordTrack), false, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; if (!t.Editing) t.Land(); t.Redraw(); t.Follow(); });
+    public static readonly BindableProperty EditingProperty = BindableProperty.Create(nameof(Editing), typeof(bool), typeof(ChordTrack), false, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t.ModeChanged(); if (!t.Editing) t.Land(); t.Redraw(); t.Follow(); });
     /// <summary>Which chord is being worked on, by its place in the song.</summary>
     public static readonly BindableProperty SelectedProperty = BindableProperty.Create(nameof(Selected), typeof(int), typeof(ChordTrack), -1, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t.Redraw(); t.Follow(); });
     public static readonly BindableProperty LoopArmedProperty = BindableProperty.Create(nameof(LoopArmed), typeof(bool), typeof(ChordTrack), false, propertyChanged: Reloop);
@@ -339,7 +339,7 @@ public sealed class ChordTrack : Grid
                 _panStart = _panAt = ViewAt;
                 // Editing, the finger moves the track and not the song, so the
                 // song is left playing.
-                if (!Editing && !wasCoasting) ScrubStarted?.Invoke(this, EventArgs.Empty);
+                if (!Editing && !wasCoasting) BeginScrub();
             },
             Moved = dx =>
             {
@@ -358,7 +358,7 @@ public sealed class ChordTrack : Grid
                 if (_liftLogs++ < 12)
                     Strunika.Core.Diagnostics.FileLog.Info($"conveyor lift: {_swipe.Count} samples over {(_swipe.Count > 0 ? _swipe[^1].At - _swipe[0].At : 0)} ms, last {(_swipe.Count > 0 ? Environment.TickCount64 - _swipe[^1].At : -1)} ms ago, {speed:0} pt/s → {(fling ? "coast" : "stop")}");
                 if (fling) { StartCoast(speed); return; }
-                if (!Editing) ScrubEnded?.Invoke(this, _panAt);
+                EndScrub();
             },
             Tapped = pt =>
             {
@@ -366,8 +366,8 @@ public sealed class ChordTrack : Grid
                 // A press that stopped a coast is only that: the scrub ends where
                 // the track came to rest. Any other press that did not move: the
                 // scrub ends where it began, then the tap seeks.
-                if (_stoppedCoast) { _stoppedCoast = false; _panning = false; if (!Editing) ScrubEnded?.Invoke(this, _panAt); return; }
-                if (_panning) { _panning = false; if (!Editing) ScrubEnded?.Invoke(this, _panAt); }
+                if (_stoppedCoast) { _stoppedCoast = false; _panning = false; EndScrub(); return; }
+                if (_panning) { _panning = false; EndScrub(); }
                 TapAt(pt);
             },
         });
@@ -391,6 +391,37 @@ public sealed class ChordTrack : Grid
 
     /// <summary>The track is still moving after a fling.</summary>
     public bool Coasting => _coasting;
+
+    /// <summary>A scrub of the song is under way (the owner has paused for it):
+    /// from the finger's press outside the editor until it is ended here.</summary>
+    private bool _scrubbing;
+
+    private void BeginScrub()
+    {
+        _scrubbing = true;
+        ScrubStarted?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The scrub ends where the track is — only if one is under way,
+    /// so the owner never hears an end without a start.</summary>
+    private void EndScrub()
+    {
+        if (!_scrubbing) return;
+        _scrubbing = false;
+        ScrubEnded?.Invoke(this, _panAt);
+    }
+
+    /// <summary>The editor came on or went off while the finger or a coast had
+    /// the track: whatever was under way ends now. A coast that ran on into the
+    /// editor took its scrub with it and never ended it, and the song — paused
+    /// for the scrub — never played again (user report 2026-09-15).</summary>
+    private void ModeChanged()
+    {
+        StopCoast();
+        _stoppedCoast = false;
+        _panning = false;
+        EndScrub();
+    }
 
     /// <summary>The finger's or the coast's new place: the window in the editor,
     /// the song outside it. Never assign Position here — the owner applies it
@@ -459,7 +490,7 @@ public sealed class ChordTrack : Grid
     {
         if (!_coasting) return;
         StopCoast();
-        if (!Editing) ScrubEnded?.Invoke(this, _panAt);
+        EndScrub();
     }
 
     /// <summary>The moment in the middle of the window: where a chord is put
