@@ -244,7 +244,7 @@ public sealed class ChordTrack : Grid
     /// or the last one while it fades out), and the turn of its animation.</summary>
     private int _ringIndex = -1, _ringShown = -1, _ringTurn;
     /// <summary>How long of the song a reached chord keeps its ring.</summary>
-    private const double RingSeconds = 0.5;
+    private const double RingSeconds = 0.25;
     private readonly Border _cursorMark;
     private readonly BoxView _lineA, _lineB;
     private readonly Border _gripA, _gripB;
