@@ -133,6 +133,24 @@ public sealed class BeatGrid : Grid
 
     /// <summary>A chord was dragged from one square onto another.</summary>
     public event EventHandler<(int From, int To)>? ChordDropped;
+    /// <summary>A chord is being dragged: the middle of its square, in the grid's
+    /// own coordinates, on every move. The page scrolls when it nears an edge of
+    /// the screen (user request 2026-09-15).</summary>
+    public event EventHandler<double>? DragCentre;
+    /// <summary>The drag is over, one way or another.</summary>
+    public event EventHandler? DragEnded;
+    /// <summary>How far the page has scrolled the grid under a still finger
+    /// since the drag began: the finger points that much further down the grid.</summary>
+    private double _dragShift, _lastDx, _lastDy;
+
+    /// <summary>The page scrolled the grid by <paramref name="dy"/> under the
+    /// finger: the chord on it stays on the screen, not on the rows.</summary>
+    public void ShiftDrag(double dy)
+    {
+        if (_liftedBeat < 0) return;
+        _dragShift += dy;
+        DragTo(_lastDx, _lastDy);
+    }
     /// <summary>The chosen chord's square was tapped again (it wears the handle,
     /// so the tap lands there and not on the grid).</summary>
     public event EventHandler? ChosenTapped;
@@ -370,9 +388,13 @@ public sealed class BeatGrid : Grid
     private void DragTo(double dx, double dy)
     {
         if (_dragFrom < 0) return;
-        if (_liftedBeat < 0) Lift();
+        if (_liftedBeat < 0) { _dragShift = 0; Lift(); }
+        _lastDx = dx;
+        _lastDy = dy;
+        dy += _dragShift;
         NativeTransform.TranslateX(_thumb, _thumbX + dx);
         NativeTransform.TranslateY(_thumb, _thumbY + dy);
+        DragCentre?.Invoke(this, _thumbY + dy + _cell / 2);
         int target = BeatAt(_thumbX + dx + _cell / 2, _thumbY + dy + _cell / 2);
         if (target < 0 || target == _dragTo) return;
         _dragTo = target;
@@ -400,7 +422,9 @@ public sealed class BeatGrid : Grid
         int from = _dragFrom, to = _dragTo;
         _dragFrom = _dragTo = -1;
         _drop.IsVisible = false;
+        _dragShift = 0;
         if (_liftedBeat < 0) return;                             // a press that never became a drag
+        DragEnded?.Invoke(this, EventArgs.Empty);
         if (from >= 0 && to >= 0 && to != from)
         {
             // It waits, lifted, on the square it was let go on until the song's

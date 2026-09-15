@@ -129,6 +129,10 @@ public partial class SongPage : ContentPage
         };
         GridHost.Scrolled += OnGridScrolled;
         BeatsView.ActiveMoved += OnActiveBeatMoved;
+        // A chord held near the top or the bottom of the screen scrolls the rows
+        // under it, as a loop end pulls the track along (user request 2026-09-15).
+        BeatsView.DragCentre += (_, y) => { _gridDragY = y; (_gridEdge ??= NewGridEdgeTimer()).Start(); };
+        BeatsView.DragEnded += (_, _) => { _gridEdge?.Stop(); _gridDragY = -1; _gridEdgeSince = 0; };
         // A chord dragged from one square onto another.
         BeatsView.ChordDropped += async (_, move) =>
         {
@@ -763,6 +767,42 @@ public partial class SongPage : ContentPage
     /// doing — an animation it started, or rows moving under a new layout — and
     /// not the reader's.</summary>
     private long _gridSelfScrollUntil;
+
+    private IDispatcherTimer? _gridEdge;
+    private double _gridDragY = -1;
+    private long _gridEdgeSince;
+
+    private IDispatcherTimer NewGridEdgeTimer()
+    {
+        var timer = Dispatcher.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(50);
+        timer.Tick += (_, _) => GridEdgeTick();
+        return timer;
+    }
+
+    /// <summary>A tick of the drag near an edge: the rows scroll at a pace that
+    /// grows towards the edge, patient for three seconds and then up to four
+    /// times as fast — the same rule as the track's — and the chord is told how
+    /// far the rows moved under it.</summary>
+    private async void GridEdgeTick()
+    {
+        if (_gridDragY < 0 || !_gridView || GridHost.Height <= 0) return;
+        const double Zone = 56, Fastest = 320, Patience = 3, Impatient = 4;
+        double top = _gridDragY - GridHost.ScrollY, h = GridHost.Height;
+        double speed = top < Zone ? -Fastest * Math.Min(1, (Zone - top) / Zone)
+                     : top > h - Zone ? Fastest * Math.Min(1, (top - (h - Zone)) / Zone)
+                     : 0;
+        if (speed == 0) { _gridEdgeSince = 0; return; }
+        if (_gridEdgeSince == 0) _gridEdgeSince = Environment.TickCount64;
+        double held = (Environment.TickCount64 - _gridEdgeSince) / 1000.0;
+        if (held > Patience) speed *= Math.Min(Impatient, 1 + (held - Patience));
+        double most = Math.Max(0, GridHost.ContentSize.Height - h);
+        double from = GridHost.ScrollY;
+        double target = Math.Clamp(from + speed * 0.05, 0, most);
+        if (Math.Abs(target - from) < 0.5) return;               // the rows have no more to give that way
+        await ScrollGridSelfAsync(target, animated: false);
+        BeatsView.ShiftDrag(target - from);
+    }
 
     private async Task ScrollGridSelfAsync(double target, bool animated)
     {

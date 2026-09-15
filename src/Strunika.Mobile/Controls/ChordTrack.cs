@@ -655,6 +655,7 @@ public sealed class ChordTrack : Grid
         }
         UpdateLoop();
         PlaceClips();
+        if (_hole.IsVisible) PlaceHole();                        // the empty place rides along with the window
         if (_cursor.IsVisible != Editing) _cursor.IsVisible = _cursorMark.IsVisible = Editing;
         if (Editing)
         {
@@ -956,10 +957,11 @@ public sealed class ChordTrack : Grid
     private void Scroll()
     {
         double w = Width;
-        if (_dragging == 0 || w <= 0) return;
+        bool clip = _clipDragging && _clipMoved && _lifted != null;
+        if ((_dragging == 0 && !clip) || w <= 0) return;
         const double Zone = 64, Fastest = 280;                   // points, points per second
         const double Patience = 3, Impatient = 4;                // seconds, then up to this many times as fast
-        double x = _dragPressX + _dragDx;
+        double x = clip ? _clipPressX + _clipDx : _dragPressX + _dragDx;
         double speed = x < Zone ? -Fastest * Math.Min(1, (Zone - x) / Zone)
                      : x > w - Zone ? Fastest * Math.Min(1, (x - (w - Zone)) / Zone)
                      : 0;
@@ -971,6 +973,18 @@ public sealed class ChordTrack : Grid
         if (_edgeSince == 0) _edgeSince = Environment.TickCount64;
         double held = (Environment.TickCount64 - _edgeSince) / 1000.0;
         if (held > Patience) speed *= Math.Min(Impatient, 1 + (held - Patience));
+        if (clip)
+        {
+            // In the editor it is the window that moves, the song plays on: the
+            // chord keeps its place under the finger while the track goes by.
+            double was = _viewTime;
+            _viewTime = Math.Clamp(was + speed * 0.05 / PixelsPerSecond, Lowest, Math.Max(0, Duration));
+            if (Math.Abs(_viewTime - was) < 1e-6) return;        // the song has no more to give that way
+            _clipScrolled += _viewTime - was;
+            Follow();
+            DragClip(_lifted!);
+            return;
+        }
         double at = _posAtPress + _scrolled;
         double next = Math.Clamp(at + speed * 0.05 / PixelsPerSecond, 0, Math.Max(0, Duration));
         if (Math.Abs(next - at) < 1e-6) return;                  // the song has no more to give that way
@@ -1019,6 +1033,13 @@ public sealed class ChordTrack : Grid
     private bool _clipDragging, _clipMoved;
     private int _clipIndex = -1;
     private double _clipFrom, _clipTo, _clipDx, _clipStart;
+    /// <summary>Where the finger took the chord, on screen, and how far the
+    /// window has been pulled along since: a chord held near an edge scrolls
+    /// the track under it, as a loop end does (user request 2026-09-15).</summary>
+    private double _clipPressX, _clipScrolled;
+    /// <summary>The empty place a lifted chord left: its moment and its nudge,
+    /// so the hole rides along when the window moves.</summary>
+    private double _holeStart, _holeShift;
     /// <summary>The chord off the track: from its first move until the song's
     /// chords come back with the move in them.</summary>
     private Block? _lifted;
@@ -1069,6 +1090,11 @@ public sealed class ChordTrack : Grid
         _clipMoved = false;
         _clipFrom = _clipStart = segments[clip.Index].Start;
         _clipTo = segments[clip.Index].End;
+        _clipScrolled = 0;
+        double width = PillWidth(segments[clip.Index].Label);
+        double shift = _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
+        _clipPressX = Width * PlayheadAt + (_clipFrom - ViewAt) * PixelsPerSecond + shift + width / 2;
+        _edgeSince = 0;
     }
 
     private void DragClip(Block clip)
@@ -1081,12 +1107,13 @@ public sealed class ChordTrack : Grid
             Lift(clip);
         }
         // To the nearest sixteenth, and without a buzz (user rule 2026-09-14).
-        double moved = BeatMath.Snap(Beats ?? Array.Empty<double>(), _clipFrom + _clipDx / PixelsPerSecond);
+        double moved = BeatMath.Snap(Beats ?? Array.Empty<double>(), _clipFrom + _clipDx / PixelsPerSecond + _clipScrolled);
         // Anywhere in the song: the neighbours are no walls — the song puts the
         // chord down wherever it lands and whatever is there gives way (user
         // report 2026-09-14).
         _clipStart = Math.Clamp(moved, 0, Math.Max(0, Duration - MinClip));
         PlaceClip(clip, _clipStart);
+        (_scroller ??= NewScroller()).Start();                   // near an edge, the window comes along
     }
 
     /// <summary>The chord comes away from its place: the place left empty, and
@@ -1100,13 +1127,18 @@ public sealed class ChordTrack : Grid
         double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
         double shift = _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
         _hole.WidthRequest = width + 2;
-        NativeTransform.TranslateX(_hole, Width * PlayheadAt + (segments[clip.Index].Start - ViewAt) * PixelsPerSecond + shift - 1);
+        _holeStart = segments[clip.Index].Start;
+        _holeShift = shift - 1;
+        PlaceHole();
         _hole.IsVisible = true;
         clip.Handles.IsVisible = false;
         clip.Face.IsVisible = true;
         clip.Face.Invalidate();
         Pulse(clip);
     }
+
+    private void PlaceHole() =>
+        NativeTransform.TranslateX(_hole, Width * PlayheadAt + (_holeStart - ViewAt) * PixelsPerSecond + _holeShift);
 
     /// <summary>The chord grows a little and settles: the sign it was chosen,
     /// with no change of colour (user request 2026-09-14). Its own pill is laid
@@ -1129,6 +1161,8 @@ public sealed class ChordTrack : Grid
     {
         if (!_clipDragging) return;
         _clipDragging = false;
+        _scroller?.Stop();
+        _edgeSince = 0;
         if (!_clipMoved) return;
         _clipMoved = false;
         // The chord stays lifted where it was let go, and its old place empty,
