@@ -55,7 +55,11 @@ public sealed partial class SongViewModel : ObservableObject
     /// <summary>Ticks placed on the device clock and not yet due: the beat and
     /// the Stopwatch stamp it sounds at. A corrected position places them again.</summary>
     private readonly List<(int Beat, long Due)> _inAir = new();
-    private int _probeLogs = 10;
+    private int _probeLogs = 30;                             // the first six seconds: where a clock that moves in steps shows
+    /// <summary>When the position last read from the player changed, on the
+    /// stopwatch: a reading that repeats is that old, and the player has moved
+    /// on by that much since (see the probe).</summary>
+    private long _readingSince;
     // After a seek the transport keeps reporting the old time for a probe or two
     // (YouTube seeks asynchronously; a probe in flight predates the seek). Until
     // the player confirms the target, its position is not adopted.
@@ -331,11 +335,21 @@ public sealed partial class SongViewModel : ObservableObject
             // best guess. A file player answers at once and gets nothing.
             // (The page's own clock is continuous to ±5 ms — measured 2026-09-08 —
             // so the trip is the whole error.)
-            double heard = playing ? pos + trip * 0.5 * Speed : pos;
+            // A clock that moves in steps — an HTML video's currentTime does, in
+            // quarter seconds, for the first seconds of a song on some loads —
+            // repeats a reading for a while: the player is that much further on
+            // than it says. Read as the reading plus its age, the clock is
+            // smooth again; a smooth clock never repeats and gets no age. Easing
+            // the prediction towards the raw steps had the conveyor slowing and
+            // hurrying every half second for the first ten (user report 2026-09-15).
+            long stamp = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (Math.Abs(pos - _lastProbe) >= 1e-3 || _readingSince == 0) _readingSince = stamp;
+            double age = playing ? System.Diagnostics.Stopwatch.GetElapsedTime(_readingSince, stamp).TotalSeconds : 0;
+            double heard = playing ? pos + (age + trip * 0.5) * Speed : pos;
             if (_probeLogs > 0 && playing)
             {
                 _probeLogs--;
-                FileLog.Info($"probe: t {pos:0.000} trip {trip * 1000:0} ms, prediction {_predicted - heard:+0.000;-0.000} s off");
+                FileLog.Info($"probe: t {pos:0.000} trip {trip * 1000:0} ms, age {age * 1000:0} ms, prediction {_predicted - heard:+0.000;-0.000} s off");
             }
             if (_seekTarget >= 0)
             {
