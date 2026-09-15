@@ -52,6 +52,15 @@ public sealed partial class SongViewModel : ObservableObject
     /// <summary>A typical round trip to the page, for telling a slow answer
     /// (whose reading could be anywhere in the trip) from a usual one.</summary>
     private double _tripTypical = -1;
+    /// <summary>The last few readings of the player's clock against our own
+    /// (stopwatch seconds, the reading, the speed then): the player's time is
+    /// taken as the median line through them, not the latest reading. The
+    /// reading itself wanders by ±70 ms from one probe to the next on some
+    /// songs, and chasing each one had the conveyor slowing and hurrying in
+    /// mid-song with the metronome off (log of 2026-09-15).</summary>
+    private readonly List<(double At, double Heard, double Speed)> _readings = new();
+    private const int ReadingsKept = 5;
+    private const double ReadingsMaxAge = 1.6;
     /// <summary>Ticks placed on the device clock and not yet due: the beat and
     /// the Stopwatch stamp it sounds at. A corrected position places them again.</summary>
     private readonly List<(int Beat, long Due)> _inAir = new();
@@ -391,6 +400,7 @@ public sealed partial class SongViewModel : ObservableObject
                 double before = _predicted;
                 _predicted = stalled ? pos : heard;
                 _drift = 0;
+                _readings.Clear();                               // a new line starts here
                 if (playing && Math.Abs(_predicted - before) > 0.015) ResyncTicks();
             }
             else
@@ -403,7 +413,7 @@ public sealed partial class SongViewModel : ObservableObject
                 if (!slow)
                 {
                     double was = _drift;
-                    _drift = heard - _predicted;
+                    _drift = MedianClock(stamp, heard) - _predicted;
                     // The ticks already in the air were placed by the old clock:
                     // a change worth hearing places them again.
                     if (playing && Math.Abs(_drift - was) > 0.015) ResyncTicks();
@@ -412,6 +422,23 @@ public sealed partial class SongViewModel : ObservableObject
         }
         catch (Exception ex) { FileLog.Error("song probe", ex); }
         finally { _probing = false; }
+    }
+
+    /// <summary>The player's time now, as the median of the last few readings
+    /// carried to this moment at the song's speed: one wandering reading among
+    /// five moves nothing. A reading at another speed, or older than a second
+    /// and a half, is dropped.</summary>
+    private double MedianClock(long stamp, double heard)
+    {
+        double now = stamp / (double)System.Diagnostics.Stopwatch.Frequency;
+        double speed = Speed;
+        _readings.RemoveAll(r => now - r.At > ReadingsMaxAge || Math.Abs(r.Speed - speed) > 1e-6);
+        _readings.Add((now, heard, speed));
+        if (_readings.Count > ReadingsKept) _readings.RemoveAt(0);
+        // Each reading says where the player would be now; the middle one is the estimate.
+        var nows = _readings.Select(r => r.Heard + (now - r.At) * speed).OrderBy(v => v).ToList();
+        int n = nows.Count;
+        return n % 2 == 1 ? nows[n / 2] : (nows[n / 2 - 1] + nows[n / 2]) / 2;
     }
 
     /// <summary>How far ahead a tick is placed on the audio clock, on top of
@@ -426,7 +453,7 @@ public sealed partial class SongViewModel : ObservableObject
 
     private void SetPosition(double pos, bool fromTransport)
     {
-        if (!fromTransport) _drift = 0;                          // a seek or a scrub: nothing left to make good
+        if (!fromTransport) { _drift = 0; _readings.Clear(); }  // a seek or a scrub: nothing left to make good
         if (Metronome && fromTransport && IsPlaying && _transport?.Ticks == null)
         {
             // Every beat inside the lookahead is scheduled now for its exact
