@@ -56,6 +56,12 @@ public interface IClickPlayer : IDisposable
     /// <summary>Starts the output ahead of the first tick: an audio engine takes
     /// its time the first time, and a tick that had to start it was 200 ms late.</summary>
     void Prepare();
+    /// <summary>Nothing to tick for a while (the metronome off, the song page
+    /// left): an output that would otherwise run on, rendering silence, may
+    /// stop. On iOS the shared engine kept the route at its 10 ms buffer through
+    /// a whole YouTube song on AirPods, which is where the sound turned to
+    /// grating (log of 2026-09-15); WebKit's own audio is left alone with the route.</summary>
+    void Rest();
     /// <summary>Seconds between a tick being rendered and heard on the current
     /// route — 10–20 ms on a speaker, 160–250 ms on Bluetooth. The scheduler
     /// must ask for ticks at least this far ahead, or they cannot be placed.</summary>

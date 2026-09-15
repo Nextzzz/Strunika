@@ -483,8 +483,8 @@
   <data name="Song_Editor_Follow" xml:space="preserve">
     <value>Follow</value>
   </data>
-  <data name="Song_Editor_Fold" xml:space="preserve">
-    <value>Show or hide the levels</value>
+  <data name="Song_Editor_Levels" xml:space="preserve">
+    <value>Levels and metronome</value>
   </data>
   <data name="Song_Editor_Insert" xml:space="preserve">
     <value>Add</value>

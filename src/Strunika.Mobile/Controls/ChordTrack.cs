@@ -189,6 +189,7 @@ public sealed class ChordTrack : Grid
     /// <summary>Put this moment in the middle of the window; the song is left where it is.</summary>
     public void LookAt(double middle)
     {
+        StopCoast();                                             // the map has the window now
         Following = false;
         _viewSet = true;
         // The view is kept as the moment at the playhead's place, a quarter in —
@@ -202,6 +203,7 @@ public sealed class ChordTrack : Grid
     /// <summary>Back to the song, and along with it from now on.</summary>
     public void FollowNow()
     {
+        StopCoast();
         _viewTime = Position;
         _viewSet = true;
         Following = true;
@@ -316,12 +318,20 @@ public sealed class ChordTrack : Grid
         Add(overlay);
         PointerDrag.Attach(overlay, new PointerDrag.Callbacks
         {
+            // A finger on a coasting track stops it the moment it touches, as a
+            // scroll view's does (user request 2026-09-15); the scrub it was is
+            // not over — it ends where the finger leaves it.
+            Pressed = _ =>
+            {
+                if (_dragging != 0 || !_coasting) return;
+                StopCoast();
+                _stoppedCoast = true;
+            },
             Started = _ =>
             {
                 if (_dragging != 0) return;                      // a loop end has the finger
-                // A finger on a coasting track stops it; the scrub it was is not over.
-                bool wasCoasting = _coasting;
-                if (wasCoasting) StopCoast();
+                bool wasCoasting = _stoppedCoast || _coasting;
+                if (_coasting) StopCoast();
                 _stoppedCoast = wasCoasting;
                 _panning = true;
                 _swipe.Clear();

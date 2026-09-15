@@ -198,6 +198,9 @@ public sealed class WindowsClickPlayer : IClickPlayer
         lock (_gate) _stream?.Clear();
     }
 
+    /// <summary>An open output costs nothing here: it stays.</summary>
+    public void Rest() { }
+
     public void Dispose()
     {
         lock (_gate)

@@ -483,8 +483,8 @@
   <data name="Song_Editor_Follow" xml:space="preserve">
     <value>Слідкувати</value>
   </data>
-  <data name="Song_Editor_Fold" xml:space="preserve">
-    <value>Показати або сховати гучності</value>
+  <data name="Song_Editor_Levels" xml:space="preserve">
+    <value>Гучність і метроном</value>
   </data>
   <data name="Song_Editor_Insert" xml:space="preserve">
     <value>Додати</value>

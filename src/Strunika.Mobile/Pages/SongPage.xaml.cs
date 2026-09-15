@@ -57,7 +57,7 @@ public partial class SongPage : ContentPage
         Map.ViewRequested += (_, middle) =>
         {
             if (_gridView) ScrollGridToTime(middle);
-            else Track.LookAt(middle);
+            else Track.LookAt(middle);                           // LookAt stops a coast of its own
         };
         Track.SegmentMoved += (_, at) => _ = _vm.MoveSegmentAsync(at.Index, at.Start);
         Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
@@ -88,6 +88,8 @@ public partial class SongPage : ContentPage
         // honest guess at "off the bottom"; after it, the sheet's own height is.
         MoreSheet.TranslationY = Theme.Metrics.Instance.ShortestSide;
         MoreSheet.SizeChanged += (_, _) => { if (!_moreOpen) MoreSheet.TranslationY = HiddenSheet; };
+        LevelsSheet.TranslationY = Theme.Metrics.Instance.ShortestSide;
+        LevelsSheet.SizeChanged += (_, _) => { if (!_levelsOpen) LevelsSheet.TranslationY = HiddenLevels; };
 
         ApplyPanelSpacing(around: false);
 #if IOS
@@ -100,11 +102,13 @@ public partial class SongPage : ContentPage
         Body.SafeAreaEdges = SafeAreaEdges.None;
         Transport.SafeAreaEdges = SafeAreaEdges.None;             // it dips into the inset: no padding of its own
         Theme.SafeArea.IgnoreBelow(MoreSheet);                    // the sheet pads for the indicator itself (below)
+        Theme.SafeArea.IgnoreBelow(LevelsSheet);
         // The play button's bottom lands 40 pt off the screen's edge: 19 pt clear
         // of the home indicator's 21 pt zone. (The page's legacy UseSafeArea is
         // gone from the XAML; it padded everything and hid this.)
         Body.Padding = new Thickness(0, 8, 0, Math.Max(0, Theme.SafeArea.Bottom - 10));
         MoreSheet.Padding = new Thickness(20, 10, 20, 24 + Theme.SafeArea.Bottom);
+        LevelsSheet.Padding = new Thickness(20, 10, 20, 24 + Theme.SafeArea.Bottom);
 #endif
 
         BeatsView.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
@@ -481,22 +485,33 @@ public partial class SongPage : ContentPage
     private Thickness _trackMargin;
     private double _gridTop, _gridBottom, _gridTopApplied = double.NaN;
 
-    /// <summary>The editor's panel folded down to its chord row — the song's level
-    /// and the metronome's row hidden — as the reader left it for this song in
-    /// this view (see AppSettings.EditorPanelFolded).</summary>
-    private void ApplyPanelFold()
-    {
-        bool folded = _vm.Editing && AppSettings.EditorPanelFolded(_vm.Song.Id, _gridView);
-        if (LevelRow.IsVisible == folded) LevelRow.IsVisible = MetronomeRow.IsVisible = !folded;
-        FoldIcon.Name = folded ? "chevU" : "chevD";              // which way the rows will go
-    }
+    /// <summary>The editor's levels sheet — the song's level and the metronome's
+    /// row — over the song, opened from the chip beside the map (user decision
+    /// 2026-09-15). Put away by its own measured height, like the "more" sheet.</summary>
+    private bool _levelsOpen;
 
-    private void OnFoldTapped(object? sender, TappedEventArgs e)
+    private double HiddenLevels => LevelsSheet.Height + Theme.Metrics.Instance.Size(40);
+
+    private async void OnLevelsTapped(object? sender, TappedEventArgs e) => await SetLevelsOpenAsync(!_levelsOpen);
+
+    private async Task SetLevelsOpenAsync(bool open)
     {
-        if (!_vm.Editing) return;
-        AppSettings.SetEditorPanelFolded(_vm.Song.Id, _gridView, !AppSettings.EditorPanelFolded(_vm.Song.Id, _gridView));
-        Services.Haptics.Default.Selection();
-        ApplyPanelFold();
+        if (_levelsOpen == open) return;
+        _levelsOpen = open;
+        LevelsScrim.InputTransparent = !open;
+#if IOS
+        WatchDeviceVolume();                                     // for a YouTube song the level slider is the device volume
+#endif
+        if (open)
+        {
+            _ = LevelsScrim.FadeToAsync(0.45, 180);
+            await LevelsSheet.TranslateToAsync(0, 0, 260, Easing.CubicOut);
+        }
+        else
+        {
+            _ = LevelsScrim.FadeToAsync(0, 160);
+            await LevelsSheet.TranslateToAsync(0, HiddenLevels, 220, Easing.CubicIn);
+        }
     }
 
     private void ApplyEditor()
@@ -519,7 +534,7 @@ public partial class SongPage : ContentPage
         // Under the map's chips the same gap as over them: the track and the grid
         // started a good way further down (user request 2026-09-14). The track
         // keeps a little room over its pills of its own, so it gives that back.
-        ApplyPanelFold();
+        if (!editing && _levelsOpen) _ = SetLevelsOpenAsync(false);   // the sheet belongs to the editor
         double gap = MapRow.Spacing;
         var trackMargin = editing
             ? new Thickness(_trackMargin.Left, Math.Max(0, gap - Controls.ChordTrack.TopSpace), _trackMargin.Right, _trackMargin.Bottom)
@@ -582,7 +597,7 @@ public partial class SongPage : ContentPage
     private void WatchDeviceVolume()
     {
         if (!_vm.IsYouTube) return;
-        if (!_unloaded && (_moreOpen || _vm.Editing))
+        if (!_unloaded && (_moreOpen || _levelsOpen))
         {
             Platforms.iOS.SystemVolume.Attach(v => _vm.Volume = v);
             _vm.Volume = Platforms.iOS.SystemVolume.Get();
@@ -871,7 +886,7 @@ public partial class SongPage : ContentPage
         else
         {
 #if IOS
-            WatchDeviceVolume();                                 // the editor's slider may still want the buttons
+            WatchDeviceVolume();                                 // the levels sheet's slider may still want the buttons
 #endif
             _ = MoreScrim.FadeToAsync(0, 160);
             await MoreSheet.TranslateToAsync(0, HiddenSheet, 220, Easing.CubicIn);

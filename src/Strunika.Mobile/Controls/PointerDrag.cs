@@ -13,6 +13,9 @@ public static class PointerDrag
 {
     public sealed class Callbacks
     {
+        /// <summary>The pointer came down here, before anything else is known
+        /// — a drag, a tap or a hold. On iOS it comes at once, from the touch.</summary>
+        public Action<Point>? Pressed { get; init; }
         /// <summary>Pointer down at x (view coordinates). On iOS it comes when the
         /// drag begins, with the point the finger first touched.</summary>
         public Action<double>? Started { get; init; }
@@ -56,6 +59,7 @@ public static class PointerDrag
             var p = e.GetCurrentPoint(el).Position;
             if (!el.CapturePointer(e.Pointer)) return;
             captured = true; moved = false; startX = p.X; startY = p.Y;
+            c.Pressed?.Invoke(new Point(p.X, p.Y));
             c.Started?.Invoke(p.X);
             if (c.Held != null)
             {
@@ -110,7 +114,11 @@ public static class PointerDrag
             if (view.GestureRecognizers?.Any(g => g is Platforms.iOS.TouchDownRecognizer) == true) return;
             if (c.Held == null)
             {
-                view.AddGestureRecognizer(new Platforms.iOS.TouchDownRecognizer(point => downX = point.X));
+                view.AddGestureRecognizer(new Platforms.iOS.TouchDownRecognizer(point =>
+                {
+                    downX = point.X;
+                    c.Pressed?.Invoke(new Point(point.X, point.Y));
+                }));
                 return;
             }
             // A hold is wanted too: the recognizer follows the finger to its end,
@@ -120,6 +128,7 @@ public static class PointerDrag
                 {
                     downX = atX = point.X;
                     atY = point.Y;
+                    c.Pressed?.Invoke(new Point(point.X, point.Y));
                     pressed = true;
                     strayed = false;
                     int id = ++press;

@@ -194,7 +194,7 @@ public sealed partial class SongViewModel : ObservableObject
         PushTicks();
         if (_transport?.Ticks != null) return;
         if (value) _click.Prepare();
-        else { _click.Cancel(); _inAir.Clear(); }
+        else { _click.Cancel(); _inAir.Clear(); _click.Rest(); }
     }
     [RelayCommand] private void ClickEarlier() => ClickOffsetMs = Math.Min(150, ClickOffsetMs + 5);
     [RelayCommand] private void ClickLater() => ClickOffsetMs = Math.Max(-150, ClickOffsetMs - 5);
@@ -1199,5 +1199,6 @@ public sealed partial class SongViewModel : ObservableObject
         _pro.Changed -= OnProChanged;
         try { _transport?.Dispose(); } catch (Exception ex) { FileLog.Error("song dispose", ex); }
         _transport = null;
+        try { _click.Cancel(); _click.Rest(); } catch (Exception ex) { FileLog.Error("click rest", ex); }
     }
 }

@@ -200,6 +200,25 @@ public sealed class IosClickPlayer : IClickPlayer
         lock (_gate) _pending.Clear();
     }
 
+    /// <summary>The engine stops unless the song's own node is playing through
+    /// it (a file song): with the metronome off there is nothing for it to
+    /// render but silence, and running on it kept a Bluetooth route at its
+    /// 10 ms buffer under WebKit's audio for a whole song. The next tick
+    /// prepares it again (Prepare); the first one may be a little late.</summary>
+    public void Rest() => _work.Add(() =>
+    {
+        lock (SharedAudioEngine.Gate)
+        {
+            try
+            {
+                if (SharedAudioEngine.SongNode.Playing || !SharedAudioEngine.Engine.Running) return;
+                SharedAudioEngine.Engine.Stop();
+                FileLog.Info("audio engine: rested, nothing to render");
+            }
+            catch (Exception ex) { FileLog.Error("click rest", ex); }
+        }
+    });
+
     public void Dispose()
     {
         _work.CompleteAdding();

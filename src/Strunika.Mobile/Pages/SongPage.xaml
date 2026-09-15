@@ -109,7 +109,7 @@
                  them (user request 2026-09-10). -->
             <!-- Its height is kept whether the chips show or not, so a chip
                  appearing never takes room from the track (user request 2026-09-14). -->
-            <HorizontalStackLayout Spacing="8" HeightRequest="{t:Size 34, Min=34}">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8" HeightRequest="{t:Size 34, Min=34}">
                 <!-- The icon alone (user request 2026-09-14); the words are for VoiceOver. -->
                 <!-- Filled with the accent, so it never reads as the chip beside it (user request 2026-09-14). -->
                 <Border x:Name="FollowChip" Style="{StaticResource Chip}" HeightRequest="{t:Size 34, Min=34}" WidthRequest="{t:Size 44, Min=44}" Padding="0" IsVisible="False"
@@ -118,14 +118,21 @@
                     <controls:IconView Name="head" Size="{t:Size 17}" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnFollowTapped" /></Border.GestureRecognizers>
                 </Border>
-                <Border Style="{StaticResource Chip}" HeightRequest="{t:Size 34, Min=34}" Padding="10,0" IsVisible="{Binding HasSelection}">
+                <Border Grid.Column="1" Style="{StaticResource Chip}" HeightRequest="{t:Size 34, Min=34}" Padding="10,0" IsVisible="{Binding HasSelection}">
                     <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
                         <controls:IconView Name="pin" Size="{t:Size 16}" Color="{t:Theme TextPri}" VerticalOptions="Center" />
                         <Label Text="{Binding SelectedChord}" FontFamily="Display" FontSize="14" TextColor="{t:Theme TextPri}" VerticalOptions="Center" />
                     </HorizontalStackLayout>
                     <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnGoToSelectionTapped" /></Border.GestureRecognizers>
                 </Border>
-            </HorizontalStackLayout>
+                <!-- The two levels — the song's and the metronome's — live in a
+                     sheet of their own, opened from here (user request 2026-09-15). -->
+                <Border Grid.Column="3" Style="{StaticResource Chip}" HeightRequest="{t:Size 34, Min=34}" WidthRequest="{t:Size 44, Min=44}" Padding="0"
+                        SemanticProperties.Description="{loc:Str Song_Editor_Levels}">
+                    <controls:IconView Name="sliders" Size="{t:Size 18}" Color="{t:Theme TextPri}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnLevelsTapped" /></Border.GestureRecognizers>
+                </Border>
+            </Grid>
         </VerticalStackLayout>
 
         <!-- The beat grid (the other view of the same rows: chords by beat, tap to jump) -->
@@ -160,12 +167,10 @@
              matter while a song is being taken apart. It is deliberately
              generous — the track above gives up the room (user request
              2026-09-10). -->
-        <Grid Grid.Row="5" x:Name="EditorPanel" Margin="{t:ContentInset Plus=True, Top=2, Bottom=6}" IsVisible="{Binding Editing}">
-        <Border x:Name="EditorBar" Style="{StaticResource Card}" Padding="14,12">
-            <VerticalStackLayout Spacing="10">
-                <!-- Room on the right, so the fold badge on the corner is not on top
-                     of the last button (user request 2026-09-14). -->
-                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,0,10,0">
+        <!-- One row, always (user decision 2026-09-15): the chord being worked on
+             and what can be done to it. The two levels are in their own sheet. -->
+        <Border Grid.Row="5" x:Name="EditorBar" Style="{StaticResource Card}" Padding="14,12" Margin="{t:ContentInset Plus=True, Top=2, Bottom=6}" IsVisible="{Binding Editing}">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
                     <!-- A beat at a time, for when a finger is not exact enough.
                          Only there while a chord is (user request 2026-09-10). -->
                     <Border Style="{StaticResource Chip}" WidthRequest="{t:Size 44, Min=44}" HeightRequest="{t:Size 58, Min=54}" Padding="0" IsVisible="{Binding HasSelection}">
@@ -195,8 +200,7 @@
                         </Grid>
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditChord" /></Border.GestureRecognizers>
                     </Border>
-                    <!-- Delete before add: the fold badge sits over the corner, and a
-                         miss on it must not delete a chord (user request 2026-09-14). -->
+                    <!-- Delete before add (user decision 2026-09-14). -->
                     <Border Grid.Column="3" Style="{StaticResource Chip}" WidthRequest="{t:Size 58, Min=54}" HeightRequest="{t:Size 58, Min=54}" Padding="0"
                             Opacity="{Binding HasSelection, Converter={StaticResource Faded}}">
                         <controls:IconView Name="trash" Size="{t:Size 24}" Color="{t:Theme Error}" HorizontalOptions="Center" VerticalOptions="Center" />
@@ -208,36 +212,7 @@
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnEditAdd" /></Border.GestureRecognizers>
                     </Border>
                 </Grid>
-
-                <!-- The song's own level -->
-                <Grid x:Name="LevelRow" ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
-                    <controls:IconView Name="vol" Size="{t:Size 20}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
-                    <controls:SeekBar Grid.Column="1" Duration="1" Value="{Binding Volume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,6,0" />
-                </Grid>
-
-                <!-- The metronome and its own -->
-                <Grid x:Name="MetronomeRow" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
-                    <controls:IconView Name="metro" Size="{t:Size 20}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
-                    <Switch Grid.Column="1" IsToggled="{Binding Metronome, Mode=TwoWay}" VerticalOptions="Center" />
-                    <controls:SeekBar Grid.Column="2" Duration="1" Value="{Binding ClickVolume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,6,0" Opacity="{Binding Metronome, Converter={StaticResource Faded}}" />
-                </Grid>
-            </VerticalStackLayout>
         </Border>
-            <!-- Folds the panel down to its chord row and back: the two levels are
-                 not needed while chords are being moved. A badge on the card's
-                 corner, like the lock on the Editor chip but bigger, in a finger's
-                 worth of clear room (user request 2026-09-14). -->
-            <!-- A bar along the panel's top edge, from in where a thumb reaches
-                 it out to the panel's end (user request 2026-09-15). -->
-            <Grid WidthRequest="{t:Size 104, Min=44}" HeightRequest="{t:Size 48, Min=44}" HorizontalOptions="End" VerticalOptions="Start"
-                  Margin="0,-24,0,0" BackgroundColor="Transparent" SemanticProperties.Description="{loc:Str Song_Editor_Fold}">
-                <Border HeightRequest="{t:Size 36}" StrokeShape="{t:Round 36}" StrokeThickness="2" Stroke="{t:Theme Bg}"
-                        BackgroundColor="{t:Theme Fill}" Padding="0" HorizontalOptions="Fill" VerticalOptions="Center" InputTransparent="True">
-                    <controls:IconView x:Name="FoldIcon" Name="chevD" Size="{t:Size 24}" StrokeSize="2.4" Color="{t:Theme OnFill}" HorizontalOptions="Center" VerticalOptions="Center" />
-                </Border>
-                <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnFoldTapped" /></Grid.GestureRecognizers>
-            </Grid>
-        </Grid>
 
         <!-- Position slider. Each clock shares its cell with an invisible ghost of the
              widest clock the song can show, so the cell keeps one width: the font's
@@ -458,6 +433,33 @@
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 52, Min=44}">
                     <controls:IconView Name="vol" Size="{t:Size 22}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
                     <controls:SeekBar Grid.Column="1" Duration="1" Value="{Binding Volume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,10,0" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- The editor's levels: the song's and the metronome's, in a small sheet
+             of their own over the song (user decision 2026-09-15). Put away by its
+             own measured height in code, like the "more" sheet. -->
+        <BoxView x:Name="LevelsScrim" Color="#99000000" Opacity="0" InputTransparent="True">
+            <BoxView.GestureRecognizers><TapGestureRecognizer Tapped="OnLevelsTapped" /></BoxView.GestureRecognizers>
+        </BoxView>
+        <Border x:Name="LevelsSheet" VerticalOptions="End" Margin="{t:ContentInset}"
+                BackgroundColor="{t:Theme Surface1}" StrokeThickness="0" Padding="20,10,20,24"
+                StrokeShape="RoundRectangle 24,24,0,0">
+            <Border.Shadow><Shadow Brush="#40000000" Radius="22" Opacity="0.6" Offset="0,-6" /></Border.Shadow>
+            <VerticalStackLayout Spacing="10">
+                <BoxView WidthRequest="{t:Size 40}" HeightRequest="{t:Size 5}" CornerRadius="3" Color="{t:Theme Separator}" HorizontalOptions="Center" Margin="0,0,0,8" />
+                <!-- The song's own level -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
+                    <controls:IconView Name="vol" Size="{t:Size 20}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <controls:SeekBar Grid.Column="1" Duration="1" Value="{Binding Volume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,6,0" />
+                </Grid>
+
+                <!-- The metronome and its own -->
+                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12" HeightRequest="{t:Size 38, Min=36}">
+                    <controls:IconView Name="metro" Size="{t:Size 20}" Color="{t:Theme TextSec}" VerticalOptions="Center" />
+                    <Switch Grid.Column="1" IsToggled="{Binding Metronome, Mode=TwoWay}" VerticalOptions="Center" />
+                    <controls:SeekBar Grid.Column="2" Duration="1" Value="{Binding ClickVolume, Mode=TwoWay}" TrackColor="{t:Theme Separator}" FillColor="{t:Theme Accent}" VerticalOptions="Center" Margin="0,0,6,0" Opacity="{Binding Metronome, Converter={StaticResource Faded}}" />
                 </Grid>
             </VerticalStackLayout>
         </Border>
