@@ -95,6 +95,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
 
             _cursor = 0; _consumed = 0; _queued = 0; _ended = _length == 0; _playing = false;
             Prime();
+            Publish();
         }
         return Task.CompletedTask;
     }
@@ -181,6 +182,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
                 _ended = true;                                   // the last block is in the output
                 _playing = false;
             }
+            Publish();
         }
     }
 
@@ -198,6 +200,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
             // The block clock resumes so that the position carries on from where the pause froze it.
             _consumedAt = System.Diagnostics.Stopwatch.GetTimestamp() - (long)((_pausedInto + _heardLag) * System.Diagnostics.Stopwatch.Frequency);
             _pausedInto = 0;
+            Publish();
         }
     }
 
@@ -210,6 +213,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
             _pausedInto = _consumedAt == 0 ? 0 : System.Diagnostics.Stopwatch.GetElapsedTime(_consumedAt).TotalSeconds - _heardLag;
             _node.Pause();                                       // the queued blocks wait
             _playing = false;
+            Publish();
         }
     }
 
@@ -231,7 +235,20 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
         catch { _heardLag = 0; }
     }
 
-    public bool IsPlaying { get { lock (SharedAudioEngine.Gate) return _playing && !_ended; } }
+    /// <summary>What the position is worked out from, as one value read without
+    /// the gate. The page asks where the song is from inside a frame, and the
+    /// refill thread holds the gate while it reads the file, every 46 ms: the
+    /// frame waited for the disk. Every change made under the gate ends by
+    /// publishing a new one.</summary>
+    private sealed record Clock(bool Loaded, bool Playing, bool Ended, long Consumed, long ConsumedAt, double PausedInto, double HeardLag, double Rate, double Duration);
+
+    private volatile Clock _clock = new(false, false, false, 0, 0, 0, 0, 1, 0);
+
+    /// <summary>Under the gate.</summary>
+    private void Publish() =>
+        _clock = new Clock(_file != null, _playing, _ended, _consumed, _consumedAt, _pausedInto, _heardLag, _rate, _length / (double)_sampleRate);
+
+    public bool IsPlaying { get { var c = _clock; return c.Playing && !c.Ended; } }
 
     public double Duration => _length / (double)_sampleRate;
 
@@ -239,19 +256,17 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
     {
         get
         {
-            lock (SharedAudioEngine.Gate)
-            {
-                if (_file == null) return 0;
-                if (_ended) return Duration;
-                // Real seconds into the current block, less what has not reached
-                // the ear yet; paused, the value frozen at the pause (a fresh
-                // seek: exactly the target). Song seconds, so scaled by the speed.
-                double into = _playing && _consumedAt != 0
-                    ? System.Diagnostics.Stopwatch.GetElapsedTime(_consumedAt).TotalSeconds - _heardLag
-                    : _pausedInto;
-                double seconds = _consumed / (double)_sampleRate + into * _rate;
-                return Math.Clamp(seconds, 0, Duration);
-            }
+            var c = _clock;
+            if (!c.Loaded) return 0;
+            if (c.Ended) return c.Duration;
+            // Real seconds into the current block, less what has not reached
+            // the ear yet; paused, the value frozen at the pause (a fresh
+            // seek: exactly the target). Song seconds, so scaled by the speed.
+            double into = c.Playing && c.ConsumedAt != 0
+                ? System.Diagnostics.Stopwatch.GetElapsedTime(c.ConsumedAt).TotalSeconds - c.HeardLag
+                : c.PausedInto;
+            double seconds = c.Consumed / (double)_sampleRate + into * c.Rate;
+            return Math.Clamp(seconds, 0, c.Duration);
         }
         set
         {
@@ -262,6 +277,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
                 bool playing = _playing;
                 Reposition(frame);
                 if (playing && SharedAudioEngine.Ensure()) { _node.Play(); _playing = true; }
+                Publish();
             }
         }
     }
@@ -280,6 +296,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
         _ended = frame >= _length;
         _playing = false;
         Prime();
+        Publish();
     }
 
     public double Rate
@@ -288,7 +305,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
         set
         {
             _rate = Math.Clamp(value, 0.5, 1.25);
-            lock (SharedAudioEngine.Gate) _pitch.Rate = (float)_rate;
+            lock (SharedAudioEngine.Gate) { _pitch.Rate = (float)_rate; Publish(); }
         }
     }
 
@@ -331,6 +348,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
             _pausedInto = 0;
             _ended = frame >= _length;
             _playing = false;
+            Publish();
             if (playing) FileLog.Info($"song player: paused at {frame / (double)_sampleRate:0.00} s, the engine stopped");
         }
     }
@@ -339,7 +357,7 @@ public sealed class IosAudioPlayer : IAudioPlayer, ITickTrack
     public void Dispose()
     {
         SharedAudioEngine.Stopped -= _onEngineStopped;
-        lock (SharedAudioEngine.Gate) Unload();
+        lock (SharedAudioEngine.Gate) { Unload(); Publish(); }
         _consumedBlocks.CompleteAdding();                       // the refill thread ends
     }
 }

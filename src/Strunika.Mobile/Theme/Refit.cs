@@ -14,14 +14,30 @@ namespace Strunika.Mobile.Theme;
 /// </summary>
 public static class Refit
 {
-    public static void Watch(BindableObject owner, Action fit)
+    /// <returns>The watch itself: a page that comes and goes disposes of it when
+    /// it goes. Both sources live as long as the app, and a watch left on them
+    /// kept every song page ever opened — its canvases with it — alive.</returns>
+    public static IDisposable Watch(BindableObject owner, Action fit)
     {
-        Loc.Instance.PropertyChanged += (_, _) => owner.Dispatcher.Dispatch(fit);
-        Metrics.Instance.PropertyChanged += (_, e) =>
+        System.ComponentModel.PropertyChangedEventHandler words = (_, _) => owner.Dispatcher.Dispatch(fit);
+        System.ComponentModel.PropertyChangedEventHandler sizes = (_, e) =>
         {
             // Scale and class are what change sizes; ContentInset ticks on every resize and is handled by layout itself.
             if (e.PropertyName is nameof(Metrics.Scale) or nameof(Metrics.HeroScale) or nameof(Metrics.Class))
                 owner.Dispatcher.Dispatch(fit);
         };
+        Loc.Instance.PropertyChanged += words;
+        Metrics.Instance.PropertyChanged += sizes;
+        return new Watched(() =>
+        {
+            Loc.Instance.PropertyChanged -= words;
+            Metrics.Instance.PropertyChanged -= sizes;
+        });
+    }
+
+    private sealed class Watched(Action stop) : IDisposable
+    {
+        private Action? _stop = stop;
+        public void Dispose() { _stop?.Invoke(); _stop = null; }
     }
 }

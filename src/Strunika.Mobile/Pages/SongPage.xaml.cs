@@ -25,6 +25,24 @@ public partial class SongPage : ContentPage
     private bool _sheetOpen, _attached, _unloaded, _windowHooked;
     private Window? _hookedWindow;
 
+    private IDisposable? _refit;
+
+    /// <summary>A sheet over the page: the page disappears under it and must
+    /// keep its player. The flag is true only while a sheet really is up — set
+    /// before anything was shown, and left on when nothing was, it kept the
+    /// song playing after the page had been left.</summary>
+    private async Task UnderSheetAsync(Func<Task> show)
+    {
+        _sheetOpen = true;
+        try { await show(); }
+        catch (Exception ex) { FileLog.Error("song sheet", ex); }
+        finally
+        {
+            var host = Application.Current?.Windows.FirstOrDefault()?.Page;
+            if ((host?.Navigation.ModalStack.Count ?? 0) == 0) _sheetOpen = false;   // nothing came up
+        }
+    }
+
     private void OnWindowDestroying(object? sender, EventArgs e)
     {
         _unloaded = true;
@@ -43,13 +61,16 @@ public partial class SongPage : ContentPage
         _gridBottom = GridHost.Margin.Bottom;
         _vm = new SongViewModel(song, services.GetRequiredService<ISongRepository>(), services.GetRequiredService<IProGate>(), services.GetRequiredService<IClickPlayer>());
         BindingContext = _vm;
-        _vm.ProRequired += (_, f) => { _sheetOpen = true; _ = PaywallSheet.ShowAsync(f); };
+        _vm.ProRequired += (_, f) => _ = UnderSheetAsync(() => PaywallSheet.ShowAsync(f));
         _vm.Message += (_, text) => _ = this.DisplayAlertAsync(song.Title, text, "OK");
 
         Track.ScrubStarted += (_, _) => _ = _vm.ScrubStartAsync();
         Track.Scrubbing += (_, t) => _vm.Scrubbing(t);
         Track.ScrubEnded += (_, t) => _scrubEnd = _vm.ScrubEndAsync(t);
         Track.SeekRequested += (_, t) => _ = _vm.SeekAsync(t);
+        // « and »: a track still coasting from a fling is brought to rest first,
+        // or the coast takes the song straight back from where the step put it.
+        _vm.Seeking += (_, _) => Track.Settle();
         Track.SelectionRequested += (_, index) => _vm.Selected = index;
         Track.FollowingChanged += (_, _) => UpdateFollowChip();
         // The same map serves both views of the song: on the track it moves the
@@ -73,11 +94,11 @@ public partial class SongPage : ContentPage
             if (e.PropertyName == nameof(SongViewModel.SelectedChord)) Dispatcher.Dispatch(FitChordName);
         };
         ChordChip.SizeChanged += (_, _) => FitChordName();
-        Theme.Refit.Watch(this, FitChordName);
+        _refit = Theme.Refit.Watch(this, FitChordName);
 
         // Moving the song's own slider is asking to be where the song is: the
         // editor's track goes back to riding along with it (user request 2026-09-10).
-        Seeker.DragStarted += (_, _) => { Track.FollowNow(); _ = _vm.ScrubStartAsync(); };
+        Seeker.DragStarted += (_, _) => { Track.Settle(); Track.FollowNow(); _ = _vm.ScrubStartAsync(); };
         Seeker.Dragging += (_, t) => _vm.Scrubbing(t);
         Seeker.DragCompleted += (_, t) => { Track.FollowNow(); _ = _vm.ScrubEndAsync(t); };
         // The sheet is put away by its own height. It used to be pushed down by a
@@ -168,6 +189,9 @@ public partial class SongPage : ContentPage
 #endif
             if (_sheetOpen) return;                                  // a sheet is merely covering the page
             _vm.Dispose();
+            _gridEdge?.Stop();
+            _refit?.Dispose();
+            _refit = null;
             if (_hookedWindow != null) { _hookedWindow.Destroying -= OnWindowDestroying; _hookedWindow = null; _windowHooked = false; }
         };
 
@@ -265,6 +289,8 @@ public partial class SongPage : ContentPage
     private double _worst, _sumDt, _sinceReport;
     private bool _secondTickedLastFrame;
     private long _allocatedSeen = -1;
+    private int _playFrames, _playLong;
+    private double _playSeconds, _playWorst;
     /// <summary>Diagnostics: leave the conveyor still while the song plays, to tell
     /// drawing from audio as the source of a stall (Settings → About, debug).</summary>
 
@@ -302,6 +328,21 @@ public partial class SongPage : ContentPage
             _sinceReport = 0; _frames = 0; _sumDt = 0; _worst = 0; _hitches = 0;
         }
 #endif
+        // In every build, and cheap: what the song's frames were like, once in ten
+        // seconds of playing — so a track that skips on the phone can be read back
+        // to numbers (the lines above are the debug build's).
+        if (_vm.IsPlaying)
+        {
+            _playFrames++;
+            _playSeconds += dt;
+            if (_playFrames > 5 && dt > _playWorst) _playWorst = dt;
+            if (_playFrames > 5 && dt > 0.025) _playLong++;
+            if (_playSeconds >= 10)
+            {
+                FileLog.Info($"song frames 10 s: {_playFrames} frames, worst {_playWorst * 1000:0} ms, {_playLong} over 25 ms [{_vm.TransportKind}{(_vm.Editing ? ", editor" : "")}{(_gridView ? ", grid" : "")}]");
+                _playFrames = _playLong = 0; _playSeconds = _playWorst = 0;
+            }
+        }
         try
         {
             _vm.Frame(Math.Min(dt, 0.25));                       // a stalled frame must not jump the song
@@ -676,19 +717,17 @@ public partial class SongPage : ContentPage
     /// <summary>A chord from this moment on, taking the rest of the one it lands in.</summary>
     private async void OnEditAdd(object? sender, TappedEventArgs e)
     {
-        _sheetOpen = true;
         if (!_vm.CanAdd) return;
         // On the track the cursor says where; in the beat view the beat chosen does.
         double at = _gridView ? _vm.ChosenBeatTime : Track.CentreTime;
-        await ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: false, (label, _) => _vm.AddChordAsync(label, at));
+        await UnderSheetAsync(() => ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: false, (label, _) => _vm.AddChordAsync(label, at)));
     }
 
     /// <summary>Another chord in place of the one under the playhead.</summary>
     private async void OnEditChord(object? sender, TappedEventArgs e)
     {
         if (!_vm.HasSelection) return;
-        _sheetOpen = true;
-        await ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: true, (label, all) => _vm.SetSelectedAsync(label, all));
+        await UnderSheetAsync(() => ChordPickerSheet.ShowAsync(_vm.SelectedChord, offerAll: true, (label, all) => _vm.SetSelectedAsync(label, all)));
     }
 
     /// <summary>The fade over the last rows: the page background at alpha 0
@@ -835,21 +874,23 @@ public partial class SongPage : ContentPage
         await ScrollGridSelfAsync(target, animated: true);
     }
 
-    private async void OnBackTapped(object? sender, TappedEventArgs e) => await Navigation.PopAsync(animated: true);
+    private async void OnBackTapped(object? sender, TappedEventArgs e)
+    {
+        _sheetOpen = false;                                      // leaving for good, whatever was over the page
+        await Navigation.PopAsync(animated: true);
+    }
 
     private async void OnTitleTapped(object? sender, TappedEventArgs e)
     {
-        _sheetOpen = true;
-        await SongInfoSheet.ShowAsync(_vm);
+        await UnderSheetAsync(() => SongInfoSheet.ShowAsync(_vm));
     }
 
     private Task OnShapeTappedAsync(string chord)
     {
         if (string.IsNullOrEmpty(chord) || chord == "—") return Task.CompletedTask;
         _ = _vm.PauseAsync();                                    // look at the neck without chasing the music
-        _sheetOpen = true;
         var (positions, index) = _vm.ShapeChoices(chord);
-        return ChordShapesSheet.ShowAsync(chord, positions, index, _vm.LeftHanded, _vm.Capo, i => _vm.ChooseShape(chord, i));
+        return UnderSheetAsync(() => ChordShapesSheet.ShowAsync(chord, positions, index, _vm.LeftHanded, _vm.Capo, i => _vm.ChooseShape(chord, i)));
     }
 
     private async void OnCurrentShapeTapped(object? sender, TappedEventArgs e) => await OnShapeTappedAsync(_vm.CurrentChord);

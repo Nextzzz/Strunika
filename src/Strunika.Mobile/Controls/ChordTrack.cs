@@ -8,28 +8,33 @@ namespace Strunika.Mobile.Controls;
 /// pill at the moment it starts, the next chord pinned to the right edge until
 /// it enters the frame. Tap a pill = seek to that chord, drag = scrub.
 /// <para>
-/// Nothing is drawn per frame. The ribbon (bars, beat ruler, pills) is
-/// rendered into canvases three screens wide once every few seconds and only
-/// <i>translated</i> as the song plays. Bars change colour at the playhead
-/// without any drawing: the ribbon exists twice, once with "played" bars and
-/// once with "coming" bars, each inside a container clipped to its side of the
-/// playhead, both sliding together. Each variant is double-buffered — a new
-/// window is rendered into the spare canvas and shown only once its Draw has
-/// run, otherwise the compositor flashes the old content at the new offset for
-/// a frame. Redrawing all of this sixty times a second made the Windows XAML
-/// runtime induce a full garbage collection about once a second (a ~100 ms
-/// stall); on a phone it would have burnt battery for nothing.
+/// Nothing is drawn per frame. The ribbon (bars, beat ruler, pills) is cut
+/// into tiles a little under a phone's width, each rendered once into its own
+/// canvas and only <i>translated</i> as the song plays. A tile that has gone
+/// off one side is drawn again for the stretch coming up on the other while
+/// that stretch is still out of sight — one tile at a time, never two in a
+/// frame. Bars change colour at the playhead without any drawing: over the
+/// ribbon lies a second row of tiles with nothing but the bars in the "played"
+/// colour, inside a container clipped to the left of the playhead, sliding
+/// along with it.
+/// <para>
+/// (Until 2026-09-17 the ribbon was two canvases three screens wide, each in
+/// two colourings, and the spare pair was rendered whole every few seconds:
+/// some twenty megabytes of pixels and every chord name twice in one frame,
+/// which the phone showed as a skipped frame and a jump of the track. Before
+/// that, redrawing sixty times a second made the Windows XAML runtime induce a
+/// full garbage collection about once a second.)
 /// </para>
 /// </summary>
 public sealed class ChordTrack : Grid
 {
     private static void Redraw(BindableObject b, object? o, object? n) => ((ChordTrack)b).Redraw();
-    private static void Rebuild(BindableObject b, object? o, object? n) { var t = (ChordTrack)b; t._bars = null; t.ResetBuffers(); t.Follow(); }
+    private static void Rebuild(BindableObject b, object? o, object? n) { var t = (ChordTrack)b; t._bars = null; t._layoutDirty = true; t.Redraw(); t.Follow(); }
     private static void Reloop(BindableObject b, object? o, object? n) => ((ChordTrack)b).UpdateLoop();
 
     public static readonly BindableProperty PositionProperty = BindableProperty.Create(nameof(Position), typeof(double), typeof(ChordTrack), 0.0, propertyChanged: (b, _, _) => ((ChordTrack)b).Follow());
     public static readonly BindableProperty DurationProperty = BindableProperty.Create(nameof(Duration), typeof(double), typeof(ChordTrack), 0.0);
-    public static readonly BindableProperty SegmentsProperty = BindableProperty.Create(nameof(Segments), typeof(IReadOnlyList<ChordSegmentDto>), typeof(ChordTrack), null, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t._currentIndex = -1; t._nextIndex = -1; t.Redraw(); t.Follow(); t.ChordsArrived(); });
+    public static readonly BindableProperty SegmentsProperty = BindableProperty.Create(nameof(Segments), typeof(IReadOnlyList<ChordSegmentDto>), typeof(ChordTrack), null, propertyChanged: (b, _, _) => { var t = (ChordTrack)b; t._currentIndex = -1; t._nextIndex = -1; t._layoutDirty = true; t.Redraw(); t.Follow(); t.ChordsArrived(); });
     public static readonly BindableProperty BeatsProperty = BindableProperty.Create(nameof(Beats), typeof(double[]), typeof(ChordTrack), null, propertyChanged: (b, _, _) => { ((ChordTrack)b)._clocks.Clear(); ((ChordTrack)b).Redraw(); });
     public static readonly BindableProperty PeaksProperty = BindableProperty.Create(nameof(Peaks), typeof(byte[]), typeof(ChordTrack), null, propertyChanged: Rebuild);
     public static readonly BindableProperty PeaksFpsProperty = BindableProperty.Create(nameof(PeaksFps), typeof(int), typeof(ChordTrack), 40, propertyChanged: Rebuild);
@@ -108,30 +113,47 @@ public sealed class ChordTrack : Grid
     /// of the track is the music still to come.</summary>
     private const float PlayheadAt = 0.25f;
     private const float BarWidth = 9f, BarGap = 3f, PillHeight = 44f, PillTop = 2f, PillFont = 17f, PillMaxWidth = 64f;
-    /// <summary>A ribbon is this many screens wide; it is re-rendered when the
-    /// playhead gets near either end.</summary>
-    private const double BufferSpan = 3.0;
-    /// <summary>Extra canvas before the window start, so a pill centred on the
-    /// first moment of the window (the song start above all) is not cut by the
-    /// canvas edge.</summary>
-    private const float Lead = PillMaxWidth;
+    /// <summary>A tile of the ribbon, in points: a whole number of bars of the
+    /// wave, so that a tile's edge falls in the gap between two of them and
+    /// nothing is ever cut in half by it.</summary>
+    private const double TileWidth = 30 * (BarWidth + BarGap);
+    /// <summary>Where in that gap the edge falls.</summary>
+    private const double Seam = BarGap / 2;
+    /// <summary>A tile's canvas runs on past its own stretch by this much: a
+    /// pill or a ruler's clock belongs to the tile its left edge is in, and is
+    /// drawn whole there.</summary>
+    private const float Over = PillMaxWidth + 14f;
 
-    private readonly AbsoluteLayout _layers, _leftClip, _rightClip;
+    private readonly AbsoluteLayout _layers, _ribbon, _leftClip;
     private readonly GraphicsView _pinned;
     private readonly BoxView _playhead;
-    // [buffer] × {played, coming}: two windows, each in two colourings.
-    private readonly GraphicsView[] _played = new GraphicsView[2], _coming = new GraphicsView[2];
-    private readonly double[] _t0 = { double.NaN, double.NaN };
-    private readonly double[] _drawnPlayed = { double.NaN, double.NaN }, _drawnComing = { double.NaN, double.NaN };
-    private readonly List<(RectF Rect, double Start, int Index)>[] _pills = { new(), new() };   // ribbon coordinates, per buffer
-    private int _active;
-    private bool _pendingSwap, _pinnedShown;
-    private int _pendingFrames;
+    /// <summary>One canvas and the tile of the ribbon it holds.</summary>
+    private sealed class Tile
+    {
+        public required GraphicsView View;
+        /// <summary>Which tile of the ribbon: it covers ribbon x from N × TileWidth − Seam.</summary>
+        public int N = int.MinValue;
+        /// <summary>The canvas shows tile N (its Draw has run since it was aimed).</summary>
+        public bool Drawn;
+        /// <summary>Aimed at a stretch that is in view and not drawn yet: kept
+        /// transparent until it is, or the old stretch shows at the new place.</summary>
+        public bool Hidden;
+        /// <summary>What is on the canvas is another stretch's: aimed anew and not drawn since.</summary>
+        public bool Stale;
+    }
+    /// <summary>The ribbon itself, and over it the bars in the played colour.</summary>
+    private Tile[] _tiles = Array.Empty<Tile>(), _playedTiles = Array.Empty<Tile>();
+    /// <summary>Where every pill lies on the ribbon (its left edge, NaN for no
+    /// pill) and how wide it is — laid out once for the whole song, so a pill
+    /// is in the same place whichever tile draws it and whatever lies over it.</summary>
+    private double[] _pillLeft = Array.Empty<double>();
+    private float[] _pillWidth = Array.Empty<float>();
+    private bool _layoutDirty = true, _followQueued, _pinnedShown;
+    private int _lateLogs;
     private readonly Dictionary<string, (float Width, string Top, string? Bottom)> _labels = new();
     private readonly Dictionary<int, string> _clocks = new();
     private float[]? _bars;
     private double _barSeconds;
-    private double _tx;                                                     // translation of the visible ribbon
     private int _currentIndex = -1, _nextIndex = -1;
     /// <summary>The pill being played, on its own small canvas that rides along
     /// with the ribbon. The ribbons draw every pill in the resting style and
@@ -139,9 +161,6 @@ public sealed class ChordTrack : Grid
     /// to recolour one pill was a visible hitch on every chord change on the
     /// phone (CoreText is slow with text), the one stutter left in the song.</summary>
     private readonly GraphicsView _current;
-    /// <summary>Where each pill was actually drawn relative to its moment, once
-    /// the no-overlap rule has nudged it: segment index → offset from x(start).</summary>
-    private readonly Dictionary<int, float> _pillShift = new();
     private double _panStart, _panAt;
     private bool _panning;
     // A fling: the track keeps going after the finger lifts and slows to a stop,
@@ -189,7 +208,7 @@ public sealed class ChordTrack : Grid
     /// <summary>Put this moment in the middle of the window; the song is left where it is.</summary>
     public void LookAt(double middle)
     {
-        StopCoast();                                             // the map has the window now
+        Settle();                                                // the map has the window now; a scrub the coast carried ends with it
         Following = false;
         _viewSet = true;
         // The view is kept as the moment at the playhead's place, a quarter in —
@@ -203,7 +222,7 @@ public sealed class ChordTrack : Grid
     /// <summary>Back to the song, and along with it from now on.</summary>
     public void FollowNow()
     {
-        StopCoast();
+        Settle();                                                // never a coast stopped with its scrub left open
         _viewTime = Position;
         _viewSet = true;
         Following = true;
@@ -259,22 +278,15 @@ public sealed class ChordTrack : Grid
     public ChordTrack()
     {
         _layers = new AbsoluteLayout { IsClippedToBounds = true };
+        _ribbon = new AbsoluteLayout { InputTransparent = true };
         _leftClip = new AbsoluteLayout { IsClippedToBounds = true, InputTransparent = true };
-        _rightClip = new AbsoluteLayout { IsClippedToBounds = true, InputTransparent = true };
-        for (int i = 0; i < 2; i++)
-        {
-            _played[i] = new GraphicsView { Drawable = new RibbonDrawable(this, i, played: true), Opacity = i == 0 ? 1 : 0, InputTransparent = true };
-            _coming[i] = new GraphicsView { Drawable = new RibbonDrawable(this, i, played: false), Opacity = i == 0 ? 1 : 0, InputTransparent = true };
-            _leftClip.Add(_played[i]);
-            _rightClip.Add(_coming[i]);
-        }
         // Over the loop band, not under it: the playhead is the one thing on
         // the track that must never be tinted by anything.
         _playhead = new BoxView { CornerRadius = 2, InputTransparent = true, WidthRequest = 4, HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Start };
         _pinned = new GraphicsView { Drawable = new PinnedDrawable(this), IsVisible = false };
         _current = new GraphicsView { Drawable = new CurrentDrawable(this), IsVisible = false, InputTransparent = true };
+        _layers.Add(_ribbon);
         _layers.Add(_leftClip);
-        _layers.Add(_rightClip);
         _layers.Add(_current);
         _layers.Add(_pinned);
         Add(_layers);
@@ -387,7 +399,7 @@ public sealed class ChordTrack : Grid
         IsClippedToBounds = true;                                // an end dragged off the track stays off it
         ApplyColours();
         SizeChanged += (_, _) => Relayout();
-        Loaded += (_, _) => { ResetBuffers(); Follow(); };             // canvases exist now: render the first window
+        Loaded += (_, _) => { Redraw(); Follow(); };                   // canvases exist now: render the first tiles
     }
 
     /// <summary>Re-render every ribbon and the pinned pill (data or colours changed).</summary>
@@ -504,16 +516,39 @@ public sealed class ChordTrack : Grid
 
     public void Redraw()
     {
-        _pillShift.Clear();
-        for (int i = 0; i < 2; i++) { _played[i].Invalidate(); _coming[i].Invalidate(); }
-        _pinned.Invalidate();
-        _current.Invalidate();
+        foreach (var tile in _tiles) Invalidate(tile);
+        foreach (var tile in _playedTiles) Invalidate(tile);
+        try { _pinned.Invalidate(); _current.Invalidate(); }
+        catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
     }
 
-    private void ResetBuffers()
+    /// <summary>The same stretch again (the song or the colours changed): what is
+    /// on the canvas stays up until the new drawing replaces it.</summary>
+    private static void Invalidate(Tile tile)
     {
-        for (int i = 0; i < 2; i++) _t0[i] = _drawnPlayed[i] = _drawnComing[i] = double.NaN;
-        _pendingSwap = false;
+        if (tile.N == int.MinValue) return;
+        tile.Drawn = false;
+        try { tile.View.Invalidate(); }
+        catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
+    }
+
+    /// <summary>The pill's left edge relative to its chord's moment: what the
+    /// no-overlap rule made of it, or centred while nothing is laid out yet.</summary>
+    private double Shift(int index, double width)
+    {
+        var segments = Segments;
+        if (!_layoutDirty && segments != null && index >= 0 && index < _pillLeft.Length && index < segments.Count && !double.IsNaN(_pillLeft[index]))
+            return _pillLeft[index] - segments[index].Start * PixelsPerSecond;
+        return -width / 2;
+    }
+
+    /// <summary>Something the overlays are placed by has changed inside a Draw
+    /// (the layout, a tile come into view): follow once more when it is over.</summary>
+    private void FollowSoon()
+    {
+        if (_followQueued) return;
+        _followQueued = true;
+        Dispatcher.Dispatch(() => { _followQueued = false; Follow(); });
     }
 
     private void ApplyColours()
@@ -541,16 +576,15 @@ public sealed class ChordTrack : Grid
         if (Math.Abs(w - _laidOutW) < 0.01 && Math.Abs(h - _laidOutH) < 0.01) return;   // the same size again: nothing to lay out
         _laidOutW = w;
         _laidOutH = h;
-        double px = w * PlayheadAt, bw = w * BufferSpan + Lead;
-        // Both halves are the track's width and are moved to meet at the playhead
-        // (FollowCore), so the meeting point can follow a playhead that moves.
+        double px = w * PlayheadAt;
+        // The played bars' container is the track's width and is moved so that
+        // its right edge is the playhead (FollowCore).
+        AbsoluteLayout.SetLayoutBounds(_ribbon, new Rect(0, 0, w, h));
         AbsoluteLayout.SetLayoutBounds(_leftClip, new Rect(0, 0, w, h));
-        AbsoluteLayout.SetLayoutBounds(_rightClip, new Rect(0, 0, w, h));
-        for (int i = 0; i < 2; i++)
-        {
-            AbsoluteLayout.SetLayoutBounds(_played[i], new Rect(0, 0, bw, h));
-            AbsoluteLayout.SetLayoutBounds(_coming[i], new Rect(0, 0, bw, h));
-        }
+        // As many tiles as can be in view at once, and two to be got ready on
+        // either side before they are.
+        _tiles = Pool(_ribbon, _tiles, (int)Math.Ceiling((w + Over) / TileWidth) + 3, h, played: false);
+        _playedTiles = Pool(_leftClip, _playedTiles, (int)Math.Ceiling(px / TileWidth) + 3, h, played: true);
         AbsoluteLayout.SetLayoutBounds(_pinned, new Rect(w - PillMaxWidth - 14, 0, PillMaxWidth + 14, PillTop + PillHeight + 2));
         AbsoluteLayout.SetLayoutBounds(_current, new Rect(0, 0, PillMaxWidth + 12, PillTop + PillHeight + 2));
         // The band is as wide as the track and scaled down to the loop, so the
@@ -575,8 +609,29 @@ public sealed class ChordTrack : Grid
             handle.Margin = new Thickness(0, LoopTop, 0, 0);
         }
         _bars = null;
-        ResetBuffers();
+        Redraw();
         Follow();
+    }
+
+    /// <summary>The row's canvases: made once, more only if the track grows.</summary>
+    private Tile[] Pool(AbsoluteLayout host, Tile[] tiles, int count, double height, bool played)
+    {
+        if (tiles.Length < count)
+        {
+            var grown = new Tile[count];
+            tiles.CopyTo(grown, 0);
+            for (int i = tiles.Length; i < count; i++)
+            {
+                var view = new GraphicsView { InputTransparent = true, BackgroundColor = Colors.Transparent, Opacity = 0 };
+                var tile = new Tile { View = view, Hidden = true };
+                view.Drawable = new TileDrawable(this, tile, played);
+                host.Add(view);
+                grown[i] = tile;
+            }
+            tiles = grown;
+        }
+        foreach (var tile in tiles) AbsoluteLayout.SetLayoutBounds(tile.View, new Rect(0, 0, TileWidth + Over, height));
+        return tiles;
     }
 
     // ---- following the song --------------------------------------------
@@ -614,62 +669,16 @@ public sealed class ChordTrack : Grid
             NativeTransform.TranslateX(_playhead, px + (Position - _viewTime) * pps - 2);
         }
         double pos = ViewAt;
-        int back = 1 - _active;
-        double t0a = _t0[_active];
-        bool farOutside = !double.IsNaN(t0a) && (pos < t0a - 0.25 * v || pos > t0a + (BufferSpan + 0.25) * v);
-        if (double.IsNaN(t0a) || farOutside)
-        {
-            // First window, or a jump so far that the visible buffer shows nothing
-            // anyway (a drag across the song): render straight into it — there is
-            // no smooth content to protect and waiting for the spare only delays.
-            _t0[_active] = Math.Max(0, pos - 1.25 * v);
-            _drawnPlayed[_active] = _drawnComing[_active] = double.NaN;
-            Invalidate(_active);
-            _pendingSwap = false;
-        }
-        else if (pos < t0a + 0.35 * v || pos > t0a + (BufferSpan - 0.85) * v)
-        {
-            // Nearing the edge: render the next window into the spare buffer.
-            // While a swap is pending and the position has left that window
-            // too (a fast drag), re-aim the spare.
-            double want = Math.Max(0, pos - 1.25 * v);
-            if (!_pendingSwap || pos < _t0[back] + 0.35 * v || pos > _t0[back] + (BufferSpan - 0.85) * v)
-            {
-                _t0[back] = want;
-                _drawnPlayed[back] = _drawnComing[back] = double.NaN;
-                Invalidate(back);
-                _pendingSwap = true;
-                _pendingFrames = 0;
-            }
-        }
-        if (_pendingSwap)
-        {
-            _pendingFrames++;
-            if (_drawnPlayed[back] == _t0[back] && _drawnComing[back] == _t0[back])
-            {
-                // Both colourings of the spare are on their canvases: swap.
-                _played[back].Opacity = _coming[back].Opacity = 1;
-                _played[_active].Opacity = _coming[_active].Opacity = 0;
-                _active = back;
-                back = 1 - _active;
-                _pendingSwap = false;
-                if (_pendingFrames > 4) Strunika.Core.Diagnostics.FileLog.Info($"conveyor: spare buffer took {_pendingFrames} frames to draw");
-            }
-        }
-        // Played and coming meet at the playhead's fixed place. (For a day the
-        // editor moved this with the playhead so the chords it had passed could
-        // take a colour of their own; the user dropped that, 2026-09-14.)
-        double boundary = px;
-        NativeTransform.TranslateX(_leftClip, boundary - w);
-        NativeTransform.TranslateX(_rightClip, boundary);
-        for (int i = 0; i < 2; i++)
-        {
-            if (double.IsNaN(_t0[i])) continue;
-            double tx = px - (pos - _t0[i]) * pps - Lead;
-            NativeTransform.TranslateX(_played[i], tx - (boundary - w));
-            NativeTransform.TranslateX(_coming[i], tx - boundary);
-        }
-        _tx = px - (pos - _t0[_active]) * pps - Lead;
+        // Ribbon x (song seconds × the zoom) at the track's left edge.
+        double origin = pos * pps - px;
+        bool busy = false;
+        foreach (var tile in _tiles) busy |= tile.N != int.MinValue && !tile.Drawn;
+        foreach (var tile in _playedTiles) busy |= tile.N != int.MinValue && !tile.Drawn;
+        Aim(_tiles, origin - Over, origin + w, origin, 0, ref busy);
+        // Editing, the wave is one colour (see the tile's Draw): no played bars.
+        if (_leftClip.IsVisible == Editing) _leftClip.IsVisible = !Editing;
+        NativeTransform.TranslateX(_leftClip, px - w);
+        if (!Editing) Aim(_playedTiles, origin, origin + px, origin, px - w, ref busy);
 
         var segments = Segments;
         int current = IndexAt(Position), next = NextAfter(Position);
@@ -686,8 +695,7 @@ public sealed class ChordTrack : Grid
             // Over the very pill the ribbon drew, wherever the no-overlap rule put it.
             var seg = segments[_currentIndex];
             float pillW = _labels.TryGetValue(seg.Label, out var cm) ? cm.Width : 46f;
-            float shift = _pillShift.TryGetValue(_currentIndex, out var sh) ? sh : -pillW / 2;
-            NativeTransform.TranslateX(_current, px + (seg.Start - ViewAt) * pps + shift);
+            NativeTransform.TranslateX(_current, px + (seg.Start - ViewAt) * pps + Shift(_currentIndex, pillW));
         }
         UpdateLoop();
         PlaceClips();
@@ -722,6 +730,90 @@ public sealed class ChordTrack : Grid
     }
 
     /// <summary>
+    /// Every tile that has any of ribbon x <paramref name="from"/>…<paramref name="to"/>
+    /// in it gets a canvas, and every canvas is moved to where its tile now is.
+    /// A canvas is taken from the tiles furthest out of the way. One in view is
+    /// drawn at once, whatever else is going on (a seek, a drag across the
+    /// song); one not yet in view — the next on either side — only while no
+    /// other canvas is waiting for its Draw, so two are never drawn in a frame.
+    /// </summary>
+    /// <param name="inset">The x of the canvases' container on the track.</param>
+    private void Aim(Tile[] tiles, double from, double to, double origin, double inset, ref bool busy)
+    {
+        if (tiles.Length == 0) return;
+        int first = (int)Math.Floor((from + Seam) / TileWidth), last = (int)Math.Floor((to + Seam) / TileWidth);
+        last = Math.Min(last, first + tiles.Length - 3);         // never more than the pool was made for
+        for (int n = first; n <= last; n++)
+            if (Holding(tiles, n) == null)
+            {
+                var tile = Spare(tiles, first, last);
+                if (tile == null) break;
+                bool late = tile.N != int.MinValue && IsLoaded;
+                Take(tile, n, hide: true);
+                busy = true;
+                if (late && _lateLogs++ < 20) Strunika.Core.Diagnostics.FileLog.Info($"conveyor: tile {n} drawn in view");
+            }
+        if (!busy)
+            foreach (int n in (ReadOnlySpan<int>)[last + 1, first - 1])
+                if (Holding(tiles, n) == null && Spare(tiles, first - 1, last + 1) is { } tile)
+                {
+                    Take(tile, n, hide: false);
+                    busy = true;
+                    break;
+                }
+        foreach (var tile in tiles)
+        {
+            if (tile.N == int.MinValue) continue;
+            if (tile.Hidden && tile.Drawn) { tile.Hidden = false; tile.View.Opacity = 1; }
+            // Got ready out of sight, and come into sight without its Draw having
+            // run (a platform that does not draw what it cannot see): never the
+            // old stretch at the new place — hidden, and asked for again.
+            if (tile.Stale && !tile.Hidden && tile.N >= first && tile.N <= last)
+            {
+                tile.Hidden = true;
+                tile.View.Opacity = 0;
+                try { tile.View.Invalidate(); } catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
+                if (_lateLogs++ < 20) Strunika.Core.Diagnostics.FileLog.Info($"conveyor: tile {tile.N} was not drawn out of sight");
+            }
+            NativeTransform.TranslateX(tile.View, tile.N * TileWidth - Seam - origin - inset);
+        }
+    }
+
+    private static Tile? Holding(Tile[] tiles, int n)
+    {
+        foreach (var tile in tiles) if (tile.N == n) return tile;
+        return null;
+    }
+
+    /// <summary>The canvas whose tile is furthest outside <paramref name="first"/>…<paramref name="last"/>.</summary>
+    private static Tile? Spare(Tile[] tiles, int first, int last)
+    {
+        Tile? best = null;
+        long furthest = 0;
+        foreach (var tile in tiles)
+        {
+            long away = tile.N == int.MinValue ? long.MaxValue : tile.N < first ? (long)first - tile.N : tile.N > last ? (long)tile.N - last : 0;
+            if (away > furthest) { furthest = away; best = tile; }
+        }
+        return best;
+    }
+
+    private static void Take(Tile tile, int n, bool hide)
+    {
+        tile.N = n;
+        tile.Drawn = false;
+        tile.Stale = true;
+        try
+        {
+            // Out of sight it needs no hiding; and one that was hidden stays so
+            // until it is drawn.
+            if (hide && !tile.Hidden) { tile.Hidden = true; tile.View.Opacity = 0; }
+            tile.View.Invalidate();
+        }
+        catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
+    }
+
+    /// <summary>
     /// In the editor, the chord the playhead reaches wears a ring in the accent:
     /// from the moment the playhead crosses the middle of its badge, for half a
     /// second of the song or until the next badge's middle is reached, whichever
@@ -745,8 +837,7 @@ public sealed class ChordTrack : Grid
         if (shown < 0 || !_ring.IsVisible || segments == null || shown >= segments.Count) return;
         var segment = segments[shown];
         double width = PillWidth(segment.Label);
-        double shift = _pillShift.TryGetValue(shown, out var nudge) ? nudge : -width / 2;
-        double x = px + (segment.Start - pos) * pps + shift;
+        double x = px + (segment.Start - pos) * pps + Shift(shown, width);
         if (x + width < 0 || x > Width) { HideRingNow(); return; }
         NativeTransform.TranslateX(_ring, x);
     }
@@ -774,8 +865,7 @@ public sealed class ChordTrack : Grid
         {
             if (segments[i].Label == "—") continue;
             double width = PillWidth(segments[i].Label);
-            double shift = _pillShift.TryGetValue(i, out var nudge) ? nudge : -width / 2;
-            double middle = segments[i].Start + (shift + width / 2) / pps;
+            double middle = segments[i].Start + (Shift(i, width) + width / 2) / pps;
             if (middle <= position) { last = i; lastMiddle = middle; }
             else { nextMiddle = middle; break; }
         }
@@ -803,16 +893,6 @@ public sealed class ChordTrack : Grid
         _ring.IsVisible = false;
         _ring.Opacity = 1;
         _ringShown = -1;
-    }
-
-    private void Invalidate(int buffer)
-    {
-        try
-        {
-            _played[buffer].Invalidate();
-            _coming[buffer].Invalidate();
-        }
-        catch (Exception ex) when (NativeTransform.IsTearDown(ex)) { }
     }
 
     private int IndexAt(double pos)
@@ -1134,7 +1214,7 @@ public sealed class ChordTrack : Grid
         _clipTo = segments[clip.Index].End;
         _clipScrolled = 0;
         double width = PillWidth(segments[clip.Index].Label);
-        double shift = _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
+        double shift = Shift(clip.Index, width);
         _clipPressX = Width * PlayheadAt + (_clipFrom - ViewAt) * PixelsPerSecond + shift + width / 2;
         _edgeSince = 0;
     }
@@ -1168,7 +1248,7 @@ public sealed class ChordTrack : Grid
         _lifted = clip;
         _liftTurn++;
         double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
-        double shift = _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
+        double shift = Shift(clip.Index, width);
         _hole.WidthRequest = width + 2;
         _holeStart = segments[clip.Index].Start;
         _holeShift = shift - 1;
@@ -1270,7 +1350,7 @@ public sealed class ChordTrack : Grid
         var segments = Segments;
         if (segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
         double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
-        double shift = clip == _lifted ? -width / 2 : _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
+        double shift = clip == _lifted ? -width / 2 : Shift(clip.Index, width);
         double x = Width * PlayheadAt + (start - ViewAt) * PixelsPerSecond + shift;
         if (Math.Abs(clip.Host.WidthRequest - width) > 0.5) clip.Host.WidthRequest = width;
         bool handles = clip.Index == Selected && clip != _lifted;
@@ -1289,17 +1369,21 @@ public sealed class ChordTrack : Grid
             SeekRequested?.Invoke(this, segments[_nextIndex].Start);
             return;
         }
-        // Pills on the ribbon (ribbon coordinates = screen minus the translation).
-        var point = new PointF((float)(p.Value.X - _tx), (float)p.Value.Y);
-        foreach (var (rect, start, index) in _pills[_active])
-            if (rect.Contains(point))
+        // Pills on the ribbon, where the layout put them.
+        if (segments != null && !_layoutDirty && p.Value.Y <= PillTop + PillHeight + 8)
+        {
+            double x = ViewAt * PixelsPerSecond + p.Value.X - Width * PlayheadAt;
+            for (int index = 0; index < segments.Count && index < _pillLeft.Length; index++)
             {
+                double left = _pillLeft[index];
+                if (double.IsNaN(left) || x < left || x > left + _pillWidth[index]) continue;
                 // In the editor a chord is chosen, not jumped to: the playhead is
                 // the reader's to move and the chord being worked on is theirs to keep.
                 if (Editing) { Untether(); SelectionRequested?.Invoke(this, index); }
-                else SeekRequested?.Invoke(this, start);
+                else SeekRequested?.Invoke(this, segments[index].Start);
                 return;
             }
+        }
         // Beside the chords the song goes there, and the chosen chord stays chosen
         // (user request 2026-09-14).
         double t = ViewAt + (p.Value.X - Width * PlayheadAt) / PixelsPerSecond;
@@ -1390,10 +1474,37 @@ public sealed class ChordTrack : Grid
         _bars = bars;
     }
 
-    /// <summary>A ribbon: everything static about the song over one buffered
-    /// window, in ribbon coordinates (x = (t − t0) · pps); bars in the played
-    /// or the coming colour.</summary>
-    private sealed class RibbonDrawable(ChordTrack track, int index, bool played) : IDrawable
+    /// <summary>Every pill's place on the ribbon, once for the whole song: at
+    /// its moment, never overlapping the one before. It takes a canvas to
+    /// measure the names, so it is done in the first Draw that needs it.</summary>
+    private void EnsureLayout(ICanvas canvas)
+    {
+        var segments = Segments;
+        int count = segments?.Count ?? 0;
+        if (!_layoutDirty && _pillLeft.Length == count) return;
+        var lefts = new double[count];
+        var widths = new float[count];
+        double pps = PixelsPerSecond, lastRight = double.NegativeInfinity;
+        for (int i = 0; i < count; i++)
+        {
+            var seg = segments![i];
+            if (seg.Label == "—") { lefts[i] = double.NaN; continue; }
+            var (w, _, _) = Measure(canvas, seg.Label);
+            double left = Math.Max(seg.Start * pps - w / 2, lastRight + 3);
+            lastRight = left + w;
+            lefts[i] = left;
+            widths[i] = w;
+        }
+        _pillLeft = lefts;
+        _pillWidth = widths;
+        _layoutDirty = false;
+        FollowSoon();                                            // what lies over the pills moves to them
+    }
+
+    /// <summary>A tile of the ribbon: everything static about the song over its
+    /// stretch, in the tile's own coordinates — or, for the row over it, only the
+    /// bars, in the played colour.</summary>
+    private sealed class TileDrawable(ChordTrack track, Tile tile, bool played) : IDrawable
     {
         public void Draw(ICanvas canvas, RectF rect)
         {
@@ -1407,100 +1518,114 @@ public sealed class ChordTrack : Grid
         private void DrawCore(ICanvas canvas, RectF rect)
         {
             var t = track;
-            double t0 = t._t0[index];
-            if (double.IsNaN(t0)) return;
+            int n = tile.N;
+            if (n == int.MinValue) return;
             double pps = t.PixelsPerSecond;
-            double tMin = Math.Max(0, t0 - Lead / pps), tMax = t0 + (rect.Width - Lead) / pps;
+            // The stretch of the ribbon that is this tile's own.
+            double left = n * TileWidth - Seam, right = left + TileWidth;
             float waveTop = rect.Top + PillTop + PillHeight + 16f;
             float waveBottom = rect.Bottom - 34f;                            // room for the ruler and its seconds
             float cy = (waveTop + waveBottom) / 2, half = (waveBottom - waveTop) / 2;
-            float X(double time) => (float)((time - t0) * pps) + Lead;
+            float X(double ribbon) => (float)(ribbon - left);
 
             // (The A–B loop is not drawn here: it is a box over the ribbon, so
-            // that it can grow with the playhead while the loop is being taken
-            // without redrawing three screens of ribbon.)
+            // that it can grow with the playhead while the loop is being taken.)
 
-            // Waveform bars, one colour per variant.
+            // Waveform bars. A bar is a fixed stretch of the ribbon whatever the
+            // zoom, and a tile is a whole number of them.
             if (t._bars == null) t.EnsureBars();
             var bars = t._bars!;
+            double pitch = BarWidth + BarGap;
             if (bars.Length > 0)
             {
-                int k0 = Math.Max(0, (int)Math.Floor(tMin / t._barSeconds));
-                int k1 = Math.Min(bars.Length - 1, (int)Math.Ceiling(tMax / t._barSeconds));
-                // Editing, the wave is one colour: the playhead is often out of
-                // the window, and a track half in the accent then says nothing
-                // (user request 2026-09-10).
-                canvas.FillColor = played && !t.Editing ? (t._playedBar ??= t.Accent.WithAlpha(0.55f)) : t.WaveColor;
+                int k0 = Math.Max(0, (int)Math.Ceiling(left / pitch));
+                int k1 = Math.Min(bars.Length - 1, (int)Math.Ceiling(right / pitch) - 1);
+                // The played bars lie over the others and must hide them whole, so
+                // their colour is the accent already mixed with the ground — what
+                // a see-through accent over the ground came to. Editing, the wave
+                // is one colour: the playhead is often out of the window, and a
+                // track half in the accent then says nothing (user request 2026-09-10).
+                canvas.FillColor = played ? (t._playedBar ??= Mix(t.Accent, t.BackdropColor, 0.55f)) : t.WaveColor;
                 for (int k = k0; k <= k1; k++)
                 {
-                    float x = X(k * t._barSeconds);
                     float h = Math.Max(3f, bars[k] * half);
-                    canvas.FillRectangle(x, cy - h, BarWidth, h * 2);
+                    canvas.FillRectangle(X(k * pitch), cy - h, BarWidth, h * 2);
                 }
             }
-            else
+            else if (!played)
             {
                 canvas.StrokeColor = t.WaveColor.WithAlpha(0.5f);
                 canvas.StrokeSize = 1.5f;
-                canvas.DrawLine(rect.Left, cy, rect.Right, cy);
+                canvas.DrawLine(0, cy, (float)TileWidth, cy);
             }
+            if (played) { Done(); return; }
 
-            // Beat ruler: beats, then bars with their seconds.
+            // Beat ruler: beats, then bars with their seconds. A clock belongs to
+            // the tile its left edge is in.
             var beats = t.Beats;
             if (beats is { Length: > 0 })
             {
-                int start = Array.BinarySearch(beats, tMin);
+                const float ClockHalf = 22f;
+                int start = Array.BinarySearch(beats, left / pps);
                 if (start < 0) start = ~start;
                 canvas.StrokeSize = 1f;
                 canvas.StrokeColor = t._beatTick ??= t.LineColor.WithAlpha(0.4f);
-                for (int i = start; i < beats.Length && beats[i] <= tMax; i++)
+                for (int i = start; i < beats.Length && beats[i] * pps < right; i++)
                 {
                     if (i % 4 == 0) continue;
-                    float x = X(beats[i]);
+                    float x = X(beats[i] * pps);
                     canvas.DrawLine(x, waveBottom + 5, x, waveBottom + 10);
                 }
                 canvas.StrokeColor = t._barTick ??= t.LineColor.WithAlpha(0.8f);
                 canvas.FontSize = 11f;
                 canvas.FontColor = t.LineColor;
-                for (int i = start; i < beats.Length && beats[i] <= tMax; i++)
+                for (int i = start; i < beats.Length && beats[i] * pps - ClockHalf < right; i++)
                 {
                     if (i % 4 != 0) continue;
-                    float x = X(beats[i]);
-                    canvas.DrawLine(x, waveBottom + 5, x, waveBottom + 14);
+                    double at = beats[i] * pps;
+                    float x = X(at);
+                    if (at < right) canvas.DrawLine(x, waveBottom + 5, x, waveBottom + 14);
+                    if (at - ClockHalf < left) continue;             // the tile before has it
                     if (!t._clocks.TryGetValue(i, out var label)) t._clocks[i] = label = Clock(beats[i]);
                     // Box taller than the line (Core Text draws nothing into a box the line does not fit).
-                    canvas.DrawString(label, x - 22f, waveBottom + 13f, 44f, 20f, HorizontalAlignment.Center, VerticalAlignment.Center);
+                    canvas.DrawString(label, x - ClockHalf, waveBottom + 13f, ClockHalf * 2, 20f, HorizontalAlignment.Center, VerticalAlignment.Center);
                 }
             }
 
-            // Chord pills at their moment, never overlapping the one before.
-            var pills = t._pills[index];
-            pills.Clear();
+            // Chord pills where the layout put them; a pill belongs to the tile
+            // its left edge is in.
             var segments = t.Segments;
             if (segments is { Count: > 0 })
             {
+                t.EnsureLayout(canvas);
                 canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
-                float lastRight = float.MinValue;
-                for (int i = 0; i < segments.Count; i++)
+                var lefts = t._pillLeft;
+                for (int i = 0; i < segments.Count && i < lefts.Length; i++)
                 {
-                    var seg = segments[i];
-                    if (seg.Label == "—") continue;
-                    float x = X(seg.Start);
-                    if (x < rect.Left - PillMaxWidth || x > rect.Right + PillMaxWidth) continue;
-                    var (w, _, _) = t.Measure(canvas, seg.Label);
-                    float left = x - w / 2;
-                    if (left < lastRight + 3f) left = lastRight + 3f;
-                    lastRight = left + w;
-                    t._pillShift[i] = left - x;
+                    double at = lefts[i];
+                    if (double.IsNaN(at) || at < left) continue;
+                    if (at >= right) break;                           // the lefts only grow
                     // Resting, unless the editor is on and this is the chord being worked on.
                     var style = t.Editing && i == t.Selected ? PillStyle.Current : PillStyle.Resting;
-                    t.DrawPill(canvas, left, seg.Label, style);
-                    pills.Add((new RectF(left, 0, w, PillTop + PillHeight + 8f), seg.Start, i));
+                    t.DrawPill(canvas, X(at), segments[i].Label, style);
                 }
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
             }
-            if (played) t._drawnPlayed[index] = t0; else t._drawnComing[index] = t0;   // this window is on the canvas
+            Done();
         }
+
+        /// <summary>This stretch is on the canvas.</summary>
+        private void Done()
+        {
+            tile.Drawn = true;
+            tile.Stale = false;
+            if (tile.Hidden) track.FollowSoon();                 // shown by the next Follow — asked for, in case the song stands still
+        }
+
+        private static Color Mix(Color over, Color ground, float alpha) => new(
+            over.Red * alpha + ground.Red * (1 - alpha),
+            over.Green * alpha + ground.Green * (1 - alpha),
+            over.Blue * alpha + ground.Blue * (1 - alpha));
     }
 
     /// <summary>The chord on the finger or pulsing: its own pill, chosen as it is on the ribbon.</summary>

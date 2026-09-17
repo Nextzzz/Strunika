@@ -75,8 +75,20 @@ public sealed partial class SongViewModel : ObservableObject
     private double _seekTarget = -1;
     private long _seekSequence, _seekTicks;
 
+    /// <summary>A seek has been asked for and the player has not yet been seen
+    /// moving on from it. Until it is, the prediction stands at the target:
+    /// running on at once had the conveyor and the beat square go ahead in
+    /// silence while the player buffered, and come back when it answered (user
+    /// report 2026-09-17).</summary>
+    private bool _settling;
+    private double _settleFrom = double.NaN;
+
     private void NoteSeek(double target)
     {
+        _settling = true;
+        _settleFrom = double.NaN;
+        _readings.Clear();                                       // a new line starts at the target
+        _drift = 0;
         _seekTarget = target;
         _seekTicks = Environment.TickCount64;
         _seekSequence++;
@@ -276,6 +288,9 @@ public sealed partial class SongViewModel : ObservableObject
 
     public void Attach(IMediaTransport transport)
     {
+        // The page was left while the song was still loading: nobody else will
+        // ever dispose of this one.
+        if (_disposed) { try { transport.Dispose(); } catch (Exception ex) { FileLog.Error("late transport", ex); } return; }
         _transport?.Dispose();
         _transport = transport;
         _predicted = Position;
@@ -296,7 +311,7 @@ public sealed partial class SongViewModel : ObservableObject
     public void Frame(double dt)
     {
         if (_transport == null || _scrubbing) return;
-        if (IsPlaying)
+        if (IsPlaying && !_settling)
         {
             // The probe's correction is paid off a little every frame, as a change
             // of pace between half and one-and-a-half speed: a prediction that runs
@@ -309,11 +324,15 @@ public sealed partial class SongViewModel : ObservableObject
             _predicted = Math.Clamp(_predicted + step + fix, 0, Math.Max(0, Duration));
         }
         _sinceProbe += dt;
-        if (_sinceProbe >= (Starting ? StartingProbeSeconds : ProbeSeconds) && !_probing)
+        if (_sinceProbe >= (Starting || (_settling && IsPlaying) ? StartingProbeSeconds : ProbeSeconds) && !_probing)
         {
             _sinceProbe = 0;
             _ = ProbeAsync();
         }
+        // The end of the loop is met by the prediction, on the frame: waiting for
+        // a probe to notice ran up to a fifth of a second past it.
+        if (IsPlaying && !_settling && !_wrapping && HasLoop && _predicted >= LoopEnd && _transport is { } transport)
+            _ = WrapSoonAsync(transport);
         SetPosition(_predicted, fromTransport: true);
     }
 
@@ -375,11 +394,28 @@ public sealed partial class SongViewModel : ObservableObject
             }
             if (HasLoop && playing && pos >= LoopEnd)
             {
-                await transport.SeekAsync(LoopStart);
-                NoteSeek(LoopStart);
-                _predicted = LoopStart;
+                if (!_wrapping) await WrapSoonAsync(transport);
+                return;
+            }
+            if (_settling)
+            {
+                // The seek is confirmed; the song moves on with the player, and
+                // not before it: the first reading that differs from the one
+                // the player settled on is the player playing.
+                if (double.IsNaN(_settleFrom)) _settleFrom = pos;
+                bool moving = playing && Math.Abs(pos - _settleFrom) >= 1e-3;
+                _lastProbe = pos;
+                _repeats = 0;
+                if (!moving)
+                {
+                    if (Math.Abs(pos - _predicted) > 0.35) _predicted = pos;   // the player went elsewhere
+                    return;
+                }
+                _settling = false;
+                _predicted = heard;
                 _drift = 0;
-                _nextBeat = NextBeatAfter(LoopStart);
+                _readings.Clear();
+                _nextBeat = NextBeatAfter(heard);
                 return;
             }
             // A player that says "playing" but reports the same position three
@@ -424,6 +460,37 @@ public sealed partial class SongViewModel : ObservableObject
         finally { _probing = false; }
     }
 
+    /// <summary>The end of the loop: back to its start. The page moves first and
+    /// the player follows, as in any seek; ticks placed past the end are dropped.</summary>
+    private async Task WrapAsync(IMediaTransport transport)
+    {
+        double start = LoopStart;
+        DropTicks();
+        NoteSeek(start);
+        _predicted = start;
+        _nextBeat = NextBeatAfter(start);
+        await transport.SeekAsync(start);
+    }
+
+    private bool _wrapping;
+
+    private async Task WrapSoonAsync(IMediaTransport transport)
+    {
+        _wrapping = true;
+        try { await WrapAsync(transport); }
+        catch (Exception ex) { FileLog.Error("loop wrap", ex); }
+        finally { _wrapping = false; }
+    }
+
+    /// <summary>The timeline jumped: ticks placed on the old one and not yet
+    /// heard are dropped.</summary>
+    private void DropTicks()
+    {
+        if (_transport?.Ticks != null) return;
+        try { _click.Cancel(); } catch (Exception ex) { FileLog.Error("click cancel", ex); }
+        _inAir.Clear();
+    }
+
     /// <summary>The player's time now, as the median of the last few readings
     /// carried to this moment at the song's speed: one wandering reading among
     /// five moves nothing. A reading at another speed, or older than a second
@@ -454,7 +521,7 @@ public sealed partial class SongViewModel : ObservableObject
     private void SetPosition(double pos, bool fromTransport)
     {
         if (!fromTransport) { _drift = 0; _readings.Clear(); }  // a seek or a scrub: nothing left to make good
-        if (Metronome && fromTransport && IsPlaying && _transport?.Ticks == null)
+        if (Metronome && fromTransport && IsPlaying && !_settling && _transport?.Ticks == null)
         {
             // Every beat inside the lookahead is scheduled now for its exact
             // moment (song seconds to real seconds through the speed). Ticking
@@ -538,7 +605,7 @@ public sealed partial class SongViewModel : ObservableObject
         {
             _nextBeat = NextBeatAfter(Position);
             if (Metronome && transport.Ticks == null) _click.Prepare();   // the engine is up before the first beat
-            if (Duration > 0 && Position >= Duration - 0.2) { await transport.SeekAsync(0); NoteSeek(0); _predicted = 0; }
+            if (Duration > 0 && Position >= Duration - 0.2) { NoteSeek(0); _predicted = 0; await transport.SeekAsync(0); }
             Starting = true;                                    // the conveyor waits for the player's word
             await transport.PlayAsync();
         }
@@ -723,8 +790,9 @@ public sealed partial class SongViewModel : ObservableObject
         _history.RemoveAt(_history.Count - 1);
         _raw = raw;
         OnPropertyChanged(nameof(CanUndo));
-        await CommitAsync();
+        var saved = CommitAsync();
         Selected = selected >= 0 && selected < Segments.Count ? selected : -1;
+        await saved;
     }
 
     partial void OnEditingChanged(bool value)
@@ -761,10 +829,10 @@ public sealed partial class SongViewModel : ObservableObject
     public Task SetSegmentAsync(int index, double start, double end)
     {
         if (!Editing || index < 0 || index >= _raw.Count) return Task.CompletedTask;
-        Remember();
         double floor = index > 0 ? _raw[index - 1].Start + MinSegment : 0;
         double ceiling = index + 1 < _raw.Count ? _raw[index + 1].End - MinSegment : Math.Max(Duration, _raw[index].End);
         if (ceiling - floor < 2 * MinSegment) return Task.CompletedTask;
+        Remember();
         start = Math.Clamp(start, floor, ceiling - MinSegment);
         end = Math.Clamp(end, start + MinSegment, ceiling);
         _raw[index] = _raw[index] with { Start = start, End = end };
@@ -785,8 +853,9 @@ public sealed partial class SongViewModel : ObservableObject
         Remember();
         var (chords, at) = ChordEdits.Move(_raw, index, start, Duration, MinSegment);
         _raw = chords;
-        await CommitAsync();
+        var saved = CommitAsync();                               // the chords are on the page when this returns
         Selected = at < Segments.Count ? at : -1;                // still the chord that was moved
+        await saved;
     }
 
     /// <summary>The chord being worked on goes; the one before it plays on
@@ -827,11 +896,11 @@ public sealed partial class SongViewModel : ObservableObject
     public Task AddChordAsync(string label, double at)
     {
         if (!Editing || string.IsNullOrEmpty(label)) return Task.CompletedTask;
-        Remember();
         at = Math.Clamp(at, 0, Math.Max(0, Duration));
         int i = IndexAt(at);
         if (i < 0 || i >= _raw.Count)
         {
+            Remember();
             // Past the last chord, or in a song with none: a chord of its own
             // from here to whatever end there is.
             at = Math.Max(0, BeatMath.Snap(_beats, at));        // under the cursor, to the sixteenth
@@ -843,6 +912,7 @@ public sealed partial class SongViewModel : ObservableObject
         }
         var segment = _raw[i];
         if (segment.End - segment.Start < 2 * MinSegment) return Task.CompletedTask;   // no room to split
+        Remember();
         double split = Math.Clamp(BeatMath.Snap(_beats, at), segment.Start + MinSegment, segment.End - MinSegment);
         _raw[i] = segment with { End = split };
         _raw.Insert(i + 1, new ChordSegmentDto(split, segment.End, label));
@@ -854,15 +924,15 @@ public sealed partial class SongViewModel : ObservableObject
     /// and nothing to lose by leaving the page.</summary>
     private async Task CommitAsync()
     {
-        try
-        {
-            Song.Segments = _raw;
-            Song.Edited = true;
-            await _songs.UpdateAsync(Song);
-        }
-        catch (Exception ex) { FileLog.Error("song edit", ex); }
+        // The page first, the disk after: a second edit made while the first
+        // was still being written worked on the old indexes and moved another
+        // chord, and a dragged chord hung in the air until the write was done.
+        Song.Segments = _raw;
+        Song.Edited = true;
         Rebuild();
         RememberChoice();                                        // the chosen chord may have moved
+        try { await _songs.UpdateAsync(Song); }
+        catch (Exception ex) { FileLog.Error("song edit", ex); }
     }
 
     /// <summary>« — back to the stop this moment belongs to; pressed again
@@ -898,14 +968,20 @@ public sealed partial class SongViewModel : ObservableObject
         await SeekAsync(Duration);
     }
 
+    /// <summary>The song is about to be sent somewhere: whoever is still moving
+    /// it (a coasting track) lets go first.</summary>
+    public event EventHandler? Seeking;
+
     public async Task SeekAsync(double seconds)
     {
         var transport = _transport;
         if (transport == null) return;
+        Seeking?.Invoke(this, EventArgs.Empty);
         seconds = Math.Clamp(seconds, 0, Math.Max(0, Duration));
         // The page moves first, the player follows: a tap on a square lands
         // there at once, and every reading already in flight is about the old
         // place (NoteSeek bumps the sequence), so none can pull it back.
+        DropTicks();
         NoteSeek(seconds);
         _predicted = seconds;
         _nextBeat = NextBeatAfter(seconds);
@@ -920,7 +996,8 @@ public sealed partial class SongViewModel : ObservableObject
         if (transport == null || _scrubbing) return;
         _scrubbing = true;
         _seekSequence++;                                         // probes already in flight are about the old place
-        _wasPlaying = IsPlaying;
+        _wasPlaying = IsPlaying || Starting;
+        DropTicks();
         if (_wasPlaying) await transport.PauseAsync();
     }
 
@@ -934,9 +1011,12 @@ public sealed partial class SongViewModel : ObservableObject
         NoteSeek(seconds);
         _predicted = seconds;
         _nextBeat = NextBeatAfter(seconds);
-        await transport.SeekAsync(seconds);
-        _scrubbing = false;
-        if (_wasPlaying) await transport.PlayAsync();
+        // Whatever the player says to the seek, the scrub is over: left on, the
+        // flag stopped every frame and the conveyor stood for good.
+        try { await transport.SeekAsync(seconds); }
+        catch (Exception ex) { FileLog.Error("scrub seek", ex); }
+        finally { _scrubbing = false; }
+        if (_wasPlaying) { Starting = true; await transport.PlayAsync(); }
     }
 
     private int NextBeatAfter(double pos)
@@ -1006,9 +1086,9 @@ public sealed partial class SongViewModel : ObservableObject
     /// they are setting a loop, not listening (user decision 2026-09-09).</summary>
     public async Task LoopEditStartAsync()
     {
-        await PauseAsync();
-        _scrubbing = true;
+        _scrubbing = true;                                       // before the await: a quick let-go must not be undone by it
         _seekSequence++;                                         // readings already in flight are about the old place
+        await PauseAsync();
     }
 
     /// <summary>The loop while an end is being dragged.</summary>
@@ -1028,8 +1108,9 @@ public sealed partial class SongViewModel : ObservableObject
         _predicted = position;
         _nextBeat = NextBeatAfter(position);
         SetPosition(position, fromTransport: false);
-        if (transport != null) await transport.SeekAsync(position);
-        _scrubbing = false;
+        try { if (transport != null) await transport.SeekAsync(position); }
+        catch (Exception ex) { FileLog.Error("loop seek", ex); }
+        finally { _scrubbing = false; }
     }
     partial void OnNextChordChanged(string value) => OnPropertyChanged(nameof(HasNext));
     partial void OnIsPlayingChanged(bool value) { OnPropertyChanged(nameof(ShowPause)); OnPropertyChanged(nameof(ShowPlay)); OnPropertyChanged(nameof(ShowReplay)); CheckEnd(); }
@@ -1241,8 +1322,11 @@ public sealed partial class SongViewModel : ObservableObject
         OnPropertyChanged(nameof(SpeedLocked));
     }
 
+    private bool _disposed;
+
     public void Dispose()
     {
+        _disposed = true;
         _pro.Changed -= OnProChanged;
         try { _transport?.Dispose(); } catch (Exception ex) { FileLog.Error("song dispose", ex); }
         _transport = null;

@@ -166,8 +166,10 @@ from Swift — but that needs a Mac and is not planned.
   `gen2 InducedNotForced` collections on the UI thread — WinUI/CsWinRT induces full collections when native objects
   churn (Win2D text layouts and brushes per redraw, a WinUI `Slider.Value` update ten times a second, MAUI creating a
   transform object per `TranslationX` change), and with a ~20 MB managed heap the threshold is hit constantly. The
-  fix is architectural and is the design skill §7: `ChordTrack` renders its ribbon into wide canvases every few
-  seconds (double-buffered, two colourings clipped at the playhead) and only *translates* them per frame through
+  fix is architectural and is the design skill §7: `ChordTrack` cuts its ribbon into 360 pt tiles, each drawn once into its own canvas and re-aimed out of sight, one
+  per frame at most (a second row of tiles holds only the played-colour bars, clipped at the playhead; until
+  2026-09-17 it was two three-screen canvases in two colourings, redrawn whole every few seconds — a skipped frame on
+  the phone), and only *translates* them per frame through
   `NativeTransform` (one native `CompositeTransform`, updated in place); `SeekBar` replaces every per-frame `Slider`;
   `PointerDrag` captures the pointer natively for drags. Position is predicted from the frame ticker
   (`Animation.Commit`, vsync) and reconciled with the transport every 200 ms (40 ms while a start is pending).
