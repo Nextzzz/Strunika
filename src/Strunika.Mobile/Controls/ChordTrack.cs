@@ -1520,7 +1520,8 @@ public sealed class ChordTrack : Grid
             // The platform can still call Draw while the window is being torn
             // down, on a canvas whose session is already gone.
             if (track.Handler == null) return;                        // torn down: nothing to draw for
-            try { DrawCore(canvas, rect); }
+            long began = Services.DrawMeter.Begin();
+            try { DrawCore(canvas, rect); Services.DrawMeter.End(began); }
             catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
         }
 
@@ -1686,9 +1687,11 @@ public sealed class ChordTrack : Grid
                 var t = track;
                 var segments = t.Segments;
                 if (t._currentIndex < 0 || segments == null || t._currentIndex >= segments.Count) return;
+                long began = Services.DrawMeter.Begin();
                 canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
                 t.DrawPill(canvas, 0f, segments[t._currentIndex].Label, PillStyle.Current);
                 canvas.Font = Microsoft.Maui.Graphics.Font.Default;
+                Services.DrawMeter.End(began);
             }
             catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
         }
@@ -1700,7 +1703,8 @@ public sealed class ChordTrack : Grid
         public void Draw(ICanvas canvas, RectF rect)
         {
             if (track.Handler == null) return;                        // torn down: nothing to draw for
-            try { DrawCore(canvas, rect); }
+            long began = Services.DrawMeter.Begin();
+            try { DrawCore(canvas, rect); Services.DrawMeter.End(began); }
             catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
         }
 

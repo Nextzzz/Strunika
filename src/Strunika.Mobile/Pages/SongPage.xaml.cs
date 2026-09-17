@@ -289,7 +289,8 @@ public partial class SongPage : ContentPage
     private double _worst, _sumDt, _sinceReport;
     private bool _secondTickedLastFrame;
     private long _allocatedSeen = -1;
-    private int _playFrames, _playLong;
+    private int _playFrames, _playLong, _longLogs, _gcSeen0, _gcSeen1, _gcSeen2;
+    private string _chordSeen = "";
     private double _playSeconds, _playWorst;
     /// <summary>Diagnostics: leave the conveyor still while the song plays, to tell
     /// drawing from audio as the source of a stall (Settings → About, debug).</summary>
@@ -331,8 +332,19 @@ public partial class SongPage : ContentPage
         // In every build, and cheap: what the song's frames were like, once in ten
         // seconds of playing — so a track that skips on the phone can be read back
         // to numbers (the lines above are the debug build's).
+        var (drawnMs, draws) = DrawMeter.Take();
         if (_vm.IsPlaying)
         {
+            // Each frame that ran long, with what came with it: drawing, a
+            // collection, a chord change, a probe. Sixty of them a page.
+            int young = GC.CollectionCount(0), middle = GC.CollectionCount(1), old = GC.CollectionCount(2);
+            if (_playFrames > 5 && dt > 0.025 && dt < 0.25 && _longLogs < 60)
+            {
+                _longLogs++;
+                FileLog.Info($"long frame {dt * 1000:0} ms at {_vm.Position:0.0} s: drew {drawnMs:0.0} ms in {draws}, gc +{young - _gcSeen0}/+{middle - _gcSeen1}/+{old - _gcSeen2}, heap {GC.GetTotalMemory(false) / 1048576} MB, chord {(_vm.CurrentChord != _chordSeen ? "changed" : "same")}, probing {_vm.IsProbing}{(_vm.Editing ? ", editor" : "")}{(_gridView ? ", grid" : "")}");
+            }
+            _gcSeen0 = young; _gcSeen1 = middle; _gcSeen2 = old;
+            _chordSeen = _vm.CurrentChord;
             _playFrames++;
             _playSeconds += dt;
             if (_playFrames > 5 && dt > _playWorst) _playWorst = dt;

@@ -58,7 +58,8 @@ public sealed class ChordDiagram : GraphicsView, IDrawable
         // down, on a canvas whose session is already gone; every call then
         // throws inside Maui.Graphics. There is nothing left to draw for.
         if (Handler == null) return;                                 // torn down: nothing to draw for
-        try { DrawCore(canvas, rect); }
+        long began = Services.DrawMeter.Begin();
+            try { DrawCore(canvas, rect); Services.DrawMeter.End(began); }
         catch (Exception ex) when (ex is NullReferenceException or ObjectDisposedException or ArgumentException or System.Runtime.InteropServices.COMException) { }
     }
 
