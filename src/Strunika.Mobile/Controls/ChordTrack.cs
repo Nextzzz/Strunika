@@ -1079,6 +1079,12 @@ public sealed class ChordTrack : Grid
     /// <summary>The chord off the track: from its first move until the song's
     /// chords come back with the move in them.</summary>
     private Block? _lifted;
+    /// <summary>Counts the lifts. A timer set to put a chord down belongs to the
+    /// lift it was set in: the pooled view is often the same one for the next
+    /// drag, and a timer from the drag before put that chord down in the middle
+    /// of it — its face hidden, its place filled in again, nothing left to see
+    /// move (user report 2026-09-17).</summary>
+    private int _liftTurn;
 
     private Block NewClip()
     {
@@ -1160,6 +1166,7 @@ public sealed class ChordTrack : Grid
         var segments = Segments;
         if (segments == null || clip.Index < 0 || clip.Index >= segments.Count) return;
         _lifted = clip;
+        _liftTurn++;
         double width = _labels.TryGetValue(segments[clip.Index].Label, out var measured) ? measured.Width : 46;
         double shift = _pillShift.TryGetValue(clip.Index, out var nudge) ? nudge : -width / 2;
         _hole.WidthRequest = width + 2;
@@ -1204,10 +1211,10 @@ public sealed class ChordTrack : Grid
         // The chord stays lifted where it was let go, and its old place empty,
         // until the song's chords come back with the move in them: putting
         // either down first showed the old badge again for a frame.
-        var lifted = _lifted;
+        int turn = _liftTurn;
         // Only the beginning is the track's to say: the chord lasts until the next mark.
         SegmentMoved?.Invoke(this, (clip.Index, _clipStart, _clipTo));
-        Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_lifted == lifted) Land(); });   // a move the song turned down
+        Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_liftTurn == turn && !_clipDragging) Land(); });   // a move the song turned down
     }
 
     /// <summary>The chords are back from the song: once the ribbon has drawn
@@ -1215,8 +1222,8 @@ public sealed class ChordTrack : Grid
     private void ChordsArrived()
     {
         if (_lifted == null || _clipDragging) return;
-        var lifted = _lifted;
-        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(80), () => { if (_lifted == lifted) Land(); });
+        int turn = _liftTurn;
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(80), () => { if (_liftTurn == turn && !_clipDragging) Land(); });
     }
 
     private void Land()

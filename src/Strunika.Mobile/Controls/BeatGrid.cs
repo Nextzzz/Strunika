@@ -233,6 +233,9 @@ public sealed class BeatGrid : Grid
     /// <summary>The square whose chord is off it — on the finger, or waiting
     /// where it was let go for the song's chords to come back — or −1.</summary>
     private int _liftedBeat = -1;
+    /// <summary>Counts the lifts: a timer set to put a chord down belongs to the
+    /// lift it was set in, never to a later drag from the same square.</summary>
+    private int _liftTurn;
     private double _thumbX, _thumbY;
     private int _dragFrom = -1, _dragTo = -1;
     private readonly int[] _cursorBeat = { -1, -1 }, _cursorDrawn = { -1, -1 };
@@ -430,6 +433,7 @@ public sealed class BeatGrid : Grid
     private void Lift()
     {
         _liftedBeat = _dragFrom;
+        _liftTurn++;
         _drop.IsVisible = true;
         NativeTransform.TranslateX(_drop, _thumbX);
         NativeTransform.TranslateY(_drop, _thumbY);
@@ -454,9 +458,9 @@ public sealed class BeatGrid : Grid
             double step = _cell + _gap;
             NativeTransform.TranslateX(_thumb, to % Columns * step);
             NativeTransform.TranslateY(_thumb, to / Columns * step);
-            int lifted = _liftedBeat;
+            int turn = _liftTurn;
             ChordDropped?.Invoke(this, (from, to));
-            Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_liftedBeat == lifted) PutDown(); });   // a move the song turned down
+            Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(1.5), () => { if (_liftTurn == turn && _dragFrom < 0) PutDown(); });   // a move the song turned down
             return;
         }
         PutDown();
