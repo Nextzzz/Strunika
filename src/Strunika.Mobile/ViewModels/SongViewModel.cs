@@ -717,7 +717,47 @@ public sealed partial class SongViewModel : ObservableObject
         int i = Selected;
         if (!Editing || i < 0 || i >= _raw.Count) return Task.CompletedTask;
         double target = BeatMath.Step(_beats, _raw[i].Start, direction, GridView ? 1 : BeatMath.Sixteenths);
-        return MoveSegmentAsync(i, target);                      // past a neighbour if need be
+        target = ClearOfMarks(i, target, direction);             // past a neighbour if need be, never onto it
+        return double.IsNaN(target) ? Task.CompletedTask : MoveSegmentAsync(i, target);
+    }
+
+    /// <summary>A chord let go of on the track: where it was dropped, or the
+    /// nearest free place on the side of a neighbour's mark the finger was on.</summary>
+    public Task DropSegmentAsync(int index, double start)
+    {
+        if (!Editing || index < 0 || index >= _raw.Count) return Task.CompletedTask;
+        start = ClearOfMarks(index, start, start >= _raw[index].Start ? 1 : -1);
+        return MoveSegmentAsync(index, double.IsNaN(start) ? _raw[index].Start : start);
+    }
+
+    /// <summary>
+    /// A place for the chord's mark that is no other chord's. Set down on a
+    /// mark — or nearer to one than a chord can be short — a moved chord takes
+    /// that chord's place (<see cref="ChordEdits.Move"/>), which is what a drop
+    /// on a square of the beat view means. On the track and under the arrows it
+    /// was a neighbour gone for no reason the reader could see: a step towards
+    /// it always lands on its mark before it lands past it (user report
+    /// 2026-09-17). So there the mark goes on, a step of the grid at a time,
+    /// until it is clear — away from the mark in its way on the side it came
+    /// to it from, or in <paramref name="direction"/> when it is right on it.
+    /// NaN when the song has no such place that way.
+    /// </summary>
+    private double ClearOfMarks(int index, double target, int direction)
+    {
+        int sign = 0;
+        double most = Math.Max(0, Duration - MinSegment);
+        for (int tries = 0; tries < 64; tries++)
+        {
+            double inTheWay = double.NaN;
+            for (int k = 0; k < _raw.Count; k++)
+                if (k != index && _raw[k].Label != "—" && Math.Abs(_raw[k].Start - target) < MinSegment) { inTheWay = _raw[k].Start; break; }
+            if (double.IsNaN(inTheWay)) return target;
+            if (sign == 0) sign = target > inTheWay + 1e-6 ? 1 : target < inTheWay - 1e-6 ? -1 : direction >= 0 ? 1 : -1;
+            double next = BeatMath.Step(_beats, target, sign, GridView ? 1 : BeatMath.Sixteenths);
+            if (next < 0 || next > most || Math.Abs(next - target) < 1e-9) return double.NaN;
+            target = next;
+        }
+        return double.NaN;
     }
     /// <summary>The button in the header: into the editor, then out of it.</summary>
     public string EditorText => Editing ? Loc.Get("Common_Done") : Loc.Get("Song_Editor_Short");
@@ -1159,6 +1199,8 @@ public sealed partial class SongViewModel : ObservableObject
         return -1;
     }
 
+    private int _nextHold;
+
     private void UpdateChords(double pos)
     {
         var segs = Segments;
@@ -1172,12 +1214,18 @@ public sealed partial class SongViewModel : ObservableObject
         {
             CurrentChord = current;
             CurrentShape = ShapeFor(current);
+            // Playing, the chord that is next waits a few frames: both diagrams
+            // and the track's two pills drawn in the frame the chord changed was
+            // a frame lost at every chord (user report 2026-09-17).
+            if (IsPlaying && !_scrubbing) _nextHold = 4;
         }
         if (next != NextChord)
         {
+            if (_nextHold > 0 && IsPlaying) { _nextHold--; return; }
             NextChord = next;
             NextShape = ShapeFor(next);
         }
+        _nextHold = 0;
     }
 
     private void RefreshShapes()

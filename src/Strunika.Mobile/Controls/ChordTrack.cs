@@ -149,7 +149,7 @@ public sealed class ChordTrack : Grid
     private double[] _pillLeft = Array.Empty<double>();
     private float[] _pillWidth = Array.Empty<float>();
     private bool _layoutDirty = true, _followQueued, _pinnedShown;
-    private int _lateLogs;
+    private int _lateLogs, _pinHold;
     private readonly Dictionary<string, (float Width, string Top, string? Bottom)> _labels = new();
     private readonly Dictionary<int, string> _clocks = new();
     private float[]? _bars;
@@ -686,6 +686,7 @@ public sealed class ChordTrack : Grid
         {
             // Only the small canvas changes; the ribbons stay as they are.
             _currentIndex = current;
+            _pinHold = 8;                                        // the pinned pill's turn comes a few frames on: one drawing a frame
             bool show = current >= 0 && segments != null && current < segments.Count && segments[current].Label != "—";
             if (_current.IsVisible != show) _current.IsVisible = show;
             if (show) _current.Invalidate();
@@ -709,7 +710,15 @@ public sealed class ChordTrack : Grid
             return;
         }
         if (_ringIndex >= 0 || _ringShown >= 0) { _ringIndex = -1; HideRingNow(); }
-        if (next != _nextIndex) { _nextIndex = next; _pinnedShown = false; _pinned.Invalidate(); }
+        if (_pinHold > 0) _pinHold--;
+        if (next != _nextIndex)
+        {
+            if (_pinHold > 0 && _pinned.IsVisible) { _pinned.IsVisible = false; _pinnedShown = false; }
+            if (_pinHold > 0) { FollowSoon(); return; }          // (nothing below but the pinned pill; asked for again in case the song stands still)
+            _nextIndex = next;
+            _pinnedShown = false;
+            _pinned.Invalidate();
+        }
         if (next >= 0 && segments != null)
         {
             // The preview is latched, not recomputed: it only *starts* while the

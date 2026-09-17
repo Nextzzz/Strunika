@@ -79,7 +79,24 @@ public sealed class IosClickPlayer : IClickPlayer
         // The route decides the latency (speaker 10–20 ms, AirPods ~170 ms):
         // read again whenever it changes, and log the first ticks after it so
         // a session that moves from headphones to the speaker shows both.
-        Observers.Keep(AVAudioSession.Notifications.ObserveRouteChange((_, e) => { RefreshLatency("route " + e.Reason); _tickLogs = 3; }));
+        Observers.Keep(AVAudioSession.Notifications.ObserveRouteChange((_, e) =>
+        {
+            // The session still reports the old route's numbers when it says the
+            // route has changed — headphones put in mid-song kept the speaker's
+            // latency, and every tick came late by the difference (user report
+            // 2026-09-17). Read now, and again once the new route has settled.
+            string why = "route " + e.Reason;
+            RefreshLatency(why);
+            _tickLogs = 3;
+            _ = Task.Run(async () =>
+            {
+                foreach (int wait in new[] { 400, 1200, 2500 })
+                {
+                    await Task.Delay(wait);
+                    RefreshLatency(why + ", settled");
+                }
+            });
+        }));
         RefreshLatency("start");
     }
 

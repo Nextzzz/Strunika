@@ -80,7 +80,7 @@ public partial class SongPage : ContentPage
             if (_gridView) ScrollGridToTime(middle);
             else Track.LookAt(middle);                           // LookAt stops a coast of its own
         };
-        Track.SegmentMoved += (_, at) => _ = _vm.MoveSegmentAsync(at.Index, at.Start);
+        Track.SegmentMoved += (_, at) => _ = _vm.DropSegmentAsync(at.Index, at.Start);
         Track.LoopEditStarted += (_, _) => _ = _vm.LoopEditStartAsync();
         Track.LoopChanging += (_, loop) => _vm.LoopEditMoved(loop.Start, loop.End);
         Track.LoopEditEnded += (_, at) => _ = _vm.LoopEditEndAsync(at);
@@ -927,20 +927,29 @@ public partial class SongPage : ContentPage
         }
     }
 
-    private bool _breathing;
+    /// <summary>Counts the breathings: each belongs to the arming it began with.
+    /// Two of them alive at once — the chip tapped again before the last fade of
+    /// the one before had ended — each cut the other's fade short, and a fade cut
+    /// short returns at once: the two went round each other without ever letting
+    /// the page have a turn, and the app was gone (user report 2026-09-17).</summary>
+    private int _breathTurn;
 
     private async void BreatheLoopChip()
     {
-        if (!_vm.LoopArmed) { _breathing = false; LoopChip.Opacity = 1; return; }
-        if (_breathing || Motion.Reduced) return;
-        _breathing = true;
-        while (_breathing && !_unloaded && _vm.LoopArmed)
-        {
-            await LoopChip.FadeToAsync(0.45, 480, Easing.SinInOut);
-            await LoopChip.FadeToAsync(1, 480, Easing.SinInOut);
-        }
-        _breathing = false;
+        int turn = ++_breathTurn;                                // whatever was breathing stops at its next step
+        LoopChip.CancelAnimations();
         LoopChip.Opacity = 1;
+        if (!_vm.LoopArmed || Motion.Reduced) return;
+        try
+        {
+            while (turn == _breathTurn && !_unloaded && _vm.LoopArmed)
+            {
+                if (await LoopChip.FadeToAsync(0.45, 480, Easing.SinInOut) || turn != _breathTurn) break;   // cut short: not ours any more
+                if (await LoopChip.FadeToAsync(1, 480, Easing.SinInOut)) break;
+            }
+        }
+        catch (Exception ex) { FileLog.Error("loop chip", ex); }
+        if (turn == _breathTurn) LoopChip.Opacity = 1;
     }
 
     /// <summary>The "more" sheet slides up over the song: key, capo, speed,

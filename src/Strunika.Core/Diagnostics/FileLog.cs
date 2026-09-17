@@ -43,22 +43,26 @@ public static class FileLog
     }
 
     /// <summary>Everything said so far is in the file when this returns.</summary>
-    public static void Flush()
+    public static void Flush() => TryFlush();
+
+    private static bool TryFlush()
     {
         try
         {
             lock (Lock)
             {
-                if (Pending.IsEmpty) return;
+                if (Pending.IsEmpty) return true;
                 var text = new StringBuilder();
                 while (Pending.TryDequeue(out var line)) text.Append(line);
                 System.IO.Directory.CreateDirectory(Directory);
                 File.AppendAllText(CurrentFile, text.ToString());
             }
+            return true;
         }
         catch
         {
             // Logging must never take the app down.
+            return false;
         }
     }
 
@@ -69,10 +73,11 @@ public static class FileLog
     {
         while (true)
         {
-            Flush();
+            bool written = TryFlush();
             Volatile.Write(ref _draining, 0);
-            // A line said between the flush and the flag going down has nobody to write it.
-            if (Pending.IsEmpty || Interlocked.CompareExchange(ref _draining, 1, 0) != 0) return;
+            // A line said between the flush and the flag going down has nobody to write it
+            // (a file that cannot be written is left for the next line to try).
+            if (!written || Pending.IsEmpty || Interlocked.CompareExchange(ref _draining, 1, 0) != 0) return;
         }
     }
 }

@@ -36,7 +36,7 @@ public sealed class BeatGrid : Grid
     public static readonly BindableProperty BeatsProperty =
         BindableProperty.Create(nameof(Beats), typeof(double[]), typeof(BeatGrid), Array.Empty<double>(), propertyChanged: Rebuild);
     public static readonly BindableProperty SegmentsProperty =
-        BindableProperty.Create(nameof(Segments), typeof(IReadOnlyList<ChordSegmentDto>), typeof(BeatGrid), null, propertyChanged: Rebuild);
+        BindableProperty.Create(nameof(Segments), typeof(IReadOnlyList<ChordSegmentDto>), typeof(BeatGrid), null, propertyChanged: Rechord);
     public static readonly BindableProperty CellColorProperty =
         BindableProperty.Create(nameof(CellColor), typeof(Color), typeof(BeatGrid), Colors.DimGray, propertyChanged: Redraw);
     public static readonly BindableProperty ChordCellColorProperty =
@@ -96,6 +96,8 @@ public sealed class BeatGrid : Grid
         if (!onScreen || !_stale) return;
         _stale = false;
         Redraw();
+        PlaceCursor(force: true);
+        PlaceThumb();
     }
 
     public int Chosen { get => (int)GetValue(ChosenProperty); set => SetValue(ChosenProperty, value); }
@@ -185,6 +187,25 @@ public sealed class BeatGrid : Grid
         grid._bandRows = 0;                                      // the bands are re-cut on the next layout
         grid.InvalidateMeasure();
         grid.Layout(grid.Width);
+    }
+
+    /// <summary>The chords changed and the beats did not: the squares are where
+    /// they were, only what is written in them is new. Cutting the bands again
+    /// for it — every canvas of the song thrown away and made anew — was a sixth
+    /// of a second on the phone at every edit, grid on screen or not (log of
+    /// 2026-09-17).</summary>
+    private static void Rechord(BindableObject b, object? o, object? n)
+    {
+        var grid = (BeatGrid)b;
+        grid._labels = null;
+        grid._holds = null;
+        grid._liftedBeat = -1;                                   // the chords came back: whatever was lifted is down
+        grid._thumbFull = false;
+        if (grid._bands.Count == 0) { Rebuild(b, o, n); return; }   // nothing cut yet
+        if (!grid._onScreen) { grid._stale = true; return; }
+        grid.Redraw();
+        grid.PlaceCursor(force: true);
+        grid.PlaceThumb();
     }
 
     /// <summary>Redraw when there is somebody to see it; otherwise remember to
